@@ -626,19 +626,19 @@ box_aig_network::signal cleanup_dangling_with_boxes_rec( box_aig_network const& 
     dest.create_po( ntk.is_complemented( po ) ? !f : f );
   } );
 
-  for ( auto b = 1u; b <= ntk.num_boxes(); ++b )
+  for ( auto b = 1u; b <= ntk.num_boxes(); ++b ) // Do not skip empty (deleted) boxes to keep box_ids the same
   {
-    if ( true ) // Do not recreate white boxes whose outputs are all dangling
+    if ( true ) // Do not recreate boxes whose outputs are all dangling
     {
-      bool skip_dangling_whitebox = true;
+      bool skip = true;
       ntk.foreach_box_output( b, [&]( auto const& f ) {
-        if ( ntk.fanout_size( ntk.get_node( f ) ) > 0 || ntk.is_pi( ntk.get_node( f ) ) )
+        if ( ntk.fanout_size( ntk.get_node( f ) ) > 0 )
         {
-          skip_dangling_whitebox = false;
+          skip = false;
           return false; // break
         }
       } );
-      if ( skip_dangling_whitebox )
+      if ( skip )
       {
         auto created = dest.create_box( {}, {} );
         assert( created == b );

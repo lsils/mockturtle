@@ -154,13 +154,31 @@ public:
     return uint32_t(_storage->nodes[n].data[1].h2) >> 2;
   }
 
+  bool is_black_box( box_id b ) const
+  {
+    assert( b != 0 && b < _boxes.size() );
+    assert( _boxes[b].outputs.size() > 0 );
+    return is_pi( _boxes[b].outputs[0].index );
+  }
+
+  uint32_t num_box_inputs( box_id b ) const
+  {
+    assert( b != 0 && b < _boxes.size() );
+    return _boxes[b].inputs.size();
+  }
+
+  uint32_t num_box_outputs( box_id b ) const
+  {
+    assert( b != 0 && b < _boxes.size() );
+    return _boxes[b].outputs.size();
+  }
+
   signal get_box_input( box_id b, uint32_t i ) const
   {
     assert( b != 0 && b < _boxes.size() );
     assert( i < _boxes[b].inputs.size() );
-    auto n = _boxes[b].inputs[i].index;
-    if ( is_dont_touch( n ) ) // black box inputs are buffers, return its real input
-      return _storage->nodes[n].children[0];
+    if ( is_black_box( b ) ) // black box inputs are buffers, return its real input
+      return _storage->nodes[_boxes[b].inputs[i].index].children[0];
     return _boxes[b].inputs[i];
   }
 
@@ -490,6 +508,14 @@ public:
     }
   }
 
+  void delete_box( box_id b, std::vector<signal> const& outputs )
+  {
+    if ( is_black_box( b ) )
+      delete_blackbox( b, outputs );
+    else
+      delete_whitebox( b, outputs );
+  }
+
   void delete_whitebox( box_id b, std::vector<signal> const& outputs )
   {
     assert( b > 0 && b < _boxes.size() );
@@ -552,6 +578,16 @@ public:
   void foreach_pi( Fn&& fn ) const
   {
     detail::foreach_element_if( _storage->inputs.begin(), _storage->inputs.end(), []( auto n ) { return n != 0; }, fn );
+  }
+
+  template<typename Fn>
+  void foreach_box( Fn&& fn ) const
+  {
+    auto r = range<uint64_t>( 1u, _boxes.size() ); /* start from 1 */
+    detail::foreach_element_if(
+        r.begin(), r.end(),
+        [this]( auto b ) { return num_box_outputs( b ) != 0; },
+        fn );
   }
 #pragma endregion
 

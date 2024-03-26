@@ -31,6 +31,7 @@
 #include <mockturtle/algorithms/experimental/decompose_multioutput.hpp>
 #include <mockturtle/algorithms/aig_balancing.hpp>
 #include <mockturtle/algorithms/extract_adders.hpp>
+#include <mockturtle/algorithms/simplify_adders.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/box_aig.hpp>
@@ -42,12 +43,6 @@
 
 using namespace experiments;
 using namespace mockturtle;
-
-void simplify_adders( box_aig_network& ntk )
-{
-  (void)ntk;
-  //TODO
-}
 
 void exp_whitebox()
 {
@@ -89,6 +84,7 @@ void exp_whitebox()
     const uint32_t wb_aig_size_before = wb_aig.num_gates();
     const uint32_t dt_before = wb_aig.num_dont_touch_gates();
     sim_resubstitution( wb_aig, rps );
+    simplify_adders( wb_aig );
     wb_aig = cleanup_dangling_with_boxes( wb_aig );
 
     extract_adders_stats st2;
@@ -109,8 +105,7 @@ void exp_whitebox()
 
 void unbox_blackboxed_adders( box_aig_network& ntk )
 {
-  for ( auto b = 1u; b <= ntk.num_boxes(); ++b )
-  {
+  ntk.foreach_box( [&]( auto b ){
     if ( ntk.get_box_tag( b ) == "ha" )
     {
       auto i0 = ntk.get_box_input( b, 0 );
@@ -128,7 +123,7 @@ void unbox_blackboxed_adders( box_aig_network& ntk )
     {
       std::cout << "cannot recognize box " << b << "\n";
     }
-  }
+  } );
 }
 
 void exp_blackbox()
