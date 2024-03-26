@@ -239,6 +239,10 @@ public:
 
   void substitute_node_no_restrash( node const& old_node, signal const& new_signal )
   {
+    if constexpr ( has_is_dont_touch_v<Ntk> )
+    {
+      assert( !Ntk::is_dont_touch( old_node ) );
+    }
     if ( Ntk::get_node( new_signal ) == old_node && !Ntk::is_complemented( new_signal ) )
       return;
 

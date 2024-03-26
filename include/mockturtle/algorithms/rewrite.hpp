@@ -185,6 +185,11 @@ private:
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
       if ( ntk.fanout_size( n ) == 0u )
         return;
+      if constexpr ( has_is_dont_touch_v<Ntk> )
+      {
+        if ( ntk.is_dont_touch( n ) )
+          return; /* skip */
+      }
 
       int32_t best_gain = -1;
       uint32_t best_level = UINT32_MAX;
@@ -367,6 +372,11 @@ private:
     ntk.foreach_gate( [&]( auto const& n, auto i ) {
       if ( ntk.fanout_size( n ) == 0u )
         return;
+      if constexpr ( has_is_dont_touch_v<Ntk> )
+      {
+        if ( ntk.is_dont_touch( n ) )
+          return; /* skip */
+      }
 
       int32_t best_gain = -1;
       uint32_t best_level = UINT32_MAX;
@@ -947,7 +957,14 @@ void rewrite( Ntk& ntk, Library&& library, rewrite_params const& ps = {}, rewrit
     *pst = st;
   }
 
-  ntk = cleanup_dangling( ntk );
+  if constexpr ( has_is_dont_touch_v<Ntk> )
+  {
+    ntk = cleanup_dangling_with_boxes( ntk );
+  }
+  else
+  {
+    ntk = cleanup_dangling( ntk );
+  }
 }
 
 } /* namespace mockturtle */

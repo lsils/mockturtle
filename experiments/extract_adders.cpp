@@ -38,34 +38,89 @@
 #include <mockturtle/networks/block.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/sim_resub.hpp>
+#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
+#include <mockturtle/utils/tech_library.hpp>
+#include <mockturtle/algorithms/rewrite.hpp>
 
 #include <experiments.hpp>
 
 using namespace experiments;
 using namespace mockturtle;
 
+bool read_preprocess( aig_network& aig, std::string const& benchmark )
+{
+#if 1
+  if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
+    return false;
+
+  /* Remove structural redundancies (increases the number of discoverable HAs/FAs) */
+  aig_balancing_params bps;
+  bps.minimize_levels = false;
+  bps.fast_mode = false;
+  aig_balance( aig, bps );
+  return true;
+#else
+  // save benchmarks balanced with ABC &b in balanced/
+  if ( lorina::read_aiger( "balanced/voter_minimized.aig", aiger_reader( aig ) ) != lorina::return_code::success )
+    return false;
+  return true;
+#endif
+}
+
+template<class Ntk>
+void optimize( Ntk& ntk )
+{
+  //xag_npn_resynthesis<aig_network> resyn;
+  //exact_library_params eps;
+  //eps.np_classification = false;
+  //eps.compute_dc_classes = true;
+  //exact_library<Ntk> exact_lib( resyn, eps );
+  //rewrite_params rwps;
+  //rwps.use_dont_cares = true;
+  //rewrite( ntk, exact_lib, rwps );
+
+  resubstitution_params rsps;
+  // rsps.pattern_filename = "1024sa1/" + benchmark + ".pat";
+  rsps.max_inserts = 20;
+  rsps.max_pis = 8;
+  rsps.max_divisors = std::numeric_limits<uint32_t>::max();
+  sim_resubstitution( ntk, rsps );
+  if constexpr ( has_is_dont_touch_v<Ntk> )
+  {
+    //simplify_adders( ntk );
+    ntk = cleanup_dangling_with_boxes( ntk );
+  }
+  else
+  {
+    ntk = cleanup_dangling( ntk );
+  }
+
+  //rewrite( ntk, exact_lib, rwps );
+  //sim_resubstitution( ntk, rsps );
+  //if constexpr ( has_is_dont_touch_v<Ntk> )
+  //{
+  //  //simplify_adders( ntk );
+  //  ntk = cleanup_dangling_with_boxes( ntk );
+  //}
+  //else
+  //{
+  //  ntk = cleanup_dangling( ntk );
+  //}
+}
+
 void exp_whitebox()
 {
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp(
       "white-box", "benchmark", "size", "HA", "FA", "|bntk1|", "|wb-aig|", "#dt", 
-      "|wb-aig-opt|", "#dt-opt", "HA2", "FA2", "|bntk2|", "cec" );
+      "|wb-aig-opt|", "#dt-opt", "HA2", "FA2", "|bntk2|", "opt time", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
     aig_network aig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
-    {
+    if ( !read_preprocess( aig, benchmark ) )
       continue;
-    }
-
-    /* Remove structural redundancies (increases the number of discoverable HAs/FAs) */
-    aig_balancing_params bps;
-    bps.minimize_levels = false;
-    bps.fast_mode = false;
-    aig_balance( aig, bps );
-
     const uint32_t size_before = aig.num_gates();
 
     /* Map HAs/FAs */
@@ -74,18 +129,11 @@ void exp_whitebox()
     block_network bntk1 = extract_adders( aig, ps, &st );
 
     box_aig_network wb_aig = extract_adders_whiteboxed( aig, ps );
-
-    resubstitution_params rps;
-    // rps.pattern_filename = "1024sa1/" + benchmark + ".pat";
-    rps.max_inserts = 20;
-    rps.max_pis = 8;
-    rps.max_divisors = std::numeric_limits<uint32_t>::max();
-
     const uint32_t wb_aig_size_before = wb_aig.num_gates();
     const uint32_t dt_before = wb_aig.num_dont_touch_gates();
-    sim_resubstitution( wb_aig, rps );
-    simplify_adders( wb_aig );
-    wb_aig = cleanup_dangling_with_boxes( wb_aig );
+    stopwatch<>::duration opt_time{0};
+    call_with_stopwatch( opt_time, [&](){ optimize( wb_aig ); } );
+    //write_verilog( wb_aig, "opt.v" );
 
     extract_adders_stats st2;
     block_network bntk2 = extract_adders( wb_aig, ps, &st2 );
@@ -96,7 +144,7 @@ void exp_whitebox()
           wb_aig_size_before, dt_before,
           wb_aig.num_gates(), wb_aig.num_dont_touch_gates(),
           st2.mapped_ha, st2.mapped_fa, bntk2.num_gates(),
-          cec );
+          to_seconds( opt_time ), cec );
   }
 
   exp.save();
@@ -128,25 +176,16 @@ void unbox_blackboxed_adders( box_aig_network& ntk )
 
 void exp_blackbox()
 {
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
-      "black-box", "benchmark", "|aig|", "HA", "FA", "|bntk|", "|bb-aig|", "|bb-aig-opt|", "|unboxed-aig|", "HA2", "FA2", "|bntk2|", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp(
+      "black-box", "benchmark", "|aig|", "HA", "FA", "|bntk|", "|bb-aig|", "|bb-aig-opt|", "|unboxed-aig|", "HA2", "FA2", "|bntk2|", "opt time", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
     aig_network aig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
-    {
+    if ( !read_preprocess( aig, benchmark ) )
       continue;
-    }
-
-    /* Remove structural redundancies (increases the number of discoverable HAs/FAs) */
-    aig_balancing_params bps;
-    bps.minimize_levels = false;
-    bps.fast_mode = false;
-    aig_balance( aig, bps );
-
     const uint32_t size_before = aig.num_gates();
 
     /* Map HAs/FAs */
@@ -155,21 +194,15 @@ void exp_blackbox()
     block_network bntk1 = extract_adders( aig, ps, &st );
     box_aig_network bb_aig = extract_adders_blackboxed( aig, ps );
 
-    resubstitution_params rps;
-    // rps.pattern_filename = "1024sa1/" + benchmark + ".pat";
-    rps.max_inserts = 20;
-    rps.max_pis = 8;
-    rps.max_divisors = std::numeric_limits<uint32_t>::max();
-
     const uint32_t bb_aig_size_before = bb_aig.num_hashed_gates();
-    sim_resubstitution( bb_aig, rps );
-    bb_aig = cleanup_dangling_with_boxes( bb_aig );
+    stopwatch<>::duration opt_time{0};
+    call_with_stopwatch( opt_time, [&](){ optimize( bb_aig ); } );
     const uint32_t bb_aig_size_after = bb_aig.num_hashed_gates();
 
     // substitute adder implementation back
     unbox_blackboxed_adders( bb_aig );
     bb_aig = cleanup_dangling( bb_aig );
-    //std::cout << bb_aig.num_dont_touch_gates() << "\n"; // TODO: figure out why not always 0
+    std::cout << bb_aig.num_dont_touch_gates() << "\n"; // TODO: figure out why not always 0
     extract_adders_stats st2;
     block_network bntk2 = extract_adders( bb_aig, ps, &st2 );
 
@@ -177,7 +210,7 @@ void exp_blackbox()
 
     exp( benchmark, size_before, st.mapped_ha, st.mapped_fa, bntk1.num_gates(),
           bb_aig_size_before, bb_aig_size_after, bb_aig.num_gates(),
-          st2.mapped_ha, st2.mapped_fa, bntk2.num_gates(), cec );
+          st2.mapped_ha, st2.mapped_fa, bntk2.num_gates(), to_seconds( opt_time ), cec );
   }
 
   exp.save();
@@ -186,35 +219,20 @@ void exp_blackbox()
 
 void exp_no_box()
 {
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, bool> exp(
-      "no-box", "benchmark", "|aig|", "|aig-opt|", "HA", "FA", "|bntk|", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp(
+      "no-box", "benchmark", "|aig|", "|aig-opt|", "HA", "FA", "|bntk|", "opt time", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
     aig_network aig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
-    {
+    if ( !read_preprocess( aig, benchmark ) )
       continue;
-    }
-
-    /* Remove structural redundancies (increases the number of discoverable HAs/FAs) */
-    aig_balancing_params bps;
-    bps.minimize_levels = false;
-    bps.fast_mode = false;
-    aig_balance( aig, bps );
-
     const uint32_t size_before = aig.num_gates();
 
-    resubstitution_params rps;
-    // rps.pattern_filename = "1024sa1/" + benchmark + ".pat";
-    rps.max_inserts = 20;
-    rps.max_pis = 8;
-    rps.max_divisors = std::numeric_limits<uint32_t>::max();
-
-    sim_resubstitution( aig, rps );
-    aig = cleanup_dangling( aig );
+    stopwatch<>::duration opt_time{0};
+    call_with_stopwatch( opt_time, [&](){ optimize( aig ); } );
 
     /* Map HAs/FAs */
     extract_adders_params ps;
@@ -223,7 +241,7 @@ void exp_no_box()
 
     bool const cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
 
-    exp( benchmark, size_before, aig.num_gates(), st.mapped_ha, st.mapped_fa, bntk.num_gates(), cec );
+    exp( benchmark, size_before, aig.num_gates(), st.mapped_ha, st.mapped_fa, bntk.num_gates(), to_seconds( opt_time ), cec );
   }
 
   exp.save();
