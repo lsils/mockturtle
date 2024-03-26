@@ -645,11 +645,14 @@ box_aig_network::signal cleanup_dangling_with_boxes_rec( box_aig_network const& 
         continue;
       }
     }
+    // TODO: if a box has some, but not all, outputs dangling, then ??? (policy should be the same for black and white boxes)
     std::vector<signal> bins, bouts;
     ntk.foreach_box_output( b, [&]( auto const& f ) {
+      //if ( ntk.visited( ntk.get_node( f ) ) != ntk.trav_id() ) std::cout << "box " << b << (ntk.num_box_inputs(b)==2?" (HA)":" (FA)") << " has unvisited output " << ntk.get_node( f ) << "\n";
       bouts.emplace_back( cleanup_dangling_with_boxes_rec( ntk, dest, old_to_new, ntk.get_node( f ) ) );
     } );
     ntk.foreach_box_input( b, [&]( auto const& f ) {
+      //if ( ntk.visited( ntk.get_node( f ) ) != ntk.trav_id() ) std::cout << "box " << b << (ntk.num_box_inputs(b)==2?" (HA)":" (FA)") << " has unvisited input " << ntk.get_node( f ) << ", outputs are " << ntk.get_node(ntk.get_box_output(b,0)) << " " << ntk.get_node(ntk.get_box_output(b,1)) << "\n";
       bins.emplace_back( cleanup_dangling_with_boxes_rec( ntk, dest, old_to_new, ntk.get_node( f ) ) );
     } );
     auto created = dest.create_box( bins, bouts, ntk.get_box_tag( b ) );

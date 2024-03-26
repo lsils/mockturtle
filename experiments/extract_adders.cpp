@@ -49,7 +49,7 @@ using namespace mockturtle;
 
 bool read_preprocess( aig_network& aig, std::string const& benchmark )
 {
-#if 1
+#if 0
   if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
     return false;
 
@@ -61,7 +61,7 @@ bool read_preprocess( aig_network& aig, std::string const& benchmark )
   return true;
 #else
   // save benchmarks balanced with ABC &b in balanced/
-  if ( lorina::read_aiger( "balanced/voter_minimized.aig", aiger_reader( aig ) ) != lorina::return_code::success )
+  if ( lorina::read_aiger( "balanced/" + benchmark + ".aig", aiger_reader( aig ) ) != lorina::return_code::success )
     return false;
   return true;
 #endif
@@ -110,9 +110,9 @@ void optimize( Ntk& ntk )
 
 void exp_whitebox()
 {
-  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp(
-      "white-box", "benchmark", "size", "HA", "FA", "|bntk1|", "|wb-aig|", "#dt", 
-      "|wb-aig-opt|", "#dt-opt", "HA2", "FA2", "|bntk2|", "opt time", "cec" );
+  experiment<std::string, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, float, bool> exp(
+      "white-box", "benchmark", "size", "HA", "FA", "|bntk1|", "|wb-aig|", "hashed", "#dt", 
+      "|wb-aig-opt|", "hased", "#dt-opt", "HA2", "FA2", "|bntk2|", "opt time", "cec" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -131,9 +131,9 @@ void exp_whitebox()
     box_aig_network wb_aig = extract_adders_whiteboxed( aig, ps );
     const uint32_t wb_aig_size_before = wb_aig.num_gates();
     const uint32_t dt_before = wb_aig.num_dont_touch_gates();
+    const uint32_t hased_before = wb_aig.num_hashed_gates();
     stopwatch<>::duration opt_time{0};
     call_with_stopwatch( opt_time, [&](){ optimize( wb_aig ); } );
-    //write_verilog( wb_aig, "opt.v" );
 
     extract_adders_stats st2;
     block_network bntk2 = extract_adders( wb_aig, ps, &st2 );
@@ -141,8 +141,8 @@ void exp_whitebox()
     bool const cec = benchmark == "hyp" ? true : abc_cec( wb_aig, benchmark );
 
     exp( benchmark, size_before, st.mapped_ha, st.mapped_fa, bntk1.num_gates(),
-          wb_aig_size_before, dt_before,
-          wb_aig.num_gates(), wb_aig.num_dont_touch_gates(),
+          wb_aig_size_before, hased_before, dt_before,
+          wb_aig.num_gates(), wb_aig.num_hashed_gates(), wb_aig.num_dont_touch_gates(),
           st2.mapped_ha, st2.mapped_fa, bntk2.num_gates(),
           to_seconds( opt_time ), cec );
   }

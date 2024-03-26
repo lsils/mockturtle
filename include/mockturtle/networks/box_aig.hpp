@@ -68,13 +68,25 @@ private:
     std::string tag;
   };
 
-  std::vector<box> _boxes; // make_shared?
+  std::shared_ptr<std::vector<box>> _boxes;
 
 public:
   box_aig_network()
-      : aig_network()
+      : aig_network(), _boxes( std::make_shared<std::vector<box>>() )
   {
-    _boxes.emplace_back(); // dummy, to avoid box_id 0
+    _boxes->emplace_back(); // dummy, to avoid box_id 0
+  }
+
+  /*! \brief Copy constructor. */
+  box_aig_network( box_aig_network const& other )
+      : aig_network( other ), _boxes( other._boxes )
+  {}
+
+  box_aig_network& operator=( box_aig_network const& other )
+  {
+    aig_network::operator=( other );
+    _boxes = other._boxes;
+    return *this;
   }
 
 #pragma region Primary I / O and constants
@@ -102,25 +114,25 @@ public:
 #pragma region Boxes
   box_id create_box( std::vector<signal> const& inputs, std::vector<signal> const& outputs, std::string const& tag = "" )
   {
-    box_id index = _boxes.size();
-    _boxes.push_back( {inputs, outputs, tag} );
+    box_id index = _boxes->size();
+    _boxes->push_back( {inputs, outputs, tag} );
     return index;
   }
 
   box_id create_black_box( uint32_t num_outputs, std::vector<signal> const& inputs, std::string const& tag = "" )
   {
-    box_id index = _boxes.size();
-    _boxes.emplace_back();
-    _boxes.back().tag = tag;
+    box_id index = _boxes->size();
+    _boxes->emplace_back();
+    _boxes->back().tag = tag;
     for ( auto const f : inputs )
     {
       signal buf = create_and_dont_touch( f, f, index );
       create_po( buf );
-      _boxes.back().inputs.emplace_back( buf );
+      _boxes->back().inputs.emplace_back( buf );
     }
     for ( auto i = 0u; i < num_outputs; ++i )
-      _boxes.back().outputs.emplace_back( create_pi() );
-    for ( auto f : _boxes.back().outputs )
+      _boxes->back().outputs.emplace_back( create_pi() );
+    for ( auto f : _boxes->back().outputs )
       _storage->nodes[f.index].data[1].h2 = (index << 2) + 3;
     return index;
   }
@@ -128,24 +140,24 @@ public:
   // first output: carry (AND), second output: sum (XOR)
   box_id create_white_box_half_adder( signal a, signal b )
   {
-    box_id index = _boxes.size();
-    _boxes.push_back( {{a, b}, {create_and_dont_touch( a, b, index ), create_xor_dont_touch( a, b, index )}, "ha"} );
+    box_id index = _boxes->size();
+    _boxes->push_back( {{a, b}, {create_and_dont_touch( a, b, index ), create_xor_dont_touch( a, b, index )}, "ha"} );
     return index;
   }
 
   // first output: carry (MAJ), second output: sum (XOR)
   box_id create_white_box_full_adder( signal a, signal b, signal c )
   {
-    box_id index = _boxes.size();
-    _boxes.push_back( {{a, b, c}, {create_maj_dont_touch( a, b, c, index ), create_xor3_dont_touch( a, b, c, index )}, "fa"} );
+    box_id index = _boxes->size();
+    _boxes->push_back( {{a, b, c}, {create_maj_dont_touch( a, b, c, index ), create_xor3_dont_touch( a, b, c, index )}, "fa"} );
     return index;
   }
 
   // order of asymmetric inputs: cond, f_then, f_else
   box_id create_white_box_mux2to1( signal cond, signal f_then, signal f_else )
   {
-    box_id index = _boxes.size();
-    _boxes.push_back( {{cond, f_then, f_else}, {create_ite_dont_touch( cond, f_then, f_else, index )}, "mux21"} );
+    box_id index = _boxes->size();
+    _boxes->push_back( {{cond, f_then, f_else}, {create_ite_dont_touch( cond, f_then, f_else, index )}, "mux21"} );
     return index;
   }
 
@@ -156,62 +168,62 @@ public:
 
   bool is_black_box( box_id b ) const
   {
-    assert( b != 0 && b < _boxes.size() );
-    assert( _boxes[b].outputs.size() > 0 );
-    return is_pi( _boxes[b].outputs[0].index );
+    assert( b != 0 && b < _boxes->size() );
+    assert( _boxes->at(b).outputs.size() > 0 );
+    return is_pi( _boxes->at(b).outputs[0].index );
   }
 
   uint32_t num_box_inputs( box_id b ) const
   {
-    assert( b != 0 && b < _boxes.size() );
-    return _boxes[b].inputs.size();
+    assert( b != 0 && b < _boxes->size() );
+    return _boxes->at(b).inputs.size();
   }
 
   uint32_t num_box_outputs( box_id b ) const
   {
-    assert( b != 0 && b < _boxes.size() );
-    return _boxes[b].outputs.size();
+    assert( b != 0 && b < _boxes->size() );
+    return _boxes->at(b).outputs.size();
   }
 
   signal get_box_input( box_id b, uint32_t i ) const
   {
-    assert( b != 0 && b < _boxes.size() );
-    assert( i < _boxes[b].inputs.size() );
+    assert( b != 0 && b < _boxes->size() );
+    assert( i < _boxes->at(b).inputs.size() );
     if ( is_black_box( b ) ) // black box inputs are buffers, return its real input
-      return _storage->nodes[_boxes[b].inputs[i].index].children[0];
-    return _boxes[b].inputs[i];
+      return _storage->nodes[_boxes->at(b).inputs[i].index].children[0];
+    return _boxes->at(b).inputs[i];
   }
 
   signal get_box_output( box_id b, uint32_t i ) const
   {
-    assert( b != 0 && b < _boxes.size() );
-    assert( i < _boxes[b].outputs.size() );
-    return _boxes[b].outputs[i];
+    assert( b != 0 && b < _boxes->size() );
+    assert( i < _boxes->at(b).outputs.size() );
+    return _boxes->at(b).outputs[i];
   }
 
   std::string get_box_tag( box_id b ) const
   {
-    assert( b != 0 && b < _boxes.size() );
-    return _boxes[b].tag;
+    assert( b != 0 && b < _boxes->size() );
+    return _boxes->at(b).tag;
   }
 
   uint32_t num_boxes() const
   {
-    return _boxes.size() - 1;
+    return _boxes->size() - 1;
   }
 
   template<typename Fn>
   void foreach_box_input( box_id b, Fn&& fn ) const
   {
-    assert( b != 0 && b < _boxes.size() );
-    detail::foreach_element( _boxes[b].inputs.begin(), _boxes[b].inputs.end(), fn );
+    assert( b != 0 && b < _boxes->size() );
+    detail::foreach_element( _boxes->at(b).inputs.begin(), _boxes->at(b).inputs.end(), fn );
   }
 
   template<typename Fn>
   void foreach_box_output( box_id b, Fn&& fn ) const
   {
-    assert( b != 0 && b < _boxes.size() );
-    detail::foreach_element( _boxes[b].outputs.begin(), _boxes[b].outputs.end(), fn );
+    assert( b != 0 && b < _boxes->size() );
+    detail::foreach_element( _boxes->at(b).outputs.begin(), _boxes->at(b).outputs.end(), fn );
   }
 #pragma endregion
 
@@ -351,14 +363,13 @@ public:
       }
     }
 
-    for ( auto& b : _boxes )
+    for ( auto b = 1u; b < _boxes->size(); ++b )
     {
-      for ( auto& f : b.inputs )
+      for ( auto i = 0u; i < _boxes->at(b).inputs.size(); ++i )
       {
-        if ( f.index == old_node )
+        if ( _boxes->at(b).inputs[i].index == old_node )
         {
-          f.index = new_signal.index;
-          f = f ^ new_signal.complement;
+          _boxes->at(b).inputs[i] = _boxes->at(b).inputs[i].complement ? !new_signal : new_signal;
         }
       }
     }
@@ -518,26 +529,26 @@ public:
 
   void delete_whitebox( box_id b, std::vector<signal> const& outputs )
   {
-    assert( b > 0 && b < _boxes.size() );
-    assert( outputs.size() == _boxes[b].outputs.size() );
+    assert( b > 0 && b < _boxes->size() );
+    assert( outputs.size() == _boxes->at(b).outputs.size() );
     auto it = outputs.begin();
-    for ( signal f : _boxes[b].outputs )
+    for ( signal f : _boxes->at(b).outputs )
     {
       node n = get_node( f );
       _storage->nodes[n].data[1].h2 &= ~uint32_t(2); // unmark dont touch
       substitute_node( n, f.complement ? !*it : *it );
       ++it;
     }
-    _boxes[b].inputs.clear();
-    _boxes[b].outputs.clear();
+    _boxes->at(b).inputs.clear();
+    _boxes->at(b).outputs.clear();
   }
 
   void delete_blackbox( box_id b, std::vector<signal> const& outputs )
   {
-    assert( b > 0 && b < _boxes.size() );
-    assert( outputs.size() == _boxes[b].outputs.size() );
+    assert( b > 0 && b < _boxes->size() );
+    assert( outputs.size() == _boxes->at(b).outputs.size() );
 
-    for ( signal f : _boxes[b].inputs )
+    for ( signal f : _boxes->at(b).inputs )
     {
       node n = get_node( f );
       for ( auto it = _storage->outputs.begin(); it != _storage->outputs.end(); ++it )
@@ -552,7 +563,7 @@ public:
     }
 
     auto it = outputs.begin();
-    for ( signal f : _boxes[b].outputs )
+    for ( signal f : _boxes->at(b).outputs )
     {
       node n = get_node( f );
       auto& nobj = _storage->nodes[n];
@@ -562,8 +573,8 @@ public:
       _storage->inputs[nobj.children[0].data] = 0;
       ++it;
     }
-    _boxes[b].inputs.clear();
-    _boxes[b].outputs.clear();
+    _boxes->at(b).inputs.clear();
+    _boxes->at(b).outputs.clear();
   }
 #pragma endregion
 
@@ -583,7 +594,7 @@ public:
   template<typename Fn>
   void foreach_box( Fn&& fn ) const
   {
-    auto r = range<uint64_t>( 1u, _boxes.size() ); /* start from 1 */
+    auto r = range<uint64_t>( 1u, _boxes->size() ); /* start from 1 */
     detail::foreach_element_if(
         r.begin(), r.end(),
         [this]( auto b ) { return num_box_outputs( b ) != 0; },
