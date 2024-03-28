@@ -70,8 +70,11 @@ public:
       current_pis.emplace_back( Ntk::make_signal( n ) );
     } );
     named_ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      if ( const auto it = _signal_names.find( current_pis[i] ); it != _signal_names.end() )
-        new_signal_names[named_ntk.make_signal( n )] = it->second;
+      if ( !current_pis.empty() )
+      {
+        if ( const auto it = _signal_names.find( current_pis[i] ); it != _signal_names.end() )
+          new_signal_names[named_ntk.make_signal( n )] = it->second;
+      }
     } );
 
     Ntk::operator=( named_ntk );
