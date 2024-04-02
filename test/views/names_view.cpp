@@ -75,7 +75,8 @@ template<typename Ntk>
 void test_copy_names_view()
 {
   Ntk ntk_empty;
-  names_view<Ntk> new_named_ntk_empty = ntk_empty;
+  names_view<Ntk> new_named_ntk_empty;
+  new_named_ntk_empty = ntk_empty;
   CHECK( new_named_ntk_empty.get_network_name() == "" );
 
   Ntk ntk;
