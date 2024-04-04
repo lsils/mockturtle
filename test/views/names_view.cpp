@@ -74,11 +74,6 @@ TEST_CASE( "create names view and test API", "[names_view]" )
 template<typename Ntk>
 void test_copy_names_view()
 {
-  Ntk ntk_empty;
-  names_view<Ntk> new_named_ntk_empty;
-  new_named_ntk_empty = ntk_empty;
-  CHECK( new_named_ntk_empty.get_network_name() == "" );
-
   Ntk ntk;
   auto const a = ntk.create_pi();
   auto const b = ntk.create_pi();
@@ -93,6 +88,11 @@ void test_copy_names_view()
   named_ntk.set_name( b, "b" );
   named_ntk.set_name( c, "c" );
   named_ntk.set_output_name( 0, "f" );
+
+  // test & operator= for named_ntk_empty and non-empty ntk.
+  names_view<Ntk> named_ntk_empty{};
+  named_ntk_empty = ntk;
+  CHECK( named_ntk_empty.get_network_name() == "" );
 
   CHECK( named_ntk.has_name( a ) );
   CHECK( named_ntk.has_name( b ) );
