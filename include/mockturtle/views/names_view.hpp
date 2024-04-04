@@ -24,13 +24,13 @@
  */
 
 /*!
-  \file names_view.hpp
-  \brief Implements methods to declare names for network signals
+ \file names_view.hpp
+ \brief Implements methods to declare names for network signals
 
-  \author Heinz Riener
-  \author Marcel Walter
-  \author Mathias Soeken
-  \author Siang-Yun (Sonia) Lee
+ \author Heinz Riener
+ \author Marcel Walter
+ \author Mathias Soeken
+ \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -38,6 +38,7 @@
 #include "../traits.hpp"
 
 #include <map>
+#include <string>
 
 namespace mockturtle
 {
@@ -64,19 +65,10 @@ public:
 
   names_view<Ntk>& operator=( names_view<Ntk> const& named_ntk )
   {
-    std::map<signal, std::string> new_signal_names;
-
-    named_ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      auto signal = named_ntk.make_signal( n );
-      if ( named_ntk.has_name( signal ) )
-      {
-        new_signal_names[signal] = named_ntk.get_name( signal );
-      }
-    } );
-
     Ntk::operator=( named_ntk );
-    _signal_names = new_signal_names;
+    _signal_names = named_ntk.get_signal_names();
     _network_name = named_ntk._network_name;
+    _output_names = named_ntk.get_output_names();
 
     return *this;
   }
@@ -127,6 +119,15 @@ public:
   std::string get_network_name() const noexcept
   {
     return _network_name;
+  }
+
+  /*! \brief Gets all signal name.
+   *
+   * \return All signal names
+   */
+  std::map<signal, std::string> get_signal_names() const noexcept
+  {
+    return _signal_names;
   }
 
   /*! \brief Checks if a signal has a name.
@@ -199,6 +200,15 @@ public:
   std::string get_output_name( uint32_t index ) const
   {
     return _output_names.at( index );
+  }
+
+  /*! \brief Gets all names of all outputs.
+   *
+   * \return Names of the outputs.
+   */
+  std::map<uint32_t, std::string> get_output_names() const
+  {
+    return _output_names;
   }
 
 private:
