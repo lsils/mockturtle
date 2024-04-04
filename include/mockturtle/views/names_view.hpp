@@ -204,7 +204,7 @@ public:
 
   /*! \brief Gets all names of all outputs.
    *
-   * \return Names of the outputs.
+   * \return All output names.
    */
   std::map<uint32_t, std::string> get_output_names() const
   {
