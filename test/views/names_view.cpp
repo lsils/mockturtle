@@ -99,7 +99,8 @@ void test_copy_names_view()
   CHECK( named_ntk.has_name( c ) );
   CHECK( named_ntk.has_output_name( 0 ) );
 
-  names_view<Ntk> new_named_ntk = named_ntk;
+  names_view<Ntk> new_named_ntk{};
+  new_named_ntk = named_ntk;
   CHECK( new_named_ntk.has_name( a ) );
   CHECK( new_named_ntk.has_name( b ) );
   CHECK( new_named_ntk.has_name( c ) );
