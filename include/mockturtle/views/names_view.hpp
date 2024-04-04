@@ -65,11 +65,13 @@ public:
 
   names_view<Ntk>& operator=( names_view<Ntk> const& named_ntk )
   {
-    Ntk::operator=( named_ntk );
-    _signal_names = named_ntk.get_signal_names();
-    _network_name = named_ntk._network_name;
-    _output_names = named_ntk.get_output_names();
-
+    if ( this != &named_ntk ) // Check for self-assignment
+    {
+      Ntk::operator=( named_ntk );
+      _signal_names = named_ntk.get_signal_names();
+      _network_name = named_ntk._network_name;
+      _output_names = named_ntk.get_output_names();
+    }
     return *this;
   }
 
