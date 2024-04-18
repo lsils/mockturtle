@@ -38,6 +38,7 @@
 #include "../traits.hpp"
 
 #include <map>
+#include <string>
 
 namespace mockturtle
 {
@@ -64,19 +65,13 @@ public:
 
   names_view<Ntk>& operator=( names_view<Ntk> const& named_ntk )
   {
-    std::map<signal, std::string> new_signal_names;
-    std::vector<signal> current_pis;
-    Ntk::foreach_pi( [this, &current_pis]( auto const& n ) {
-      current_pis.emplace_back( Ntk::make_signal( n ) );
-    } );
-    named_ntk.foreach_pi( [&]( auto const& n, auto i ) {
-      if ( const auto it = _signal_names.find( current_pis[i] ); it != _signal_names.end() )
-        new_signal_names[named_ntk.make_signal( n )] = it->second;
-    } );
-
-    Ntk::operator=( named_ntk );
-    _signal_names = new_signal_names;
-    _network_name = named_ntk._network_name;
+    if ( this != &named_ntk ) // Check for self-assignment
+    {
+      Ntk::operator=( named_ntk );
+      _signal_names = named_ntk._signal_names;
+      _network_name = named_ntk._network_name;
+      _output_names = named_ntk._output_names;
+    }
     return *this;
   }
 

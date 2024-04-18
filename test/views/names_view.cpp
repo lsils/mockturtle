@@ -89,12 +89,18 @@ void test_copy_names_view()
   named_ntk.set_name( c, "c" );
   named_ntk.set_output_name( 0, "f" );
 
+  // test operator= for empty and non-empty ntk.
+  names_view<Ntk> named_ntk_empty{};
+  named_ntk_empty = ntk;
+  CHECK( named_ntk_empty.get_network_name() == "" );
+
   CHECK( named_ntk.has_name( a ) );
   CHECK( named_ntk.has_name( b ) );
   CHECK( named_ntk.has_name( c ) );
   CHECK( named_ntk.has_output_name( 0 ) );
 
-  names_view<Ntk> new_named_ntk = named_ntk;
+  names_view<Ntk> new_named_ntk{};
+  new_named_ntk = named_ntk;
   CHECK( new_named_ntk.has_name( a ) );
   CHECK( new_named_ntk.has_name( b ) );
   CHECK( new_named_ntk.has_name( c ) );
