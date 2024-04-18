@@ -24,13 +24,13 @@
  */
 
 /*!
- \file names_view.hpp
- \brief Implements methods to declare names for network signals
+  \file names_view.hpp
+  \brief Implements methods to declare names for network signals
 
- \author Heinz Riener
- \author Marcel Walter
- \author Mathias Soeken
- \author Siang-Yun (Sonia) Lee
+  \author Heinz Riener
+  \author Marcel Walter
+  \author Mathias Soeken
+  \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
@@ -68,9 +68,9 @@ public:
     if ( this != &named_ntk ) // Check for self-assignment
     {
       Ntk::operator=( named_ntk );
-      _signal_names = named_ntk.get_signal_names();
+      _signal_names = named_ntk._signal_names;
       _network_name = named_ntk._network_name;
-      _output_names = named_ntk.get_output_names();
+      _output_names = named_ntk._output_names;
     }
     return *this;
   }
@@ -121,15 +121,6 @@ public:
   std::string get_network_name() const noexcept
   {
     return _network_name;
-  }
-
-  /*! \brief Gets all signal name.
-   *
-   * \return All signal names
-   */
-  std::map<signal, std::string> get_signal_names() const noexcept
-  {
-    return _signal_names;
   }
 
   /*! \brief Checks if a signal has a name.
@@ -202,15 +193,6 @@ public:
   std::string get_output_name( uint32_t index ) const
   {
     return _output_names.at( index );
-  }
-
-  /*! \brief Gets all names of all outputs.
-   *
-   * \return All output names.
-   */
-  std::map<uint32_t, std::string> get_output_names() const
-  {
-    return _output_names;
   }
 
 private:
