@@ -82,7 +82,7 @@ struct emap_params
   /*! \brief Parameters for cut enumeration
    *
    * The default cut limit is 16.
-   * The maximum cut limit is 15.
+   * The maximum cut limit is 31.
    * By default, truth table minimization
    * is performed.
    */
@@ -1076,25 +1076,29 @@ private:
 
     if ( ntk.is_constant( n ) )
     {
-      if ( cuts[index].size() != 0 )
-        return false;
       /* all terminals have flow 0.0 */
       node_data.flows[0] = node_data.flows[1] = 0.0f;
       node_data.arrival[0] = node_data.arrival[1] = 0.0f;
-      add_zero_cut( index );
-      match_constants( index );
+      /* skip if cuts have been computed before */
+      if ( cuts[index].size() == 0 )
+      {
+        add_zero_cut( index );
+        match_constants( index );
+      }
       return false;
     }
     else if ( ntk.is_pi( n ) )
     {
-      if ( cuts[index].size() != 0 )
-        return false;
       node_data.flows[0] = 0.0f;
       node_data.arrival[0] = 0.0f;
       /* PIs have the negative phase implemented with an inverter */
       node_data.flows[1] = lib_inv_area / node_data.est_refs[1];
       node_data.arrival[1] = lib_inv_delay;
-      add_unit_cut( index );
+      /* skip if cuts have been computed before */
+      if ( cuts[index].size() == 0 )
+      {
+        add_unit_cut( index );
+      }
       return false;
     }
 
@@ -1106,14 +1110,8 @@ private:
     {
       if ( ntk.is_dont_touch( n ) )
       {
-        if ( cuts[index].size() != 0 )
-        {
-          propagate_data_forward_white_box( n );
-        }
-        else
-        {
-          warning_box |= initialize_box( n );
-        }
+        
+        warning_box |= initialize_box( n );
         return false;
       }
     }
@@ -1358,26 +1356,14 @@ private:
       auto const index = ntk.node_to_index( n );
       auto& node_data = node_match[index];
 
-      node_data.est_refs[0] = node_data.est_refs[1] = node_data.est_refs[2] = static_cast<float>( ntk.fanout_size( n ) );
-      node_data.map_refs[0] = node_data.map_refs[1] = node_data.map_refs[2] = 0;
-      node_data.required[0] = node_data.required[1] = std::numeric_limits<float>::max();
-
       if ( ntk.is_constant( n ) )
       {
-        /* all terminals have flow 0.0 */
-        node_data.flows[0] = node_data.flows[1] = 0.0f;
-        node_data.arrival[0] = node_data.arrival[1] = 0.0f;
         add_zero_cut( index );
         match_constants( index );
         continue;
       }
       else if ( ntk.is_pi( n ) )
       {
-        /* all terminals have flow 0.0 */
-        node_data.flows[0] = node_data.flows[1] = 0.0f;
-        node_data.arrival[0] = 0.0f;
-        /* PIs have the negative phase implemented with an inverter */
-        node_data.arrival[1] = lib_inv_delay;
         add_unit_cut( index );
         continue;
       }
@@ -1387,7 +1373,7 @@ private:
       {
         if ( ntk.is_dont_touch( n ) )
         {
-          warning_box |= initialize_box( n );
+          add_unit_cut( index );
           continue;
         }
       }
@@ -1513,9 +1499,10 @@ private:
       else if ( ntk.is_pi( n ) )
       {
         /* all terminals have flow 0 */
-        node_data.flows[0] = node_data.flows[1] = 0.0f;
+        node_data.flows[0] = 0.0f;
         node_data.arrival[0] = 0.0f;
         /* PIs have the negative phase implemented with an inverter */
+        node_data.flows[1] = lib_inv_area / node_data.est_refs[1];
         node_data.arrival[1] = lib_inv_delay;
         add_unit_cut( index );
         continue;
@@ -2008,7 +1995,8 @@ private:
         {
           if ( iteration < ps.area_flow_rounds )
           {
-            ++node_data.map_refs[use_phase];
+            // ++node_data.map_refs[use_phase];
+            node_data.map_refs[use_phase] += node_data.map_refs[use_phase ^ 1];
           }
           area += lib_inv_area;
           ++inv;
@@ -2079,6 +2067,11 @@ private:
       area += node_match[index].area[0];
       if ( node_match[index].map_refs[1] )
       {
+        if ( iteration < ps.area_flow_rounds )
+        {
+          // ++node_match[index].map_refs[0];
+          node_match[index].map_refs[0] += node_match[index].map_refs[1];
+        }
         area += lib_inv_area;
         ++inv;
       }
@@ -2717,9 +2710,11 @@ private:
   bool initialize_box( node<Ntk> const& n )
   {
     uint32_t index = ntk.node_to_index( n );
-    auto& node_data = node_match[index];
-    add_unit_cut( index );
 
+    if ( cuts[index].size() == 0 )
+      add_unit_cut( index );
+
+    auto& node_data = node_match[index];
     node_data.same_match = true;
 
     /* if it has mapping data propagate the delays and measure the data */
@@ -2730,11 +2725,11 @@ private:
     }
 
     /* consider as a black box */
-    node_data.flows[0] = node_data.flows[1] = 0.0f;
+    node_data.flows[0] = 0.0f;
+    node_data.flows[1] = lib_inv_area / node_data.est_ref[1];
     node_data.arrival[0] = 0.0f;
     node_data.arrival[1] = lib_inv_delay;
     node_data.area[0] = node_data.area[1] = 0;
-    node_data.flows[0] = 0;
 
     return true;
   }
@@ -2758,8 +2753,8 @@ private:
     node_data.arrival[0] = arrival;
     node_data.arrival[1] = arrival + lib_inv_delay;
     node_data.area[0] = node_data.area[1] = gate.area;
-    node_data.flows[0] = node_data.area[0] / node_data.est_refs[2];
-    node_data.flows[1] = node_data.flows[0] + lib_inv_area;
+    node_data.flows[1] = ( node_data.flows[0] + lib_inv_area ) / node_data.est_refs[1];
+    node_data.flows[0] = node_data.area[0] / node_data.est_refs[0];
   }
 
   void propagate_data_backward_white_box( node<Ntk> const& n )
