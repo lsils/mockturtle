@@ -1089,10 +1089,10 @@ private:
     {
       if ( cuts[index].size() != 0 )
         return false;
-      /* all terminals have flow 0.0 */
-      node_data.flows[0] = node_data.flows[1] = 0.0f;
+      node_data.flows[0] = 0.0f;
       node_data.arrival[0] = 0.0f;
       /* PIs have the negative phase implemented with an inverter */
+      node_data.flows[1] = lib_inv_area / node_data.est_refs[1];
       node_data.arrival[1] = lib_inv_delay;
       add_unit_cut( index );
       return false;
@@ -1594,8 +1594,13 @@ private:
       /* reset mapping */
       node_match[index].map_refs[0] = node_match[index].map_refs[1] = node_match[index].map_refs[2] = 0u;
 
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
+      if ( ntk.is_constant( n ) )
         continue;
+      if ( ntk.is_pi( n ) )
+      {
+        node_match[index].flows[1] = lib_inv_area / node_match[index].est_refs[1];
+        continue;
+      }
 
       /* don't touch box */
       if constexpr ( has_is_dont_touch_v<Ntk> )
@@ -2001,6 +2006,10 @@ private:
         area += node_data.area[use_phase];
         if ( node_data.same_match && node_data.map_refs[use_phase ^ 1] > 0 )
         {
+          if ( iteration < ps.area_flow_rounds )
+          {
+            ++node_data.map_refs[use_phase];
+          }
           area += lib_inv_area;
           ++inv;
         }
@@ -2683,8 +2692,8 @@ private:
     node_data.phase[phase_n] = node_data.phase[phase];
     node_data.arrival[phase_n] = worst_arrival_n;
     node_data.area[phase_n] = node_data.area[phase];
-    node_data.flows[phase] = node_data.flows[phase] / node_data.est_refs[2];
-    node_data.flows[phase_n] = node_data.flows[phase] + lib_inv_area;
+    node_data.flows[phase_n] = ( node_data.flows[phase] + lib_inv_area ) / node_data.est_refs[phase_n];
+    node_data.flows[phase] = node_data.flows[phase] / node_data.est_refs[phase];
   }
 
   void reindex_multioutput_data()
