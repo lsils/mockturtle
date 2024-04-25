@@ -5082,6 +5082,9 @@ private:
     /* add cut matches */
     for ( auto i = 0; i < max_multioutput_output_size; ++i )
     {
+      cut_tuple[order[i]]->supergates[0] = nullptr;
+      cut_tuple[order[i]]->supergates[1] = nullptr;
+      cut_tuple[order[i]]->ignore = false;
       std::vector<supergate<NInputs>> const* multigate = &( ( *multigates_match )[i] );
       cut_tuple[order[i]]->supergates[phase_order[i]] = multigate;
     }
