@@ -1166,6 +1166,7 @@ private:
     rcuts.set_cut_limit( ps.cut_enumeration_ps.cut_limit );
 
     cut_t new_cut;
+    new_cut->pattern_index = 0;
     fanin_cut_t vcuts;
 
     for ( auto const& c1 : *lcuts[0] )
@@ -2871,7 +2872,6 @@ private:
         /* get the output phase */
         pin_phase[j] = gate.polarity;
         phase[j] = ( gate.polarity >> NInputs ) ^ phase_inverted;
-        uint8_t old_phase = node_data.phase[phase[j]];
 
         /* compute arrival */
         arrival[j] = 0.0;
@@ -2905,45 +2905,49 @@ private:
           respects_required = false;
 
         /* compute area flow */
-        old_flow_sum += node_data.flows[phase[j]];
+        if ( j == 0 || !node_data.multioutput_match[0] )
+        {
+          uint8_t current_phase = node_data.best_supergate[0] == nullptr ? 1 : 0;
+          old_flow_sum += node_data.flows[current_phase];
+        }
+        uint8_t old_phase = node_data.phase[phase[j]];
         node_data.phase[phase[j]] = gate.polarity;
         area[j] = gate.area;
         area_flow[j] = gate.area + cut_leaves_flow( cut, n, phase[j] );
         node_data.phase[phase[j]] = old_phase;
 
         /* local evaluation for delay (area flow improvement is approximated) */
-        if constexpr ( !DO_AREA )
-        {
-          /* recompute local area flow of previous matches */
-          double mapped_flow = node_data.flows[phase[j]];
+      //   if constexpr ( !DO_AREA )
+      //   {
+      //     /* recompute local area flow of previous matches */
+      //     double mapped_flow = node_data.flows[phase[j]];
 
-          if ( node_data.multioutput_match[phase[j]] )
-          {
-            /* recompute estimation for multi-output gate */
-            float k_est = 0;
-            for ( auto k = 0; k < max_multioutput_output_size; ++k )
-            {
-              uint32_t index_k = tuple_data[k].node_index;
-              auto used_phase = node_match[index_k].supergate[0] == nullptr ? 1 : 0;
-              k_est += node_match[index_k].est_refs[used_phase]; /* TODO: review */
-            }
-            mapped_flow *= k_est;
-          }
-          else
-          {
-            auto used_phase = node_data.supergate[0] == nullptr ? 1 : 0; /* TODO: review */
-            mapped_flow *= node_data.est_refs[used_phase];
-          }
+      //     if ( node_data.multioutput_match[phase[j]] )
+      //     {
+      //       /* recompute estimation for multi-output gate */
+      //       float k_est = 0;
+      //       for ( auto k = 0; k < max_multioutput_output_size; ++k )
+      //       {
+      //         uint32_t index_k = tuple_data[k].node_index;
+      //         auto used_phase = node_match[index_k].supergate[0] == nullptr ? 1 : 0;
+      //         k_est += node_match[index_k].est_refs[used_phase]; /* TODO: review */
+      //       }
+      //       mapped_flow *= k_est;
+      //     }
+      //     else
+      //     {
+      //       auto used_phase = node_data.supergate[0] == nullptr ? 1 : 0; /* TODO: review */
+      //       mapped_flow *= node_data.est_refs[used_phase];
+      //     }
 
-          auto const& mapped_cut = cuts[node_index][node_data.best_cut[phase[j]]];
-          if ( !compare_map<DO_AREA>( arrival[j], node_data.arrival[phase[j]], area_flow[j], mapped_flow, cut.size(), mapped_cut.size() ) )
-          {
-            is_best = false;
-            break;
-          }
-        }
+      //     auto const& mapped_cut = cuts[node_index][node_data.best_cut[phase[j]]];
+      //     if ( !compare_map<DO_AREA>( arrival[j], node_data.arrival[phase[j]], area_flow[j], mapped_flow, cut.size(), mapped_cut.size() ) )
+      //     {
+      //       is_best = false;
+      //       break;
+      //     }
+      //   }
 
-        /* quit exit to not unmap phases, TODO: implement it well */
         /* current version may lead to delay increase */
         est_refs[j] = node_data.est_refs[phase[j]];
       }
@@ -2959,20 +2963,23 @@ private:
       }
 
       /* combine evaluation for precise area flow estimantion */
-      double flow_sum = 0;
-      double combined_est_refs = 0;
+      /* compute equation AF(n) = ( Area(G) + |roots| * SUM_{l in leaves} AF(l) ) / SUM_{p in roots} est_refs( p ) */
+      float flow_sum_pos = 0, flow_sum_neg;
+      float combined_est_refs = 0;
       for ( auto j = 0; j < max_multioutput_output_size; ++j )
       {
-        flow_sum += area_flow[j];
+        flow_sum_pos += area_flow[j];
         combined_est_refs += est_refs[j];
       }
-      flow_sum = flow_sum ;
+      flow_sum_neg = flow_sum_pos;
+      flow_sum_pos /= combined_est_refs;
 
       /* not better than individual gates */
-      if ( respects_required && ( flow_sum > old_flow_sum + epsilon ) )
+      if ( respects_required && ( flow_sum_pos > old_flow_sum + epsilon ) )
         continue;
 
       mapped_multioutput = true;
+      flow_sum_neg = ( flow_sum_neg + lib_inv_area ) / combined_est_refs;
 
       /* commit multi-output gate */
       for ( uint32_t j = 0; j < max_multioutput_output_size; ++j )
@@ -2991,7 +2998,7 @@ private:
         node_data.phase[mapped_phase] = pin_phase[j];
         node_data.arrival[mapped_phase] = arrival[j];
         node_data.area[mapped_phase] = area[j]; /* partial area contribution */
-        node_data.flows[mapped_phase] = flow_sum;
+        node_data.flows[mapped_phase] = flow_sum_pos;
 
         assert( node_data.arrival[mapped_phase] < node_data.required[mapped_phase] + epsilon );
 
@@ -3003,7 +3010,7 @@ private:
         node_data.phase[mapped_phase] = pin_phase[j];
         node_data.arrival[mapped_phase] = arrival[j] + lib_inv_delay;
         node_data.area[mapped_phase] = area[j];                  /* partial area contribution */
-        node_data.flows[mapped_phase] = flow_sum + lib_inv_area; /* TODO: check quality */
+        node_data.flows[mapped_phase] = flow_sum_neg;
 
         assert( node_data.arrival[mapped_phase] < node_data.required[mapped_phase] + epsilon );
       }
