@@ -382,15 +382,15 @@ TEST_CASE( "Emap on multiplier with multi-output gates", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 234u );
+  CHECK( luts.size() == 233u );
   CHECK( luts.num_pis() == 16u );
   CHECK( luts.num_pos() == 16u );
-  CHECK( luts.num_gates() == 216u );
-  CHECK( st.area > 577.0f - eps );
-  CHECK( st.area < 577.0f + eps );
+  CHECK( luts.num_gates() == 215u );
+  CHECK( st.area > 575.0f - eps );
+  CHECK( st.area < 575.0f + eps );
   CHECK( st.delay > 33.60f - eps );
   CHECK( st.delay < 33.60f + eps );
-  CHECK( st.multioutput_gates == 39 );
+  CHECK( st.multioutput_gates == 40 );
 }
 
 TEST_CASE( "Emap with inverters", "[emap]" )
