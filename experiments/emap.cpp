@@ -66,9 +66,9 @@ int main()
 
   tech_library_params tps;
   tps.verbose = true;
-  tech_library<6> tech_lib( gates, tps );
+  tech_library<9> tech_lib( gates, tps );
 
-  for ( auto const& benchmark : iwls_benchmarks() )
+  for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
@@ -77,9 +77,6 @@ int main()
     {
       continue;
     }
-
-    if ( aig.num_gates() > 100000 )
-      continue;
 
     /* remove structural redundancies */
     aig_balancing_params bps;
@@ -91,12 +88,11 @@ int main()
     const uint32_t depth_before = depth_view( aig ).depth();
 
     emap_params ps;
-    ps.matching_mode = emap_params::boolean;
+    ps.matching_mode = emap_params::hybrid;
     ps.area_oriented_mapping = false;
     ps.map_multioutput = true;
-    ps.verbose = true;
     emap_stats st;
-    cell_view<block_network> res = emap<6>( aig, tech_lib, ps, &st );
+    cell_view<block_network> res = emap<9>( aig, tech_lib, ps, &st );
 
     names_view res_names{ res };
     restore_network_name( aig, res_names );
