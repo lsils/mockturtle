@@ -82,7 +82,7 @@ struct emap_params
   /*! \brief Parameters for cut enumeration
    *
    * The default cut limit is 16.
-   * The maximum cut limit is 31.
+   * The maximum cut limit is 19.
    * By default, truth table minimization
    * is performed.
    */
@@ -716,7 +716,7 @@ class emap_impl
 {
 public:
   static constexpr float epsilon = 0.0005;
-  static constexpr uint32_t max_cut_num = 32;
+  static constexpr uint32_t max_cut_num = 20;
   using cut_t = cut<CutSize, cut_enumeration_emap_cut<NInputs>>;
   using cut_set_t = emap_cut_set<cut_t, max_cut_num>;
   using cut_merge_t = typename std::array<cut_set_t*, Ntk::max_fanin_size + 1>;
@@ -1391,7 +1391,7 @@ private:
     /* round stats */
     if ( ps.verbose )
     {
-      st.round_stats.push_back( fmt::format( "[i] SCuts    : Cuts  = {:>12d}  Time = {:>5.2f}\n", cuts_total, to_seconds( clock::now() - time_begin ) ) );
+      st.round_stats.push_back( fmt::format( "[i] SCuts    : Cuts  = {:>12d}  Time = {:>12.2f}\n", cuts_total, to_seconds( clock::now() - time_begin ) ) );
     }
 
     return true;
