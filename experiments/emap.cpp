@@ -81,7 +81,7 @@ int main()
     /* remove structural redundancies */
     aig_balancing_params bps;
     bps.minimize_levels = false;
-    bps.fast_mode = false;
+    bps.fast_mode = true;
     aig_balance( aig, bps );
 
     const uint32_t size_before = aig.num_gates();
