@@ -55,7 +55,7 @@ int main()
 
   /* library to map to technology */
   fmt::print( "[i] processing technology library\n" );
-  std::string library = "multioutput";
+  std::string library = "asap7";
   std::vector<gate> gates;
   std::ifstream in( cell_libraries_path( library ) );
 
@@ -66,9 +66,9 @@ int main()
 
   tech_library_params tps;
   tps.verbose = true;
-  tech_library<9> tech_lib( gates, tps );
+  tech_library<6> tech_lib( gates, tps );
 
-  for ( auto const& benchmark : epfl_benchmarks() )
+  for ( auto const& benchmark : iwls_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
 
@@ -78,26 +78,32 @@ int main()
       continue;
     }
 
+    // if ( aig.num_gates() > 100000 )
+    //   continue;
+
     /* remove structural redundancies */
-    aig_balancing_params bps;
-    bps.minimize_levels = false;
-    bps.fast_mode = true;
-    aig_balance( aig, bps );
+    // aig_balancing_params bps;
+    // bps.minimize_levels = false;
+    // bps.fast_mode = true;
+    // aig_balance( aig, bps );
 
     const uint32_t size_before = aig.num_gates();
     const uint32_t depth_before = depth_view( aig ).depth();
 
     emap_params ps;
-    ps.matching_mode = emap_params::hybrid;
+    ps.matching_mode = emap_params::boolean;
     ps.area_oriented_mapping = false;
-    ps.map_multioutput = true;
+    ps.map_multioutput = false;
+    ps.verbose = true;
     emap_stats st;
-    cell_view<block_network> res = emap<9>( aig, tech_lib, ps, &st );
+    cell_view<block_network> res = emap<6>( aig, tech_lib, ps, &st );
 
     names_view res_names{ res };
     restore_network_name( aig, res_names );
     restore_pio_names_by_order( aig, res_names );
-    const auto cec = benchmark == "hyp" ? true : abc_cec_mapped_cell( res_names, benchmark, library );
+    // const auto cec = benchmark == "hyp" ? true : abc_cec_mapped_cell( res_names, benchmark, library );
+    // std::cout << fmt::format( "[i] CEC = {}\n", cec );
+    const auto cec = false; /* don't run CEC */
 
     /* write verilog netlist */
     // write_verilog_with_cell( res_names, benchmark + "_mapped.v" );
