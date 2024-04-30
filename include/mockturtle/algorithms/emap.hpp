@@ -114,7 +114,7 @@ struct emap_params
   double relax_required{ 0.0f };
 
   /*! \brief Number of rounds for area flow optimization. */
-  uint32_t area_flow_rounds{ 2u };
+  uint32_t area_flow_rounds{ 3u };
 
   /*! \brief Number of rounds for exact area optimization. */
   uint32_t ela_rounds{ 2u };
@@ -1713,6 +1713,13 @@ private:
         auto const& best_cut = cuts[index][node_data.best_cut[use_phase]];
         cut_deref<SwitchActivity>( best_cut, n, use_phase );
       }
+      else if ( !node_data.map_refs[0] || !node_data.map_refs[1] )
+      {
+        uint8_t use_phase = node_data.map_refs[0] ? 0 : 1;
+        auto const& best_cut = cuts[index][node_data.best_cut[use_phase]];
+        cut_deref<SwitchActivity>( best_cut, n, use_phase );
+        node_data.same_match = true;
+      }
 
       /* match positive phase */
       match_phase_exact<SwitchActivity>( n, 0u );
@@ -1802,6 +1809,13 @@ private:
           old_required = node_data.required[use_phase];
           node_data.required[use_phase] = std::min( node_data.required[use_phase], node_data.required[use_phase ^ 1] - lib_inv_delay );
         }
+      }
+      else if ( !node_data.map_refs[0] || !node_data.map_refs[1] )
+      {
+        use_phase = node_data.map_refs[0] ? 0 : 1;
+        auto const& best_cut = cuts[index][node_data.best_cut[use_phase]];
+        cut_deref<SwitchActivity>( best_cut, *it, use_phase );
+        node_data.same_match = true;
       }
 
       /* match positive phase */
@@ -2061,10 +2075,11 @@ private:
     }
 
     /* blend estimated references */
+    float const coef = 1.0f / ( ( iteration + 1.0f ) * ( iteration + 1.0f ) );
     for ( auto i = 0u; i < ntk.size(); ++i )
     {
-      node_match[i].est_refs[0] = std::max( 1.0, ( 1.0 * node_match[i].est_refs[0] + 2.0f * node_match[i].map_refs[0] ) / 3.0 );
-      node_match[i].est_refs[1] = std::max( 1.0, ( 1.0 * node_match[i].est_refs[1] + 2.0f * node_match[i].map_refs[1] ) / 3.0 );
+      node_match[i].est_refs[0] = std::max( 1.0f, coef * node_match[i].est_refs[0] + ( 1 - coef ) * node_match[i].map_refs[0] );
+      node_match[i].est_refs[1] = std::max( 1.0f, coef * node_match[i].est_refs[1] + ( 1 - coef ) * node_match[i].map_refs[1] );
     }
 
     return true;
@@ -2175,8 +2190,11 @@ private:
         }
       }
 
+      /* refine best mathes looking at alternatives */
+      if ( ps.use_match_alternatives )
+        refine_best_matches( *it );
+      
       unsigned use_phase = node_data.best_supergate[0] == nullptr ? 1u : 0u;
-
       if ( node_data.best_supergate[use_phase] == nullptr )
       {
         /* Library is not complete, mapping is not possible */
@@ -2184,10 +2202,6 @@ private:
         st.mapping_error = true;
         return false;
       }
-
-      /* refine best mathes looking at alternatives */
-      if ( ps.use_match_alternatives)
-        refine_best_matches( *it );
 
       if ( node_data.same_match || node_data.map_refs[use_phase] > 0 )
       {
@@ -2253,10 +2267,11 @@ private:
     }
 
     /* blend estimated references */
+    float const coef = 1.0f / ( ( iteration + 1.0f ) * ( iteration + 1.0f ) );
     for ( auto i = 0u; i < ntk.size(); ++i )
     {
-      node_match[i].est_refs[0] = std::max( 1.0, ( 1.0 * node_match[i].est_refs[0] + 2.0f * node_match[i].map_refs[0] ) / 3.0 );
-      node_match[i].est_refs[1] = std::max( 1.0, ( 1.0 * node_match[i].est_refs[1] + 2.0f * node_match[i].map_refs[1] ) / 3.0 );
+      node_match[i].est_refs[0] = std::max( 1.0f, coef * node_match[i].est_refs[0] + ( 1 - coef ) * node_match[i].map_refs[0] );
+      node_match[i].est_refs[1] = std::max( 1.0f, coef * node_match[i].est_refs[1] + ( 1 - coef ) * node_match[i].map_refs[1] );
     }
 
     return true;
@@ -2803,37 +2818,34 @@ private:
     /* condition on not used phases, evaluate a substitution during exact area recovery */
     if constexpr ( ELA )
     {
-      if ( iteration != 0 )
+      if ( node_data.map_refs[0] == 0 || node_data.map_refs[1] == 0 )
       {
-        if ( node_data.map_refs[0] == 0 || node_data.map_refs[1] == 0 )
+        /* select the used match */
+        auto phase = 0;
+        auto nphase = 0;
+        if ( node_data.map_refs[0] == 0 )
         {
-          /* select the used match */
-          auto phase = 0;
-          auto nphase = 0;
-          if ( node_data.map_refs[0] == 0 )
-          {
-            phase = 1;
-            use_one = true;
-            use_zero = false;
-          }
-          else
-          {
-            nphase = 1;
-            use_one = false;
-            use_zero = true;
-          }
-          /* select the not used match instead if it leads to area improvement and doesn't violate the required time */
-          if ( node_data.arrival[nphase] + lib_inv_delay < node_data.required[phase] + epsilon )
-          {
-            auto size_phase = cuts[index][node_data.best_cut[phase]].size();
-            auto size_nphase = cuts[index][node_data.best_cut[nphase]].size();
+          phase = 1;
+          use_one = true;
+          use_zero = false;
+        }
+        else
+        {
+          nphase = 1;
+          use_one = false;
+          use_zero = true;
+        }
+        /* select the not used match instead if it leads to area improvement and doesn't violate the required time */
+        if ( node_data.arrival[nphase] + lib_inv_delay < node_data.required[phase] + epsilon )
+        {
+          auto size_phase = cuts[index][node_data.best_cut[phase]].size();
+          auto size_nphase = cuts[index][node_data.best_cut[nphase]].size();
 
-            if ( compare_map<DO_AREA>( node_data.arrival[nphase] + lib_inv_delay, node_data.arrival[phase], node_data.flows[nphase] + lib_inv_area, node_data.flows[phase], size_nphase, size_phase ) )
-            {
-              /* invert the choice */
-              use_zero = !use_zero;
-              use_one = !use_one;
-            }
+          if ( compare_map<DO_AREA>( node_data.arrival[nphase] + lib_inv_delay, node_data.arrival[phase], node_data.flows[nphase] + lib_inv_area, node_data.flows[phase], size_nphase, size_phase ) )
+          {
+            /* invert the choice */
+            use_zero = !use_zero;
+            use_one = !use_one;
           }
         }
       }
@@ -2893,19 +2905,11 @@ private:
         }
         else
         {
-          if ( iteration < ps.area_flow_rounds )
-          {
-            /* delay the decision on what to keep --> wait for better estimations */
-            node_data.flows[0] = node_data.flows[0] / node_data.est_refs[0];
-            node_data.flows[1] = node_data.flows[1] / node_data.est_refs[1];
-            node_data.same_match = false;
-            return;
-          }
-          /* commit to one of the two before going to exact area */
-          if ( compare_map<DO_AREA>( worst_arrival_nneg, worst_arrival_npos, node_data.flows[0], node_data.flows[1], size_zero, size_one ) )
-            use_one = false;
-          else
-            use_zero = false;
+          /* delay the decision on what to keep --> wait for better estimations */
+          node_data.flows[0] = node_data.flows[0] / node_data.est_refs[0];
+          node_data.flows[1] = node_data.flows[1] / node_data.est_refs[1];
+          node_data.same_match = false;
+          return;
         }
       }
     }
@@ -2975,6 +2979,8 @@ private:
 
     best_gate_emap<NInputs>& g0 = node_data.best_alternative[0];
     best_gate_emap<NInputs>& g1 = node_data.best_alternative[1];
+    float g0flow = g0.flow / node_data.est_refs[0];
+    float g1flow = g1.flow / node_data.est_refs[1];
 
     if constexpr ( DO_AREA )
     {
@@ -2986,7 +2992,7 @@ private:
         g1.gate = nullptr;
         g1.arrival += lib_inv_delay;
         g1.flow = ( g1.flow + lib_inv_area ) / node_data.est_refs[1];
-        g0.flow /= node_data.est_refs[0];
+        g0.flow = g0flow;
         return;
       }
       else if ( g1.arrival + lib_inv_delay < g0.arrival + epsilon )
@@ -2996,38 +3002,38 @@ private:
         g0.gate = nullptr;
         g0.arrival += lib_inv_delay;
         g0.flow = ( g0.flow + lib_inv_area ) / node_data.est_refs[0];
-        g1.flow /= node_data.est_refs[1];
+        g1.flow = g1flow;
         return;
       }
     }
     else
     {
       /* process for best area */ /* removed check on required since this is executed only during a delay pass */
-      if ( g0.gate != nullptr && g0.flow + lib_inv_area < g1.flow + epsilon )
+      if ( g0.gate != nullptr && g0flow + lib_inv_area < g1flow + epsilon )
       {
         node_data.same_match_alternative = true;
         g1 = g0;
         g1.gate = nullptr;
         g1.arrival += lib_inv_delay;
         g1.flow = ( g1.flow + lib_inv_area ) / node_data.est_refs[1];
-        g0.flow /= node_data.est_refs[0];
+        g0.flow = g0flow;
         return;
       }
-      else if ( g1.gate != nullptr && g1.flow + lib_inv_area < g0.flow + epsilon )
+      else if ( g1.gate != nullptr && g1flow + lib_inv_area < g0flow + epsilon )
       {
         node_data.same_match_alternative = true;
         g0 = g1;
         g0.gate = nullptr;
         g0.arrival += lib_inv_delay;
         g0.flow = ( g0.flow + lib_inv_area ) / node_data.est_refs[0];
-        g1.flow /= node_data.est_refs[1];
+        g1.flow = g1flow;
         return;
       }
     }
 
     node_data.same_match_alternative = false;
-    g0.flow /= node_data.est_refs[0];
-    g1.flow /= node_data.est_refs[1];
+    g0.flow = g0flow;
+    g1.flow = g1flow;
   }
 
   inline void refine_best_matches( node<Ntk> const& n )
@@ -3039,103 +3045,73 @@ private:
     best_gate_emap<NInputs>& g0 = node_data.best_alternative[0];
     best_gate_emap<NInputs>& g1 = node_data.best_alternative[1];
 
-    /* if same match, try to keep it that way */
-    if ( node_data.same_match )
+    if ( node_data.map_refs[0] && node_data.map_refs[1] )
     {
-      /* pick best implementation between the two alternatives */
-      unsigned best_match_phase = node_data.best_supergate[0] == nullptr ? 1 : 0;
-      unsigned use_phase = g0.gate == nullptr ? 1 : 0;
-      if ( !node_data.same_match_alternative )
+      if ( node_data.same_match )
       {
-        int valid = 0;
-        float flow0 = g0.flow + ( node_data.map_refs[0] ? 0 : lib_inv_area );
-        float flow1 = g0.flow + ( node_data.map_refs[1] ? 0 : lib_inv_area );
-        if ( g0.arrival < node_data.required[0] + epsilon && g0.arrival + lib_inv_delay < node_data.required[1] + epsilon )
-          valid = 1;
-        if ( g1.arrival < node_data.required[1] + epsilon && g1.arrival + lib_inv_delay < node_data.required[0] + epsilon )
-          valid |= 2;
-
-        if ( valid == 0 )
-          return;
-        else if ( valid != 3 )
-          use_phase = valid >> 1;
-        else if ( compare_map<true>( g1.arrival, g0.arrival, flow1, flow0, g1.size, g0.size ) )
-          use_phase = 1;
-      }
-      else
-      {
-        best_gate_emap<NInputs>& gUse = node_data.best_alternative[use_phase];
-        if ( gUse.arrival > node_data.required[use_phase] + epsilon || gUse.arrival + lib_inv_delay > node_data.required[use_phase ^ 1] + epsilon )
+        /* pick best implementation between the two alternatives */
+        unsigned best_match_phase = node_data.best_supergate[0] == nullptr ? 1 : 0;
+        unsigned use_phase = g0.gate == nullptr ? 1 : 0;
+        if ( !node_data.same_match_alternative )
         {
+          if ( g0.arrival > node_data.required[0] + epsilon || g1.arrival > node_data.required[1] + epsilon )
+            return;
+
+          refine_best_matches_copy_refinement( n, 0, false );
+          refine_best_matches_copy_refinement( n, 1, false );
+          node_data.same_match = false;
+          return;
+        }
+        else
+        {
+          best_gate_emap<NInputs>& gUse = node_data.best_alternative[use_phase];
+          if ( gUse.arrival > node_data.required[use_phase] + epsilon || gUse.arrival + lib_inv_delay > node_data.required[use_phase ^ 1] + epsilon )
+          {
+            return;
+          }
+          refine_best_matches_copy_refinement( n, use_phase, true );
           return;
         }
       }
-
-      best_gate_emap<NInputs>& gUse = node_data.best_alternative[use_phase];
-      float flowUse = gUse.flow * node_data.est_refs[use_phase] + ( node_data.map_refs[use_phase] ? 0 : lib_inv_area );
-      float flowCurrent = node_data.flows[best_match_phase] * node_data.est_refs[best_match_phase] + ( node_data.map_refs[best_match_phase] ? 0 : lib_inv_area );
-      if ( flowUse < flowCurrent )
+      else
       {
-        refine_best_matches_copy_refinement( n, use_phase, true );
+        /* not same match: evaluate both zero and one phase */
+        if ( g0.gate != nullptr && g0.arrival < node_data.required[0] + epsilon )
+        {
+          node_data.same_match = false;
+          refine_best_matches_copy_refinement( n, 0, node_data.same_match_alternative && g0.arrival + lib_inv_delay < node_data.required[1] + epsilon );
+        }
+        if ( g1.gate != nullptr && g1.arrival < node_data.required[1] + epsilon )
+        {
+          node_data.same_match = false;
+          refine_best_matches_copy_refinement( n, 1, node_data.same_match_alternative && g1.arrival + lib_inv_delay < node_data.required[0] + epsilon );
+        }
       }
-      return;
     }
-
-    /* TODO: should I check the potential gain of merging the two current implementations before replacing them? */
-
-    /* not same match: evaluate both zero and one phase */
-    if ( g0.gate != nullptr && g0.arrival < node_data.required[0] + epsilon )
+    else if ( node_data.map_refs[0] )
     {
-      if ( compare_map<true>( g0.arrival, node_data.arrival[0], g0.flow, node_data.flows[0], g0.size, cuts[index][node_data.best_cut[0]].size() ) )
+      if ( g0.gate != nullptr && g0.arrival < node_data.required[0] + epsilon )
       {
+        node_data.same_match = false;
         refine_best_matches_copy_refinement( n, 0, false );
       }
-    }
-    if ( g1.gate != nullptr && g1.arrival < node_data.required[1] + epsilon )
-    {
-      if ( compare_map<true>( g1.arrival, node_data.arrival[1], g1.flow, node_data.flows[1], g1.size, cuts[index][node_data.best_cut[1]].size() ) )
+      else if ( g0.gate == nullptr && g1.arrival + lib_inv_delay < node_data.required[0] + epsilon )
       {
+        refine_best_matches_copy_refinement( n, 1, true );
+      }
+    }
+    else
+    {
+      if ( g1.gate != nullptr && g1.arrival < node_data.required[1] + epsilon )
+      {
+        node_data.same_match = false;
         refine_best_matches_copy_refinement( n, 1, false );
       }
-    }
-
-    /* evaluate change of phase + inverter */
-    if ( node_data.map_refs[0] == 0 || node_data.map_refs[1] == 0 )
-    {
-      unsigned phase = node_data.map_refs[0] == 0 ? 1 : 0;
-      bool valid = node_data.arrival[phase ^ 1] + lib_inv_delay < node_data.required[phase];
-      if ( valid && compare_map<true>( node_data.arrival[phase ^ 1], node_data.arrival[phase], node_data.flows[phase ^ 1], node_data.flows[phase], cuts[index][node_data.best_cut[phase ^ 1]].size(), cuts[index][node_data.best_cut[phase]].size() ) )
+      else if ( g1.gate == nullptr && g0.arrival + lib_inv_delay < node_data.required[1] + epsilon )
       {
-        set_match_complemented_phase( index, phase ^ 1, node_data.arrival[phase ^ 1] + lib_inv_delay );
+        refine_best_matches_copy_refinement( n, 0, true );
       }
     }
-
-    /* TODO: check if it is possible to merge the gates? */
-    // if ( node_data.map_refs[0] && node_data.map_refs[1] )
-    // {
-    //   bool use_zero = node_data.arrival[0] + lib_inv_delay < node_data.required[1];
-    //   bool use_one = node_data.arrival[1] + lib_inv_delay < node_data.required[0];
-    //   if ( use_zero && use_one )
-    //   {
-    //     if ( compare_map<true>( node_data.arrival[0], node_data.arrival[1], node_data.flows[0], node_data.flows[1], cuts[index][node_data.best_cut[0]].size(), cuts[index][node_data.best_cut[1]].size() ) )
-    //     {
-    //       use_one = false;
-    //     }
-    //     else
-    //     {
-    //       use_zero = false;
-    //     }
-    //   }
-
-    //   if ( use_zero )
-    //   {
-    //     set_match_complemented_phase( index, 0, node_data.arrival[0] + lib_inv_delay );
-    //   }
-    //   else if ( use_one )
-    //   {
-    //     set_match_complemented_phase( index, 1, node_data.arrival[1] + lib_inv_delay );
-    //   }
-    // }
   }
 
   inline void refine_best_matches_copy_refinement( node<Ntk> const& n, unsigned phase, bool both_phases )
@@ -3153,7 +3129,8 @@ private:
 
     if ( !both_phases )
       return;
-    
+
+    node_data.same_match = true;
     phase ^= 1;
     node_data.best_supergate[phase] = nullptr;
     node_data.phase[phase] = bg.phase;
