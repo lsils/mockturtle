@@ -682,8 +682,8 @@ struct best_gate_emap
   float area;
   float flow;
   unsigned phase : 16;
-  unsigned cut   : 12;
-  unsigned size  :  4;
+  unsigned cut : 12;
+  unsigned size : 4;
 };
 
 template<unsigned NInputs>
@@ -1114,7 +1114,6 @@ private:
     {
       if ( ntk.is_dont_touch( n ) )
       {
-        
         warning_box |= initialize_box( n );
         return false;
       }
@@ -2061,7 +2060,7 @@ private:
         if ( ps.use_match_alternatives )
           refine_best_matches( *it );
       }
-      
+
       unsigned use_phase = node_data.best_supergate[0] == nullptr ? 1u : 0u;
       if ( node_data.best_supergate[use_phase] == nullptr )
       {
@@ -2240,7 +2239,7 @@ private:
     /* return if mapping is area oriented */
     if ( ps.area_oriented_mapping )
       return;
-    
+
     set_output_required_time( iteration == 1 );
 
     if ( exit_early )
@@ -3306,7 +3305,7 @@ private:
         node_data.best_cut[mapped_phase] = cut_index[j];
         node_data.phase[mapped_phase] = pin_phase[j];
         node_data.arrival[mapped_phase] = arrival[j] + lib_inv_delay;
-        node_data.area[mapped_phase] = area[j];                  /* partial area contribution */
+        node_data.area[mapped_phase] = area[j]; /* partial area contribution */
         node_data.flows[mapped_phase] = flow_sum_neg;
 
         assert( node_data.arrival[mapped_phase] < node_data.required[mapped_phase] + epsilon );
@@ -5746,7 +5745,7 @@ private:
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a block network that supports multi-output cells.
- * 
+ *
  * The novelties of this mapper are contained in 2 publications:
  * - A. Tempia Calvino and G. De Micheli, "Technology Mapping Using Multi-Output Library Cells," ICCAD, 2023.
  * - G. Radi, A. Tempia Calvino, and G. De Micheli, "In Medio Stat Virtus: Combining Boolean and Pattern Matching," ASP-DAC, 2024.
@@ -5805,7 +5804,7 @@ cell_view<block_network> emap( Ntk const& ntk, tech_library<NInputs, Configurati
  * The function takes the size of the cuts in the template parameter `CutSize`.
  *
  * The function returns a k-LUT network. Each LUT abstacts a gate of the technology library.
- * 
+ *
  * The novelties of this mapper are contained in 2 publications:
  * - A. Tempia Calvino and G. De Micheli, "Technology Mapping Using Multi-Output Library Cells," ICCAD, 2023.
  * - G. Radi, A. Tempia Calvino, and G. De Micheli, "In Medio Stat Virtus: Combining Boolean and Pattern Matching," ASP-DAC, 2024.
