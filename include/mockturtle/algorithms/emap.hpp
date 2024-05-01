@@ -110,7 +110,7 @@ struct emap_params
   /*! \brief Required time for delay optimization. */
   double required_time{ 0.0f };
 
-  /*! \brief Required time relaxation ratio. */
+  /*! \brief Required time relaxation in percentage (10 = 10%). */
   double relax_required{ 0.0f };
 
   /*! \brief Number of rounds for area flow optimization. */
@@ -136,9 +136,6 @@ struct emap_params
 
   /*! \brief Remove overlapping multi-output cuts */
   bool remove_overlapping_multicuts{ false };
-
-  /*! \brief Doesn't allow node duplication */
-  bool allow_node_duplication{ true };
 
   /*! \brief Be verbose. */
   bool verbose{ false };
@@ -949,7 +946,6 @@ private:
     uint32_t i = 0;
     while ( i++ < ps.area_flow_rounds )
     {
-      compute_required_time();
       if ( !compute_mapping<true>() )
       {
         return false;
@@ -964,7 +960,7 @@ private:
       reindex_multioutput_data();
       while ( i++ < ps.ela_rounds )
       {
-        if ( !compute_mapping_exact_reversed<false>( i == ps.ela_rounds ) )
+        if ( !compute_mapping_exact_reversed<false>() )
         {
           return false;
         }
@@ -974,7 +970,7 @@ private:
       i = 0;
       while ( i++ < ps.eswp_rounds )
       {
-        if ( !compute_mapping_exact_reversed<true>( true ) )
+        if ( !compute_mapping_exact_reversed<true>() )
         {
           return false;
         }
@@ -1034,8 +1030,9 @@ private:
       match_phase<DO_AREA>( n, 1u );
 
       /* try to drop one phase */
-      match_drop_phase<DO_AREA, false>( n, 0 );
+      match_drop_phase<DO_AREA, false>( n );
 
+      /* select alternative matches to use */
       select_alternatives<DO_AREA>( n );
 
       /* load and try a multi-output matches */
@@ -1055,7 +1052,7 @@ private:
     }
 
     double area_old = area;
-    bool success = set_mapping_refs2<false>();
+    bool success = set_mapping_refs_and_req<DO_AREA, false>();
 
     if ( warning_box )
     {
@@ -1546,7 +1543,7 @@ private:
       match_phase<DO_AREA>( n, 1u );
 
       /* try to drop one phase */
-      match_drop_phase<DO_AREA, false>( n, 0 );
+      match_drop_phase<DO_AREA, false>( n );
     }
     double area_old = area;
     bool success = set_mapping_refs<false>();
@@ -1638,7 +1635,7 @@ private:
       match_phase<DO_AREA>( n, 1u );
 
       /* try to drop one phase */
-      match_drop_phase<DO_AREA, false>( n, 0 );
+      match_drop_phase<DO_AREA, false>( n );
 
       /* try a multi-output match */
       if constexpr ( DO_AREA )
@@ -1656,7 +1653,7 @@ private:
     }
 
     double area_old = area;
-    bool success = set_mapping_refs<false>();
+    bool success = set_mapping_refs_and_req<DO_AREA, false>();
 
     /* round stats */
     if ( ps.verbose )
@@ -1728,7 +1725,7 @@ private:
       match_phase_exact<SwitchActivity>( n, 1u );
 
       /* try to drop one phase */
-      match_drop_phase<true, true>( n, 0 );
+      match_drop_phase<true, true>( n );
 
       /* try a multi-output match */
       if ( ps.map_multioutput && node_tuple_match[index] != UINT32_MAX )
@@ -1763,7 +1760,7 @@ private:
   }
 
   template<bool SwitchActivity>
-  bool compute_mapping_exact_reversed( bool last_round )
+  bool compute_mapping_exact_reversed()
   {
     /* this method works in reverse topological order: less nodes to update (faster) */
     /* instead of propagating arrival times forward, it propagates required times backwards */
@@ -1831,7 +1828,7 @@ private:
       }
 
       /* try to drop one phase */
-      match_drop_phase<true, true>( *it, 0 );
+      match_drop_phase<true, true>( *it );
 
       /* try a multi-output match */
       if ( ps.map_multioutput && node_tuple_match[index] < UINT32_MAX - 1 )
@@ -2037,7 +2034,6 @@ private:
           if ( iteration < ps.area_flow_rounds )
           {
             ++node_data.map_refs[use_phase];
-            // node_data.map_refs[use_phase] += node_data.map_refs[use_phase ^ 1];
           }
           area += lib_inv_area;
           ++inv;
@@ -2085,8 +2081,8 @@ private:
     return true;
   }
 
-  template<bool ELA>
-  bool set_mapping_refs2()
+  template<bool DO_AREA, bool ELA>
+  bool set_mapping_refs_and_req()
   {
     for ( auto i = 0u; i < node_match.size(); ++i )
     {
@@ -2190,9 +2186,12 @@ private:
         }
       }
 
-      /* refine best mathes looking at alternatives */
-      if ( ps.use_match_alternatives )
-        refine_best_matches( *it );
+      /* refine best matches with alternatives */
+      if constexpr ( !DO_AREA )
+      {
+        if ( ps.use_match_alternatives )
+          refine_best_matches( *it );
+      }
       
       unsigned use_phase = node_data.best_supergate[0] == nullptr ? 1u : 0u;
       if ( node_data.best_supergate[use_phase] == nullptr )
@@ -2224,7 +2223,6 @@ private:
           if ( iteration < ps.area_flow_rounds )
           {
             ++node_data.map_refs[use_phase];
-            // node_data.map_refs[use_phase] += node_data.map_refs[use_phase ^ 1];
           }
           area += lib_inv_area;
           ++inv;
@@ -2301,7 +2299,6 @@ private:
         if ( iteration < ps.area_flow_rounds )
         {
           ++node_match[index].map_refs[0];
-          // node_match[index].map_refs[0] += node_match[index].map_refs[1];
         }
         area += lib_inv_area;
         ++inv;
@@ -2762,7 +2759,7 @@ private:
   }
 
   template<bool DO_AREA, bool ELA>
-  void match_drop_phase( node<Ntk> const& n, float required_margin_factor )
+  void match_drop_phase( node<Ntk> const& n )
   {
     auto index = ntk.node_to_index( n );
     auto& node_data = node_match[index];
@@ -2811,8 +2808,8 @@ private:
     else
     {
       /* check if both phases + inverter meet the required time */
-      use_zero = worst_arrival_nneg < ( node_data.required[1] + epsilon - required_margin_factor * lib_inv_delay );
-      use_one = worst_arrival_npos < ( node_data.required[0] + epsilon - required_margin_factor * lib_inv_delay );
+      use_zero = worst_arrival_nneg < ( node_data.required[1] + epsilon );
+      use_one = worst_arrival_npos < ( node_data.required[0] + epsilon );
     }
 
     /* condition on not used phases, evaluate a substitution during exact area recovery */
@@ -2854,21 +2851,10 @@ private:
     if ( ( !use_zero && !use_one ) )
     {
       /* use both phases */
-      if ( ps.allow_node_duplication )
-      {
-        node_data.flows[0] = node_data.flows[0] / node_data.est_refs[0];
-        node_data.flows[1] = node_data.flows[1] / node_data.est_refs[1];
-        node_data.same_match = false;
-        return;
-      }
-
-      /* if node duplication is not allowed, pick one phase based on delay */
-      auto size_zero = cuts[index][node_data.best_cut[0]].size();
-      auto size_one = cuts[index][node_data.best_cut[1]].size();
-      if ( compare_map<false>( worst_arrival_npos, worst_arrival_nneg, node_data.flows[1], node_data.flows[0], size_one, size_zero ) )
-        use_zero = true;
-      else
-        use_one = true;
+      node_data.flows[0] = node_data.flows[0] / node_data.est_refs[0];
+      node_data.flows[1] = node_data.flows[1] / node_data.est_refs[1];
+      node_data.same_match = false;
+      return;
     }
 
     /* use area flow as a tiebreaker */
@@ -2887,10 +2873,24 @@ private:
           node_data.flows[0] = cut_ref<false>( cuts[index][node_data.best_cut[0]], n, 0 );
           cut_ref<false>( cuts[index][node_data.best_cut[1]], n, 1 );
         }
-        if ( compare_map<DO_AREA>( worst_arrival_nneg, worst_arrival_npos, node_data.flows[0], node_data.flows[1], size_zero, size_one ) )
-          use_one = false;
-        else
-          use_zero = false;
+        /* evaluate based on inverter cost */
+        // use_zero = lib_inv_area < node_data.flows[1] + epsilon;
+        // use_one = lib_inv_area < node_data.flows[0] + epsilon;
+
+        if ( use_one && use_zero )
+        {
+          if ( compare_map<DO_AREA>( worst_arrival_nneg, worst_arrival_npos, node_data.flows[0], node_data.flows[1], size_zero, size_one ) )
+            use_one = false;
+          else
+            use_zero = false;
+        }
+        else if ( !use_one && !use_zero && node_data.same_match )
+        {
+          node_data.same_match = false;
+          cut_ref<false>( cuts[index][node_data.best_cut[0]], n, 0 );
+          cut_ref<false>( cuts[index][node_data.best_cut[1]], n, 1 );
+          return;
+        }
       }
       else
       {
@@ -2971,6 +2971,9 @@ private:
   template<bool DO_AREA>
   inline void select_alternatives( node<Ntk> const& n )
   {
+    if constexpr ( DO_AREA )
+      return;
+
     if ( !ps.use_match_alternatives )
       return;
 
@@ -2982,53 +2985,26 @@ private:
     float g0flow = g0.flow / node_data.est_refs[0];
     float g1flow = g1.flow / node_data.est_refs[1];
 
-    if constexpr ( DO_AREA )
+    /* process for best area */ /* removed check on required since this is executed only during a delay pass */
+    if ( g0.gate != nullptr && g0flow + lib_inv_area < g1flow + epsilon )
     {
-      /* process for best delay */
-      if ( g0.arrival + lib_inv_delay < g1.arrival + epsilon )
-      {
-        node_data.same_match_alternative = true;
-        g1 = g0;
-        g1.gate = nullptr;
-        g1.arrival += lib_inv_delay;
-        g1.flow = ( g1.flow + lib_inv_area ) / node_data.est_refs[1];
-        g0.flow = g0flow;
-        return;
-      }
-      else if ( g1.arrival + lib_inv_delay < g0.arrival + epsilon )
-      {
-        node_data.same_match_alternative = true;
-        g0 = g1;
-        g0.gate = nullptr;
-        g0.arrival += lib_inv_delay;
-        g0.flow = ( g0.flow + lib_inv_area ) / node_data.est_refs[0];
-        g1.flow = g1flow;
-        return;
-      }
+      node_data.same_match_alternative = true;
+      g1 = g0;
+      g1.gate = nullptr;
+      g1.arrival += lib_inv_delay;
+      g1.flow = ( g1.flow + lib_inv_area ) / node_data.est_refs[1];
+      g0.flow = g0flow;
+      return;
     }
-    else
+    else if ( g1.gate != nullptr && g1flow + lib_inv_area < g0flow + epsilon )
     {
-      /* process for best area */ /* removed check on required since this is executed only during a delay pass */
-      if ( g0.gate != nullptr && g0flow + lib_inv_area < g1flow + epsilon )
-      {
-        node_data.same_match_alternative = true;
-        g1 = g0;
-        g1.gate = nullptr;
-        g1.arrival += lib_inv_delay;
-        g1.flow = ( g1.flow + lib_inv_area ) / node_data.est_refs[1];
-        g0.flow = g0flow;
-        return;
-      }
-      else if ( g1.gate != nullptr && g1flow + lib_inv_area < g0flow + epsilon )
-      {
-        node_data.same_match_alternative = true;
-        g0 = g1;
-        g0.gate = nullptr;
-        g0.arrival += lib_inv_delay;
-        g0.flow = ( g0.flow + lib_inv_area ) / node_data.est_refs[0];
-        g1.flow = g1flow;
-        return;
-      }
+      node_data.same_match_alternative = true;
+      g0 = g1;
+      g0.gate = nullptr;
+      g0.arrival += lib_inv_delay;
+      g0.flow = ( g0.flow + lib_inv_area ) / node_data.est_refs[0];
+      g1.flow = g1flow;
+      return;
     }
 
     node_data.same_match_alternative = false;
@@ -3771,7 +3747,7 @@ private:
     match_phase<DO_AREA>( n, 1u );
 
     /* try to drop one phase */
-    match_drop_phase<DO_AREA, false>( n, 0 );
+    match_drop_phase<DO_AREA, false>( n );
 
     assert( node_data.arrival[0] < node_data.required[0] + epsilon );
     assert( node_data.arrival[1] < node_data.required[1] + epsilon );
@@ -3852,7 +3828,7 @@ private:
     match_phase_exact<SwitchActivity>( n, 1u );
 
     /* try to drop one phase */
-    match_drop_phase<true, true>( n, 0 );
+    match_drop_phase<true, true>( n );
 
     assert( node_data.arrival[0] < std::numeric_limits<float>::max() );
     assert( node_data.arrival[1] < std::numeric_limits<float>::max() );
@@ -4030,7 +4006,7 @@ private:
         match_phase_exact<false>( n, 1u );
 
         /* try to drop one phase */
-        match_drop_phase<true, true>( n, 0 );
+        match_drop_phase<true, true>( n );
       }
     }
 
