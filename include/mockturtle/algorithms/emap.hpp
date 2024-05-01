@@ -131,7 +131,7 @@ struct emap_params
   /*! \brief Number of patterns for switching activity computation. */
   uint32_t switching_activity_patterns{ 2048u };
 
-  /*! \brief Compute alternatives using a different cost functions */
+  /*! \brief Compute area-oriented alternative matches */
   bool use_match_alternatives{ true };
 
   /*! \brief Remove the cuts that are contained in others */
