@@ -652,6 +652,185 @@ TEST_CASE( "Emap with hybrid matching", "[emap]" )
   CHECK( st.delay < 5.8f + eps );
 }
 
+TEST_CASE( "Emap with arrival times", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( large_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<6> lib( gates );
+
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+  const auto d = aig.create_pi();
+  const auto e = aig.create_pi();
+  const auto f = aig.create_pi();
+  const auto g = aig.create_pi();
+  const auto h = aig.create_pi();
+
+  const auto f1 = aig.create_and( !a, b );
+  const auto f2 = aig.create_and( f1, !c );
+  const auto f3 = aig.create_and( d, e );
+  const auto f4 = aig.create_and( f, !g );
+  const auto f5 = aig.create_and( f4, h );
+  const auto f6 = aig.create_and( f2, f3 );
+  const auto f7 = aig.create_and( f5, f6 );
+
+  aig.create_po( f7 );
+
+  emap_params ps;
+  ps.matching_mode = emap_params::boolean;
+  emap_stats st;
+
+  ps.arrival_times = std::vector<double>( 8 );
+  ps.arrival_times[0] = 0.0;
+  ps.arrival_times[1] = 1.0;
+  ps.arrival_times[2] = 2.0;
+  ps.arrival_times[3] = 3.0;
+  ps.arrival_times[4] = 4.0;
+  ps.arrival_times[5] = 5.0;
+  ps.arrival_times[6] = 6.0;
+  ps.arrival_times[7] = 7.0;
+
+  cell_view<block_network> ntk = emap<6>( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( ntk.size() == 27u );
+  CHECK( ntk.num_pis() == 8u );
+  CHECK( ntk.num_pos() == 1u );
+  CHECK( ntk.num_gates() == 17u );
+  CHECK( st.area > 24.0f - eps );
+  CHECK( st.area < 24.0f + eps );
+  CHECK( st.delay > 12.6f - eps );
+  CHECK( st.delay < 12.6f + eps );
+}
+
+TEST_CASE( "Emap with global required times", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<6> lib( gates );
+
+  aig_network aig;
+  
+  std::vector<aig_network::signal> a( 8 ), b( 8 );
+  std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
+  auto carry = aig.get_constant( false );
+
+  carry_ripple_adder_inplace( aig, a, b, carry );
+
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
+  aig.create_po( carry );
+
+  emap_params ps;
+  ps.matching_mode = emap_params::boolean;
+  ps.required_time = 20.0; // real delay 15.7
+  emap_stats st;
+
+  cell_view<block_network> ntk = emap<6>( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( ntk.size() == 34 );
+  CHECK( ntk.num_pis() == 16u );
+  CHECK( ntk.num_pos() == 9u );
+  CHECK( ntk.num_gates() == 16u );
+  CHECK( st.area > 63.0f - eps );
+  CHECK( st.area < 63.0f + eps );
+  CHECK( st.delay < 20.0f + eps );
+}
+
+TEST_CASE( "Emap with required times", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<6> lib( gates );
+
+  aig_network aig;
+  
+  std::vector<aig_network::signal> a( 8 ), b( 8 );
+  std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
+  auto carry = aig.get_constant( false );
+
+  carry_ripple_adder_inplace( aig, a, b, carry );
+
+  emap_params ps;
+  ps.matching_mode = emap_params::boolean;
+  // ps.required_time = 20.0; // real delay 15.7
+  emap_stats st;
+
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); ps.required_times.push_back( 19.0 ); } );
+  aig.create_po( carry );
+  ps.required_times.push_back( 20.0 );
+
+  cell_view<block_network> ntk = emap<6>( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( ntk.size() == 34 );
+  CHECK( ntk.num_pis() == 16u );
+  CHECK( ntk.num_pos() == 9u );
+  CHECK( ntk.num_gates() == 16u );
+  CHECK( st.area > 63.0f - eps );
+  CHECK( st.area < 63.0f + eps );
+  CHECK( st.delay < 20.0f + eps );
+}
+
+TEST_CASE( "Emap with required time relaxation", "[emap]" )
+{
+  std::vector<gate> gates;
+
+  std::istringstream in( test_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<6> lib( gates );
+
+  aig_network aig;
+  
+  std::vector<aig_network::signal> a( 8 ), b( 8 );
+  std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
+  std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
+  auto carry = aig.get_constant( false );
+
+  carry_ripple_adder_inplace( aig, a, b, carry );
+
+  std::for_each( a.begin(), a.end(), [&]( auto f ) { aig.create_po( f ); } );
+  aig.create_po( carry );
+
+  emap_params ps;
+  ps.matching_mode = emap_params::boolean;
+  ps.relax_required = 27.5; // real delay 15.7
+  emap_stats st;
+
+  cell_view<block_network> ntk = emap<6>( aig, lib, ps, &st );
+
+  const float eps{ 0.005f };
+
+  CHECK( ntk.size() == 34 );
+  CHECK( ntk.num_pis() == 16u );
+  CHECK( ntk.num_pos() == 9u );
+  CHECK( ntk.num_gates() == 16u );
+  CHECK( st.area > 63.0f - eps );
+  CHECK( st.area < 63.0f + eps );
+  CHECK( st.delay < 20.0f + eps );
+}
+
 TEST_CASE( "Emap with supergates", "[emap]" )
 {
   std::vector<gate> gates;
