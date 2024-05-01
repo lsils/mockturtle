@@ -2874,8 +2874,8 @@ private:
           cut_ref<false>( cuts[index][node_data.best_cut[1]], n, 1 );
         }
         /* evaluate based on inverter cost */
-        // use_zero = lib_inv_area < node_data.flows[1] + epsilon;
-        // use_one = lib_inv_area < node_data.flows[0] + epsilon;
+        use_zero = lib_inv_area < node_data.flows[1] + epsilon;
+        use_one = lib_inv_area < node_data.flows[0] + epsilon;
 
         if ( use_one && use_zero )
         {
