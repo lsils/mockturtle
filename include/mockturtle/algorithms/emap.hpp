@@ -107,11 +107,17 @@ struct emap_params
     hybrid
   } matching_mode = hybrid;
 
-  /*! \brief Required time for delay optimization. */
+  /*! \brief Target required time (for each PO). */
   double required_time{ 0.0f };
 
   /*! \brief Required time relaxation in percentage (10 = 10%). */
   double relax_required{ 0.0f };
+
+  /*! \brief Custom input arrival times. */
+  std::vector<double> arrival_times{};
+
+  /*! \brief Custom output required times. */
+  std::vector<double> required_times{};
 
   /*! \brief Number of rounds for area flow optimization. */
   uint32_t area_flow_rounds{ 3u };
@@ -805,6 +811,10 @@ public:
     /* compute and save topological order */
     init_topo_order();
 
+    /* init arrival time */
+    if ( !init_arrivals() )
+      return res;
+
     /* search for large matches */
     if ( ps.matching_mode == emap_params::structural || CutSize > 6 )
     {
@@ -859,6 +869,10 @@ public:
     /* compute and save topological order */
     init_topo_order();
 
+    /* init arrival time */
+    if ( !init_arrivals() )
+      return res;
+
     /* search for large matches */
     if ( ps.matching_mode == emap_params::structural || CutSize > 6 )
     {
@@ -904,10 +918,14 @@ public:
 
     auto [res, old2new] = initialize_map_network();
 
-    /* TODO: multi-output support is currently not implemented */
+    /* multi-output support is currently not implemented */
 
     /* compute and save topological order */
     init_topo_order();
+
+    /* init arrival time */
+    if ( !init_arrivals() )
+      return res;
 
     /* compute cuts, matches, and initial mapping */
     if ( !ps.area_oriented_mapping )
@@ -1111,13 +1129,9 @@ private:
     {
       node_data.flows[0] = 0.0f;
       node_data.best_alternative[0].flow = 0.0f;
-      node_data.arrival[0] = 0.0f;
-      node_data.best_alternative[0].arrival = 0.0f;
       /* PIs have the negative phase implemented with an inverter */
       node_data.flows[1] = lib_inv_area / node_data.est_refs[1];
       node_data.best_alternative[1].flow = lib_inv_area / node_data.est_refs[1];
-      node_data.arrival[1] = lib_inv_delay;
-      node_data.best_alternative[1].arrival = lib_inv_delay;
       /* skip if cuts have been computed before */
       if ( cuts[index].size() == 0 )
       {
@@ -1525,10 +1539,8 @@ private:
       {
         /* all terminals have flow 0 */
         node_data.flows[0] = 0.0f;
-        node_data.arrival[0] = 0.0f;
         /* PIs have the negative phase implemented with an inverter */
         node_data.flows[1] = lib_inv_area / node_data.est_refs[1];
-        node_data.arrival[1] = lib_inv_delay;
         add_unit_cut( index );
         continue;
       }
@@ -1544,9 +1556,12 @@ private:
 
       /* try to drop one phase */
       match_drop_phase<DO_AREA, false>( n );
+
+      /* select alternative matches to use */
+      select_alternatives<DO_AREA>( n );
     }
     double area_old = area;
-    bool success = set_mapping_refs<false>();
+    bool success = set_mapping_refs_and_req<DO_AREA, false>();
 
     /* round stats */
     if ( ps.verbose )
@@ -2108,35 +2123,7 @@ private:
       }
     } );
 
-    double required = delay;
-    /* relax delay constraints */
-    if ( iteration == 0 && ps.required_time == 0.0f && ps.relax_required > 0.0f )
-    {
-      required *= ( 100.0 + ps.relax_required ) / 100.0;
-    }
-
-    /* Global target time constraint */
-    if ( ps.required_time != 0.0f )
-    {
-      if ( ps.required_time < delay - epsilon )
-      {
-        if ( !ps.area_oriented_mapping && iteration == 1 )
-          std::cerr << fmt::format( "[i] MAP WARNING: cannot meet the target required time of {:.2f}", ps.required_time ) << std::endl;
-      }
-      else
-      {
-        required = ps.required_time;
-      }
-    }
-
-    /* set the required time at POs */
-    ntk.foreach_po( [&]( auto const& s ) {
-      const auto index = ntk.node_to_index( ntk.get_node( s ) );
-      if ( ntk.is_complemented( s ) )
-        node_match[index].required[1] = required;
-      else
-        node_match[index].required[0] = required;
-    } );
+    set_output_required_time( iteration == 0 );
 
     /* compute current area and update mapping refs in top-down order */
     area = 0.0f;
@@ -2306,6 +2293,61 @@ private:
     }
   }
 
+  void set_output_required_time( bool warning )
+  {
+    double required = delay;
+    /* relax delay constraints */
+    if ( iteration == 0 && ps.required_time == 0.0f && ps.required_times.empty() && ps.relax_required > 0.0f )
+    {
+      required *= ( 100.0 + ps.relax_required ) / 100.0;
+    }
+
+    /* Global target time constraint */
+    if ( ps.required_times.empty() )
+    {
+      if ( ps.required_time != 0.0f )
+      {
+        if ( ps.required_time < delay - epsilon )
+        {
+          if ( warning )
+            std::cerr << fmt::format( "[i] MAP WARNING: cannot meet the target required time of {:.2f}", ps.required_time ) << std::endl;
+        }
+        else
+        {
+          required = ps.required_time;
+        }
+      }
+
+      /* set the required time at POs */
+      ntk.foreach_po( [&]( auto const& s ) {
+        const auto index = ntk.node_to_index( ntk.get_node( s ) );
+        if ( ntk.is_complemented( s ) )
+          node_match[index].required[1] = required;
+        else
+          node_match[index].required[0] = required;
+      } );
+
+      return;
+    }
+
+    /* Output-specific target time constraint */
+    ntk.foreach_po( [&]( auto const& s, uint32_t i ) {
+      const auto index = ntk.node_to_index( ntk.get_node( s ) );
+      uint8_t phase = ntk.is_complemented( s ) ? 1 : 0;
+      if ( node_match[index].arrival[phase] > ps.required_times[i] + epsilon )
+      {
+        /* maintain the same delay */
+        node_match[index].required[phase] = node_match[index].arrival[phase];
+        if ( warning )
+          std::cerr << fmt::format( "[i] MAP WARNING: cannot meet the target required time of {:.2f} at output {}", ps.required_times[i], i ) << std::endl;
+      }
+      else
+      {
+        node_match[index].required[phase] = ps.required_times[i];
+      }
+    } );
+  }
+
   void compute_required_time( bool exit_early = false )
   {
     for ( auto i = 0u; i < node_match.size(); ++i )
@@ -2316,37 +2358,8 @@ private:
     /* return if mapping is area oriented */
     if ( ps.area_oriented_mapping )
       return;
-
-    double required = delay;
-
-    /* relax delay constraints */
-    if ( iteration == 1 && ps.required_time == 0.0f && ps.relax_required > 0.0f )
-    {
-      required *= ( 100.0 + ps.relax_required ) / 100.0;
-    }
-
-    /* Global target time constraint */
-    if ( ps.required_time != 0.0f )
-    {
-      if ( ps.required_time < delay - epsilon )
-      {
-        if ( !ps.area_oriented_mapping && iteration == 1 )
-          std::cerr << fmt::format( "[i] MAP WARNING: cannot meet the target required time of {:.2f}", ps.required_time ) << std::endl;
-      }
-      else
-      {
-        required = ps.required_time;
-      }
-    }
-
-    /* set the required time at POs */
-    ntk.foreach_po( [&]( auto const& s ) {
-      const auto index = ntk.node_to_index( ntk.get_node( s ) );
-      if ( ntk.is_complemented( s ) )
-        node_match[index].required[1] = required;
-      else
-        node_match[index].required[0] = required;
-    } );
+    
+    set_output_required_time( iteration == 1 );
 
     if ( exit_early )
       return;
@@ -3347,38 +3360,6 @@ private:
         area_flow[j] = gate.area + cut_leaves_flow( cut, n, phase[j] );
         node_data.phase[phase[j]] = old_phase;
 
-        /* local evaluation for delay (area flow improvement is approximated) */
-      //   if constexpr ( !DO_AREA )
-      //   {
-      //     /* recompute local area flow of previous matches */
-      //     double mapped_flow = node_data.flows[phase[j]];
-
-      //     if ( node_data.multioutput_match[phase[j]] )
-      //     {
-      //       /* recompute estimation for multi-output gate */
-      //       float k_est = 0;
-      //       for ( auto k = 0; k < max_multioutput_output_size; ++k )
-      //       {
-      //         uint32_t index_k = tuple_data[k].node_index;
-      //         auto used_phase = node_match[index_k].supergate[0] == nullptr ? 1 : 0;
-      //         k_est += node_match[index_k].est_refs[used_phase]; /* TODO: review */
-      //       }
-      //       mapped_flow *= k_est;
-      //     }
-      //     else
-      //     {
-      //       auto used_phase = node_data.supergate[0] == nullptr ? 1 : 0; /* TODO: review */
-      //       mapped_flow *= node_data.est_refs[used_phase];
-      //     }
-
-      //     auto const& mapped_cut = cuts[node_index][node_data.best_cut[phase[j]]];
-      //     if ( !compare_map<DO_AREA>( arrival[j], node_data.arrival[phase[j]], area_flow[j], mapped_flow, cut.size(), mapped_cut.size() ) )
-      //     {
-      //       is_best = false;
-      //       break;
-      //     }
-      //   }
-
         /* current version may lead to delay increase */
         est_refs[j] = node_data.est_refs[phase[j]];
       }
@@ -4375,6 +4356,41 @@ private:
     topo_view<Ntk>( ntk ).foreach_node( [this]( auto n ) {
       topo_order.push_back( n );
     } );
+  }
+
+  bool init_arrivals()
+  {
+    if ( ps.required_times.size() && ps.required_times.size() != ntk.num_pos() )
+    {
+      std::cerr << "[e] MAP ERROR: required time vector does not match the output size of the network" << std::endl;
+      st.mapping_error = true;
+      return false;
+    }
+
+    if ( ps.arrival_times.empty() )
+    {
+      ntk.foreach_pi( [&]( auto const& n ) {
+        auto& node_data = node_match[ntk.node_to_index( n )];
+        node_data.arrival[0] = node_data.best_alternative[0].arrival = 0;
+        node_data.arrival[1] = node_data.best_alternative[1].arrival = lib_inv_delay;
+      } );
+      return true;
+    }
+
+    if ( ps.arrival_times.size() != ntk.num_pis() )
+    {
+      std::cerr << "[e] MAP ERROR: arrival time vector does not match the input size of the network" << std::endl;
+      st.mapping_error = true;
+      return false;
+    }
+
+    ntk.foreach_pi( [&]( auto const& n, uint32_t i ) {
+      auto& node_data = node_match[ntk.node_to_index( n )];
+      node_data.arrival[0] = node_data.best_alternative[0].arrival = ps.arrival_times[i];
+      node_data.arrival[1] = node_data.best_alternative[1].arrival = ps.arrival_times[i] + lib_inv_delay;
+    } );
+
+    return true;
   }
 
   void finalize_cover( binding_view<klut_network>& res, klut_map& old2new )
