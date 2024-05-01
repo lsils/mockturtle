@@ -131,9 +131,6 @@ struct emap_params
   /*! \brief Number of patterns for switching activity computation. */
   uint32_t switching_activity_patterns{ 2048u };
 
-  /*! \brief Fast area recovery */
-  bool use_fast_area_recovery{ true };
-
   /*! \brief Compute alternatives using a different cost functions */
   bool use_match_alternatives{ true };
 
@@ -972,54 +969,23 @@ private:
 
     /* compute mapping using exact area */
     i = 0;
-    if ( ps.use_fast_area_recovery )
+    compute_required_time( true );
+    reindex_multioutput_data();
+    while ( i++ < ps.ela_rounds )
     {
-      compute_required_time( true );
-      reindex_multioutput_data();
-      while ( i++ < ps.ela_rounds )
+      if ( !compute_mapping_exact_reversed<false>() )
       {
-        if ( !compute_mapping_exact_reversed<false>() )
-        {
-          return false;
-        }
-      }
-
-      /* compute mapping using exact switching activity estimation */
-      i = 0;
-      while ( i++ < ps.eswp_rounds )
-      {
-        if ( !compute_mapping_exact_reversed<true>() )
-        {
-          return false;
-        }
+        return false;
       }
     }
-    else
+
+    /* compute mapping using exact switching activity estimation */
+    i = 0;
+    while ( i++ < ps.eswp_rounds )
     {
-      while ( i++ < ps.ela_rounds )
+      if ( !compute_mapping_exact_reversed<true>() )
       {
-        compute_required_time();
-        if ( !compute_mapping_exact<false>( i == ps.ela_rounds ) )
-        {
-          return false;
-        }
-      }
-
-      /* compute mapping using exact switching activity estimation */
-      i = 0;
-      while ( i++ < ps.eswp_rounds )
-      {
-        compute_required_time();
-        if ( !compute_mapping_exact<true>( true ) )
-        {
-          return false;
-        }
-      }
-
-      /* cleaning not fully utilized multi-output gates */
-      if ( ps.map_multioutput )
-      {
-        remove_unused_multioutput();
+        return false;
       }
     }
 
@@ -1694,92 +1660,8 @@ private:
   }
 
   template<bool SwitchActivity>
-  bool compute_mapping_exact( bool last_round )
-  {
-    for ( auto const& n : topo_order )
-    {
-      if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
-        continue;
-
-      /* don't touch box */
-      if constexpr ( has_is_dont_touch_v<Ntk> )
-      {
-        if ( ntk.is_dont_touch( n ) )
-        {
-          if constexpr ( has_has_binding_v<Ntk> )
-          {
-            propagate_data_forward_white_box( n );
-          }
-          continue;
-        }
-      }
-
-      auto index = ntk.node_to_index( n );
-      auto& node_data = node_match[index];
-
-      /* recursively deselect the best cut shared between
-       * the two phases if in use in the cover */
-      if ( node_data.same_match && ( node_data.map_refs[0] || node_data.map_refs[1] ) )
-      {
-        uint8_t use_phase = node_data.best_supergate[0] != nullptr ? 0 : 1;
-        auto const& best_cut = cuts[index][node_data.best_cut[use_phase]];
-        cut_deref<SwitchActivity>( best_cut, n, use_phase );
-      }
-      else if ( !node_data.map_refs[0] || !node_data.map_refs[1] )
-      {
-        uint8_t use_phase = node_data.map_refs[0] ? 0 : 1;
-        auto const& best_cut = cuts[index][node_data.best_cut[use_phase]];
-        cut_deref<SwitchActivity>( best_cut, n, use_phase );
-        node_data.same_match = true;
-      }
-
-      /* match positive phase */
-      match_phase_exact<SwitchActivity>( n, 0u );
-
-      /* match negative phase */
-      match_phase_exact<SwitchActivity>( n, 1u );
-
-      /* try to drop one phase */
-      match_drop_phase<true, true>( n );
-
-      /* try a multi-output match */
-      if ( ps.map_multioutput && node_tuple_match[index] != UINT32_MAX )
-      {
-        bool multi_success = match_multioutput_exact<SwitchActivity>( n, last_round );
-        if ( multi_success )
-          multi_node_update_exact<SwitchActivity>( n );
-      }
-
-      if ( node_match[index].map_refs[0] )
-        assert( node_match[index].arrival[0] < node_match[index].required[0] + epsilon );
-      if ( node_match[index].map_refs[1] )
-        assert( node_match[index].arrival[1] < node_match[index].required[1] + epsilon );
-    }
-
-    double area_old = area;
-    bool success = set_mapping_refs<true>();
-
-    /* round stats */
-    if ( ps.verbose )
-    {
-      float area_gain = float( ( area_old - area ) / area_old * 100 );
-      std::stringstream stats{};
-      if constexpr ( SwitchActivity )
-        stats << fmt::format( "[i] Switching: Delay = {:>12.2f}  Area = {:>12.2f}  Gain = {:>5.2f} %  Inverters = {:>5}  Time = {:>5.2f}\n", delay, area, area_gain, inv, to_seconds( clock::now() - time_begin ) );
-      else
-        stats << fmt::format( "[i] Area     : Delay = {:>12.2f}  Area = {:>12.2f}  Gain = {:>5.2f} %  Inverters = {:>5}  Time = {:>5.2f}\n", delay, area, area_gain, inv, to_seconds( clock::now() - time_begin ) );
-      st.round_stats.push_back( stats.str() );
-    }
-
-    return success;
-  }
-
-  template<bool SwitchActivity>
   bool compute_mapping_exact_reversed()
   {
-    /* this method works in reverse topological order: less nodes to update (faster) */
-    /* instead of propagating arrival times forward, it propagates required times backwards */
-
     for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
       if ( ntk.is_constant( *it ) || ntk.is_pi( *it ) )
@@ -1843,7 +1725,7 @@ private:
       }
 
       /* try to drop one phase */
-      match_drop_phase<true, true>( *it );
+      match_drop_phase<true, true, SwitchActivity>( *it );
 
       /* try a multi-output match */
       if ( ps.map_multioutput && node_tuple_match[index] < UINT32_MAX - 1 )
@@ -2771,7 +2653,7 @@ private:
     }
   }
 
-  template<bool DO_AREA, bool ELA>
+  template<bool DO_AREA, bool ELA, bool SwitchActivity = false>
   void match_drop_phase( node<Ntk> const& n )
   {
     auto index = ntk.node_to_index( n );
@@ -2887,8 +2769,11 @@ private:
           cut_ref<false>( cuts[index][node_data.best_cut[1]], n, 1 );
         }
         /* evaluate based on inverter cost */
-        use_zero = lib_inv_area < node_data.flows[1] + epsilon;
-        use_one = lib_inv_area < node_data.flows[0] + epsilon;
+        if constexpr ( !SwitchActivity )
+        {
+          use_zero = lib_inv_area < node_data.flows[1] + epsilon;
+          use_one = lib_inv_area < node_data.flows[0] + epsilon;
+        }
 
         if ( use_one && use_zero )
         {
@@ -3910,99 +3795,6 @@ private:
       return true;
 
     return false;
-  }
-
-  bool remove_unused_multioutput()
-  {
-    /* TODO: update required times */
-    for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
-    {
-      if ( ntk.is_constant( *it ) || ntk.is_pi( *it ) )
-        continue;
-
-      auto index = ntk.node_to_index( *it );
-
-      /* get used multi-output gates */
-      if ( node_tuple_match[index] == UINT32_MAX )
-        continue;
-
-      if ( node_match[index].same_match && !node_match[index].multioutput_match[0] )
-        continue;
-
-      if ( !node_match[index].same_match && !( node_match[index].multioutput_match[0] || node_match[index].multioutput_match[1] ) )
-        continue;
-
-      /* check if mapped to multi-output with unused outputs */
-      multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index]][0];
-
-      bool used = false;
-      bool unused = false;
-      for ( auto j = 0; j < max_multioutput_output_size; ++j )
-      {
-        uint32_t node_index = tuple_data[j].node_index;
-        auto& node_data = node_match[node_index];
-
-        if ( node_data.best_supergate[0] != nullptr && node_data.multioutput_match[0] )
-        {
-          if ( node_data.map_refs[0] > 0 || ( node_data.same_match && ( node_data.map_refs[0] || node_data.map_refs[1] ) ) )
-            used = true;
-          else
-            unused = true;
-        }
-        else if ( node_data.best_supergate[1] != nullptr && node_data.multioutput_match[1] )
-        {
-          if ( node_data.map_refs[1] > 0 || ( node_data.same_match && ( node_data.map_refs[0] || node_data.map_refs[1] ) ) )
-            used = true;
-          else
-            unused = true;
-        }
-      }
-
-      if ( !used || !unused )
-        continue;
-
-      /* remap connected outputs (reverse topo order)*/
-      for ( int j = max_multioutput_output_size - 1; j >= 0; --j )
-      {
-        uint32_t node_index = tuple_data[j].node_index;
-        auto& node_data = node_match[node_index];
-        auto const n = ntk.index_to_node( node_index );
-
-        if ( !node_data.map_refs[0] && !node_data.map_refs[1] )
-          continue;
-
-        /* recursively deselect the best cut shared between
-         * the two phases if in use in the cover */
-        if ( node_data.same_match )
-        {
-          uint8_t use_phase = node_data.best_supergate[0] != nullptr ? 0 : 1;
-          auto const& best_cut = cuts[node_index][node_data.best_cut[use_phase]];
-          cut_deref<false>( best_cut, n, use_phase );
-        }
-
-        /* match positive phase */
-        match_phase_exact<false>( n, 0u );
-
-        /* match negative phase */
-        match_phase_exact<false>( n, 1u );
-
-        /* try to drop one phase */
-        match_drop_phase<true, true>( n );
-      }
-    }
-
-    double area_old = area;
-    bool success = set_mapping_refs<true>();
-
-    /* round stats */
-    if ( ps.verbose )
-    {
-      float area_gain = float( ( area_old - area ) / area_old * 100 );
-      std::string stats = fmt::format( "[i] Cleaning : Delay = {:>12.2f}  Area = {:>12.2f}  Gain = {:>5.2f} %  Inverters = {:>5}  Time = {:>5.2f}\n", delay, area, area_gain, inv, to_seconds( clock::now() - time_begin ) );
-      st.round_stats.push_back( stats );
-    }
-
-    return success;
   }
 #pragma endregion
 
