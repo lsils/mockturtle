@@ -170,8 +170,7 @@ TEST_CASE( "Emap on full adder 2", "[emap]" )
 
   emap_params ps;
   ps.cut_enumeration_ps.minimize_truth_table = false;
-  ps.use_fast_area_recovery = false;
-  ps.ela_rounds = 0;
+  ps.ela_rounds = 1;
   ps.eswp_rounds = 2;
   emap_stats st;
   binding_view<klut_network> luts = emap_klut( aig, lib, ps, &st );
@@ -244,8 +243,7 @@ TEST_CASE( "Emap on full adder 2 with cells", "[emap]" )
 
   emap_params ps;
   ps.cut_enumeration_ps.minimize_truth_table = false;
-  ps.use_fast_area_recovery = false;
-  ps.ela_rounds = 0;
+  ps.ela_rounds = 1;
   ps.eswp_rounds = 2;
   emap_stats st;
   cell_view<block_network> luts = emap( aig, lib, ps, &st );
@@ -382,12 +380,12 @@ TEST_CASE( "Emap on multiplier with multi-output gates", "[emap]" )
 
   const float eps{ 0.005f };
 
-  CHECK( luts.size() == 233u );
+  CHECK( luts.size() == 235u );
   CHECK( luts.num_pis() == 16u );
   CHECK( luts.num_pos() == 16u );
-  CHECK( luts.num_gates() == 215u );
-  CHECK( st.area > 575.0f - eps );
-  CHECK( st.area < 575.0f + eps );
+  CHECK( luts.num_gates() == 217u );
+  CHECK( st.area > 612.0f - eps );
+  CHECK( st.area < 612.0f + eps );
   CHECK( st.delay > 33.60f - eps );
   CHECK( st.delay < 33.60f + eps );
   CHECK( st.multioutput_gates == 40 );
