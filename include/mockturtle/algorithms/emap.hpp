@@ -717,20 +717,31 @@ struct node_match_emap
   float flows[2];
 };
 
-union multi_match_data
-{
-  uint64_t data{ 0 };
-  struct
-  {
-    uint64_t in_tfi : 1;
-    uint64_t cut_index : 31;
-    uint64_t node_index : 32;
-  };
-};
-
 template<class Ntk, unsigned CutSize, unsigned NInputs, classification_type Configuration>
 class emap_impl
 {
+private:
+  union multi_match_data
+  {
+    uint64_t data{ 0 };
+    struct
+    {
+      uint64_t in_tfi : 1;
+      uint64_t cut_index : 31;
+      uint64_t node_index : 32;
+    };
+  };
+  union multioutput_info
+  {
+    uint32_t data;
+    struct
+    {
+      unsigned index : 29;
+      unsigned lowest_index : 1;
+      unsigned highest_index : 1;
+      unsigned has_info : 1;
+    };
+  };
 public:
   static constexpr float epsilon = 0.0005;
   static constexpr uint32_t max_cut_num = 20;
@@ -767,10 +778,11 @@ public:
         ps( ps ),
         st( st ),
         node_match( ntk.size() ),
-        node_tuple_match( ntk.size(), UINT32_MAX ),
+        node_tuple_match( ntk.size() ),
         switch_activity( ps.eswp_rounds ? switching_activity( ntk, ps.switching_activity_patterns ) : std::vector<float>( 0 ) ),
         cuts( ntk.size() )
   {
+    std::memset( node_tuple_match.data(), 0, sizeof( multioutput_info ) * ntk.size() );
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
     std::tie( lib_buf_area, lib_buf_delay, lib_buf_id ) = library.get_buffer_info();
     tmp_visited.reserve( 100 );
@@ -782,10 +794,11 @@ public:
         ps( ps ),
         st( st ),
         node_match( ntk.size() ),
-        node_tuple_match( ntk.size(), UINT32_MAX ),
+        node_tuple_match( ntk.size() ),
         switch_activity( switch_activity ),
         cuts( ntk.size() )
   {
+    std::memset( node_tuple_match.data(), 0, sizeof( multioutput_info ) * ntk.size() );
     std::tie( lib_inv_area, lib_inv_delay, lib_inv_id ) = library.get_inverter_info();
     std::tie( lib_buf_area, lib_buf_delay, lib_buf_id ) = library.get_buffer_info();
     tmp_visited.reserve( 100 );
@@ -968,7 +981,6 @@ private:
     /* compute mapping using exact area */
     i = 0;
     compute_required_time( true );
-    reindex_multioutput_data();
     while ( i++ < ps.ela_rounds )
     {
       if ( !compute_mapping_exact_reversed<false>() )
@@ -1005,6 +1017,12 @@ private:
         continue;
       }
 
+      /* load multi-output cuts and data */
+      if ( ps.map_multioutput && node_tuple_match[index].has_info )
+      {
+        match_multi_add_cuts( n );
+      }
+
       /* match positive phase */
       match_phase<DO_AREA>( n, 0u );
 
@@ -1017,17 +1035,12 @@ private:
       /* select alternative matches to use */
       select_alternatives<DO_AREA>( n );
 
-      /* load and try a multi-output matches */
-      if ( ps.map_multioutput && node_tuple_match[index] != UINT32_MAX )
+      /* try multi-output matches */
+      if constexpr ( DO_AREA )
       {
-        /* continue if matches do not fit in the cut data structure due to bad settings */
-        if ( !match_multi_add_cuts<DO_AREA>( n ) )
-          continue;
-
-        if constexpr ( DO_AREA )
+        if ( ps.map_multioutput && node_tuple_match[index].highest_index )
         {
-          bool multi_success = match_multioutput<DO_AREA>( n );
-          if ( multi_success )
+          if ( match_multioutput<DO_AREA>( n ) )
             multi_node_update<DO_AREA>( n );
         }
       }
@@ -1198,7 +1211,7 @@ private:
         compute_truth_table( index, vcuts, fanin, new_cut );
 
         /* match cut and compute data */
-        compute_cut_data<DO_AREA>( new_cut, n );
+        compute_cut_data( new_cut, n );
 
         if ( ps.remove_dominated_cuts )
           rcuts.insert( new_cut, false, sort );
@@ -1285,7 +1298,7 @@ private:
         compute_truth_table( index, vcuts, fanin, new_cut );
 
         /* match cut and compute data */
-        compute_cut_data<DO_AREA>( new_cut, n );
+        compute_cut_data( new_cut, n );
 
         if ( ps.remove_dominated_cuts )
           rcuts.insert( new_cut, false, sort );
@@ -1308,7 +1321,7 @@ private:
         compute_truth_table( index, vcuts, fanin, new_cut );
 
         /* match cut and compute data */
-        compute_cut_data<DO_AREA>( new_cut, n );
+        compute_cut_data( new_cut, n );
 
         if ( ps.remove_dominated_cuts )
           rcuts.insert( new_cut, false, sort );
@@ -1569,7 +1582,7 @@ private:
     new_cut->function = kitty::extend_to<6>( ntk.node_function( n ) );
 
     /* match cut and compute data */
-    compute_cut_data<DO_AREA>( new_cut, n );
+    compute_cut_data( new_cut, n );
 
     ++cuts_total;
   }
@@ -1618,7 +1631,7 @@ private:
       /* try a multi-output match */
       if constexpr ( DO_AREA )
       {
-        if ( ps.map_multioutput && node_tuple_match[index] != UINT32_MAX )
+        if ( ps.map_multioutput && node_tuple_match[index].highest_index )
         {
           bool multi_success = match_multioutput<DO_AREA>( n );
           if ( multi_success )
@@ -1724,8 +1737,8 @@ private:
       /* try to drop one phase */
       match_drop_phase<true, true, SwitchActivity>( *it );
 
-      /* try a multi-output match */
-      if ( ps.map_multioutput && node_tuple_match[index] < UINT32_MAX - 1 )
+      /* try a multi-output match */ /* TODO: fix the required time*/
+      if ( ps.map_multioutput && node_tuple_match[index].lowest_index )
       {
         bool mapped = match_multioutput_exact<SwitchActivity>( *it, true );
 
@@ -3008,24 +3021,6 @@ private:
     node_data.flows[phase] = ( bg.flow * node_data.est_refs[phase ^ 1] + lib_inv_area ) / node_data.est_refs[phase];
   }
 
-  void reindex_multioutput_data()
-  {
-    /* re-index the multioutput list using the lowest index output instead of the greatest one */
-    if ( !ps.map_multioutput )
-      return;
-
-    for ( auto i = ntk.num_pis(); i < topo_order.size(); ++i )
-    {
-      uint32_t tuple_index = node_tuple_match[i];
-      if ( tuple_index >= UINT32_MAX - 1 )
-        continue;
-
-      multi_match_t const& tuple_data = multi_node_match[tuple_index][0];
-      node_tuple_match[i] = UINT32_MAX - 1; /* arbitrary value to skip the required time propagation */
-      node_tuple_match[tuple_data[0].node_index] = tuple_index;
-    }
-  }
-
   bool initialize_box( node<Ntk> const& n )
   {
     uint32_t index = ntk.node_to_index( n );
@@ -3152,7 +3147,7 @@ private:
   {
     /* extract outputs tuple */
     uint32_t index = ntk.node_to_index( n );
-    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index]][0];
+    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index].index][0];
 
     /* get the cut */
     auto const& cut0 = cuts[tuple_data[0].node_index][tuple_data[0].cut_index];
@@ -3315,7 +3310,7 @@ private:
   {
     /* extract outputs tuple */
     uint32_t index = ntk.node_to_index( n );
-    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index]][0];
+    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index].index][0];
 
     /* local values storage */
     std::array<float, max_multioutput_output_size> best_exact_area;
@@ -3537,7 +3532,7 @@ private:
   void multi_node_update( node<Ntk> const& n )
   {
     uint32_t check_index = ntk.node_to_index( n );
-    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[ntk.node_to_index( n )]][0];
+    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[ntk.node_to_index( n )].index][0];
     uint64_t signature = 0;
 
     /* check if a node is in TFI: there is a path of length > 1 */
@@ -3617,7 +3612,7 @@ private:
   void multi_node_update_exact( node<Ntk> const& n )
   {
     uint32_t check_index = ntk.node_to_index( n );
-    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[ntk.node_to_index( n )]][0];
+    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[ntk.node_to_index( n )].index][0];
     uint64_t signature = 0;
 
     /* check if a node is in TFI: there is a path of length > 1 */
@@ -3698,7 +3693,7 @@ private:
   {
     /* extract outputs tuple */
     uint32_t index = ntk.node_to_index( n );
-    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index]][0];
+    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index].index][0];
 
     for ( int j = max_multioutput_output_size - 1; j >= 0; --j )
     {
@@ -3707,78 +3702,67 @@ private:
     }
   }
 
-  template<bool DO_AREA>
   bool match_multi_add_cuts( node<Ntk> const& n )
   {
+    /* assume a single cut (current version) */
     uint32_t index = ntk.node_to_index( n );
-    auto& matches = multi_node_match[node_tuple_match[index]];
+    multi_match_t& matches = multi_node_match[node_tuple_match[index].index][0];
 
-    /* get the cuts */
-    auto tuple_data_it = matches.begin();
-    while ( tuple_data_it != matches.end() )
+    /* find the corresponding cut */
+    uint32_t cut_p = 0;
+    while( matches[cut_p].node_index != index )
+      ++cut_p;
+    
+    assert( cut_p < matches.size() );
+    uint32_t cut_index = matches[cut_p].cut_index;
+    auto& cut = multi_cut_set[cut_index][cut_p];
+    auto single_cut = multi_cut_set[cut_index][cut_p];
+    auto& rcuts = cuts[index];
+
+    /* not enough space in the data structure: abort */
+    if ( rcuts.size() == max_cut_num )
     {
-      multi_match_t& tuple_data = *tuple_data_it;
-      uint32_t cut_index = tuple_data[0].cut_index;
-      auto& cut_pair = multi_cut_set[cut_index];
-      bool remove_entry = false;
-
-      /* insert multi-output cuts into the standard cut set */
-      for ( auto i = 0; i < max_multioutput_output_size; ++i )
-      {
-        uint64_t node_index = tuple_data[i].node_index;
-        auto& cut = cut_pair[i];
-        auto single_cut = cut_pair[i];
-
-        auto& rcuts = cuts[node_index];
-
-        /* not enough space in the data structure: abort */
-        if ( rcuts.size() == max_cut_num )
-        {
-          remove_entry = true;
-          break;
-        }
-
-        /* insert single cut variation if unique (for delay preservation) */
-        if ( !rcuts.is_contained( single_cut ) )
-        {
-          compute_cut_data<DO_AREA>( single_cut, ntk.index_to_node( node_index ) );
-          rcuts.append_cut( single_cut );
-
-          /* not enough space in the data structure: abort */
-          if ( rcuts.size() == max_cut_num )
-          {
-            rcuts.limit( rcuts.size() - 1 );
-            remove_entry = true;
-            break;
-          }
-        }
-
-        /* add multi-output cut */
-        uint32_t num_cuts_pre = rcuts.size();
-        cut->ignore = true;
-        rcuts.append_cut( cut );
-
-        uint32_t num_cuts_after = rcuts.size();
-        assert( num_cuts_after == num_cuts_pre + 1 );
-
-        rcuts.limit( num_cuts_pre );
-
-        /* update tuple data */
-        tuple_data[i].cut_index = num_cuts_pre;
-      }
-
-      if ( remove_entry )
-        matches.erase( tuple_data_it );
-      else
-        ++tuple_data_it;
+      match_multi_add_cuts_remove_entry( matches );
+      return false;
     }
 
-    /* matches do not fit in the data structure, remove multi-output option */
-    if ( matches.empty() )
-      node_tuple_match[index] = UINT32_MAX;
+    /* insert single cut variation if unique (for delay preservation) */
+    if ( !rcuts.is_contained( single_cut ) )
+    {
+      single_cut->pattern_index = 0;
+      compute_cut_data( single_cut, ntk.index_to_node( index ) );
+      rcuts.append_cut( single_cut );
 
-    /* return if the insertion is (partially) successful */
-    return !matches.empty();
+      /* not enough space in the data structure: abort */
+      if ( rcuts.size() == max_cut_num )
+      {
+        rcuts.limit( rcuts.size() - 1 );
+        match_multi_add_cuts_remove_entry( matches );
+        return false;
+      }
+    }
+
+    /* add multi-output cut */
+    uint32_t num_cuts_pre = rcuts.size();
+    cut->ignore = true;
+    rcuts.append_cut( cut );
+
+    uint32_t num_cuts_after = rcuts.size();
+    assert( num_cuts_after == num_cuts_pre + 1 );
+
+    rcuts.limit( num_cuts_pre );
+
+    /* update tuple data */
+    matches[cut_p].cut_index = num_cuts_pre;
+  }
+
+  inline void match_multi_add_cuts_remove_entry( multi_match_t const& matches )
+  {
+    /* reset matches */
+    for ( multi_match_data const& entry : matches )
+    {
+      node_tuple_match[entry.node_index].data = 0;
+    }
   }
 
   inline bool multi_node_update_cut_check( uint32_t index, uint64_t signature, uint8_t phase )
@@ -4233,7 +4217,7 @@ private:
         }
 
         /* count multioutput gates */
-        if ( ps.map_multioutput && node_tuple_match[index] < UINT32_MAX - 1 && node_data.multioutput_match[phase] )
+        if ( ps.map_multioutput && node_tuple_match[index].lowest_index && node_data.multioutput_match[phase] )
         {
           ++multioutput_count;
         }
@@ -4246,7 +4230,7 @@ private:
         create_lut_for_gate( res, old2new, index, phase );
 
         /* count multioutput gates */
-        if ( ps.map_multioutput && node_tuple_match[index] < UINT32_MAX - 1 && node_data.multioutput_match[phase] )
+        if ( ps.map_multioutput && node_tuple_match[index].lowest_index && node_data.multioutput_match[phase] )
         {
           ++multioutput_count;
         }
@@ -4346,11 +4330,10 @@ private:
         {
           assert( node_data.same_match == true );
 
-          if ( node_tuple_match[index] < UINT32_MAX - 1 )
+          if ( node_tuple_match[index].has_info && node_tuple_match[index].lowest_index )
           {
             ++multioutput_count;
             create_block_for_gate( res, old2new, index, phase, genlib_to_cell );
-            /* TODO: implement */
           }
           continue;
         }
@@ -4548,7 +4531,7 @@ private:
       ++ctr;
     }
 
-    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index]][0];
+    multi_match_t const& tuple_data = multi_node_match[node_tuple_match[index].index][0];
     std::vector<uint32_t> outputs;
     std::vector<kitty::dynamic_truth_table> functions;
 
@@ -4700,7 +4683,6 @@ private:
 #pragma endregion
 
 #pragma region Cuts and matching utils
-  template<bool DO_AREA>
   void compute_cut_data( cut_t& cut, node<Ntk> const& n )
   {
     cut->delay = std::numeric_limits<float>::max();
@@ -5240,7 +5222,12 @@ private:
       if constexpr ( OverlapFilter )
       {
         multi_gate_mark_visited( index1, index2, cut1 );
-        node_tuple_match[index2] = multi_node_match.size();
+        node_tuple_match[index1].has_info = 1;
+        node_tuple_match[index1].lowest_index = 1;
+        node_tuple_match[index1].index = multi_node_match.size();
+        node_tuple_match[index2].has_info = 1;
+        node_tuple_match[index2].highest_index = 1;
+        node_tuple_match[index2].index = multi_node_match.size();
       }
       else
       {
@@ -5267,16 +5254,6 @@ private:
       else
       {
         multi_node_match[insertion_index].push_back( p );
-      }
-    }
-
-    /* remove indexing for lower index for compatible overlapping cuts */
-    if constexpr ( !OverlapFilter )
-    {
-      for ( auto const& entry : multi_node_match )
-      {
-        multi_match_t const& p = entry[0];
-        node_tuple_match[p[0].node_index] = UINT32_MAX;
       }
     }
   }
@@ -5385,24 +5362,30 @@ private:
   inline bool multi_gate_check_incompatible( uint32_t index1, uint32_t index2, bool& is_new, uint32_t& data_index )
   {
     /* check cut assigned cut outputs, specialized code for 2 outputs */
-    uint32_t current_assignment = node_tuple_match[index1];
-    if ( current_assignment != node_tuple_match[index2] )
-      return true;
+    if ( !node_tuple_match[index1].has_info && !node_tuple_match[index2].has_info )
+      return false;
 
-    /* load data */
-    if ( current_assignment != UINT32_MAX )
+    if ( node_tuple_match[index1].has_info && node_tuple_match[index2].has_info )
     {
+      uint32_t current_assignment = node_tuple_match[index1].index;
+      if ( current_assignment != node_tuple_match[index2].index )
+        return true;
       is_new = false;
       data_index = current_assignment;
+      return false;
     }
 
-    return false;
+    return true;
   }
 
   inline void multi_gate_mark_compatibility( uint32_t index1, uint32_t index2, uint32_t mark_value )
   {
-    node_tuple_match[index1] = mark_value;
-    node_tuple_match[index2] = mark_value;
+    node_tuple_match[index1].has_info = 1;
+    node_tuple_match[index1].lowest_index = 1;
+    node_tuple_match[index1].index = mark_value;
+    node_tuple_match[index2].has_info = 1;
+    node_tuple_match[index2].highest_index = 1;
+    node_tuple_match[index2].index = mark_value;
   }
 
   inline void multi_gate_mark_visited( uint32_t index1, uint32_t index2, multi_cut_t const& cut )
@@ -5579,8 +5562,11 @@ private:
         ntk.set_visited( g, ntk.trav_id() - 2 );
         if ( i > 0 && n == repr )
         {
-          /* fix cycle: remove multi-output match; TODO: extend for more than 2 outputs */
-          node_tuple_match[ntk.node_to_index( g )] = UINT32_MAX;
+          /* fix cycle: remove multi-output match */
+          choice_ntk.foreach_choice( repr, [&]( auto const& p ) {
+            node_tuple_match[ntk.node_to_index( p )].data = 0;
+            return true;
+          } );
           choice_ntk.remove_choice( g );
           check = true;
         }
@@ -5712,7 +5698,7 @@ private:
 
   std::vector<node<Ntk>> topo_order;
   node_match_t node_match;
-  std::vector<uint32_t> node_tuple_match;
+  std::vector<multioutput_info> node_tuple_match;
   std::vector<float> switch_activity;
   std::vector<uint64_t> tmp_visited;
 
