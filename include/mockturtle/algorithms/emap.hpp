@@ -927,7 +927,7 @@ public:
 
     auto [res, old2new] = initialize_map_network();
 
-    /* multi-output support is currently not implemented */
+    /* [i] multi-output support is currently not implemented */
 
     /* compute and save topological order */
     init_topo_order();
