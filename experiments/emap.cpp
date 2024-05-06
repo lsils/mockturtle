@@ -65,6 +65,7 @@ int main()
   }
 
   tech_library_params tps;
+  tps.ignore_symmetries = false; // set to true to drastically speed-up mapping with minor delay increase
   tps.verbose = true;
   tech_library<9> tech_lib( gates, tps );
 

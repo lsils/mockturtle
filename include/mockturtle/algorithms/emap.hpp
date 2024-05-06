@@ -742,6 +742,7 @@ private:
       unsigned has_info : 1;
     };
   };
+
 public:
   static constexpr float epsilon = 0.0005;
   static constexpr uint32_t max_cut_num = 20;
@@ -3710,9 +3711,9 @@ private:
 
     /* find the corresponding cut */
     uint32_t cut_p = 0;
-    while( matches[cut_p].node_index != index )
+    while ( matches[cut_p].node_index != index )
       ++cut_p;
-    
+
     assert( cut_p < matches.size() );
     uint32_t cut_index = matches[cut_p].cut_index;
     auto& cut = multi_cut_set[cut_index][cut_p];
