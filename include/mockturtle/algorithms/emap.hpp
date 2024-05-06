@@ -721,26 +721,18 @@ template<class Ntk, unsigned CutSize, unsigned NInputs, classification_type Conf
 class emap_impl
 {
 private:
-  union multi_match_data
+  struct multi_match_data
   {
-    uint64_t data{ 0 };
-    struct
-    {
-      uint64_t in_tfi : 1;
-      uint64_t cut_index : 31;
-      uint64_t node_index : 32;
-    };
+    uint32_t node_index;
+    uint32_t cut_index;
+    bool in_tfi;
   };
-  union multioutput_info
+  struct multioutput_info
   {
-    uint32_t data;
-    struct
-    {
-      unsigned index : 29;
-      unsigned lowest_index : 1;
-      unsigned highest_index : 1;
-      unsigned has_info : 1;
-    };
+    uint32_t index : 29;
+    uint32_t lowest_index : 1;
+    uint32_t highest_index : 1;
+    uint32_t has_info : 1;
   };
 
 public:
@@ -3703,11 +3695,11 @@ private:
     }
   }
 
-  bool match_multi_add_cuts( node<Ntk> const& n )
+  void match_multi_add_cuts( node<Ntk> const& n )
   {
     /* assume a single cut (current version) */
     uint32_t index = ntk.node_to_index( n );
-    multi_match_t& matches = multi_node_match[node_tuple_match[index].index][0];
+    multi_match_t& matches = multi_node_match[node_tuple_match[index].index].at( 0 );
 
     /* find the corresponding cut */
     uint32_t cut_p = 0;
@@ -3724,7 +3716,7 @@ private:
     if ( rcuts.size() == max_cut_num )
     {
       match_multi_add_cuts_remove_entry( matches );
-      return false;
+      return;
     }
 
     /* insert single cut variation if unique (for delay preservation) */
@@ -3739,7 +3731,7 @@ private:
       {
         rcuts.limit( rcuts.size() - 1 );
         match_multi_add_cuts_remove_entry( matches );
-        return false;
+        return;
       }
     }
 
@@ -3762,7 +3754,7 @@ private:
     /* reset matches */
     for ( multi_match_data const& entry : matches )
     {
-      node_tuple_match[entry.node_index].data = 0;
+      node_tuple_match[entry.node_index] = { 0 };
     }
   }
 
@@ -5243,8 +5235,10 @@ private:
       multi_match_data new_data1, new_data2;
       new_data1.node_index = index1;
       new_data1.cut_index = multi_cut_set.size() - 1;
+      new_data1.in_tfi = false;
       new_data2.node_index = index2;
       new_data2.cut_index = multi_cut_set.size() - 1;
+      new_data2.in_tfi = false;
       multi_match_t p = { new_data1, new_data2 };
 
       /* add cuts to the correct bucket */
@@ -5497,7 +5491,7 @@ private:
       if ( multi_is_in_tfi( ntk.index_to_node( index2 ), ntk.index_to_node( index1 ), cut ) )
       {
         /* if there is a path of length > 1 linking node 1 and 2, save as TFI node */
-        uint32_t in_tfi = multi_is_in_direct_tfi( ntk.index_to_node( index2 ), ntk.index_to_node( index1 ) ) ? 0 : 1;
+        bool in_tfi = multi_is_in_direct_tfi( ntk.index_to_node( index2 ), ntk.index_to_node( index1 ) );
         for ( auto& match : field )
           match[0].in_tfi = in_tfi;
         /* add a TFI dependency */
@@ -5565,7 +5559,7 @@ private:
         {
           /* fix cycle: remove multi-output match */
           choice_ntk.foreach_choice( repr, [&]( auto const& p ) {
-            node_tuple_match[ntk.node_to_index( p )].data = 0;
+            node_tuple_match[ntk.node_to_index( p )] = { 0 };
             return true;
           } );
           choice_ntk.remove_choice( g );
