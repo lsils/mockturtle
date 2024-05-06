@@ -371,6 +371,12 @@ private:
                                   perm,
                                   gate_pol };
 
+        /* permute pin-to-pin delays */
+        for ( uint32_t i = 0; i < gate.num_vars; ++i )
+        {
+          sg.tdelay[i] = gate.tdelay[perm[i]];
+        }
+
         auto& v = _label_to_gate[index_rule.data];
 
         auto it = std::lower_bound( v.begin(), v.end(), sg, [&]( auto const& s1, auto const& s2 ) {
