@@ -109,6 +109,9 @@ struct tech_library_params
   /*! \brief Loads multioutput gates in the library */
   bool load_multioutput_gates{ true };
 
+  /*! \brief Don't load symmetrical permutations of gate pins (drastically speeds-up mapping) */
+  bool ignore_symmetries{ false };
+
   /*! \brief Load gates with minimum size only */
   bool load_minimum_size_only{ true };
 
@@ -473,7 +476,7 @@ private:
             if ( sg.root->id == it->root->id )
             {
               /* if already in the library exit, else ignore permutations if with equal delay cost */
-              if ( sg.polarity == it->polarity && sg.tdelay == it->tdelay )
+              if ( sg.polarity == it->polarity && ( _ps.ignore_symmetries || sg.tdelay == it->tdelay ) )
               {
                 to_add = false;
                 break;
@@ -534,7 +537,7 @@ private:
               if ( sg.root->id == it->root->id )
               {
                 /* if already in the library exit, else ignore permutations if with equal delay cost */
-                if ( sg.polarity == it->polarity && sg.tdelay == it->tdelay )
+                if ( sg.polarity == it->polarity && ( _ps.ignore_symmetries || sg.tdelay == it->tdelay ) )
                 {
                   to_add = false;
                   break;
