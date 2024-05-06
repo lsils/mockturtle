@@ -65,6 +65,7 @@ int main()
   }
 
   tech_library_params tps;
+  tps.ignore_symmetries = false; // set to true to drastically speed-up mapping with minor delay increase
   tps.verbose = true;
   tech_library<9> tech_lib( gates, tps );
 
@@ -91,6 +92,7 @@ int main()
     ps.matching_mode = emap_params::hybrid;
     ps.area_oriented_mapping = false;
     ps.map_multioutput = true;
+    ps.relax_required = 0;
     emap_stats st;
     cell_view<block_network> res = emap<9>( aig, tech_lib, ps, &st );
 

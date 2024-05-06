@@ -212,8 +212,8 @@ public:
 
     if ( _ps.verbose )
     {
-      std::cout << fmt::format( "[i] Loading {} simple cells in the library\n", simple_gates_size + large_gates );
-      std::cout << fmt::format( "[i] Loading {} multi-output cells in the library\n", _multioutput_gates.size() );
+      std::cout << fmt::format( "[i] Loading {} simple library cells\n", simple_gates_size + large_gates );
+      std::cout << fmt::format( "[i] Loading {} multi-output library cells\n", _multioutput_gates.size() );
     }
 
     if ( ignored > 0 )
