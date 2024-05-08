@@ -1,0 +1,3 @@
+[submodule "lib/alice"]
+	path = lib/alice
+	url = https://github.com/lsils/alice

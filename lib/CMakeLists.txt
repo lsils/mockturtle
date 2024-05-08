@@ -1,3 +1,6 @@
+# add_subdirectory(pybind11)
+add_subdirectory(alice)
+
 if (NOT TARGET parallel_hashmap)
   add_library(parallel_hashmap INTERFACE) # 2020.11
   target_include_directories(parallel_hashmap SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/parallel_hashmap)
