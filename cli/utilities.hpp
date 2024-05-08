@@ -24,22 +24,29 @@
  */
 
 /*!
-  \file mockturtle_exe.cpp
-  \brief CLI mockturtle
+  \file utilities.hpp
+  \brief CLI utilities
 
   \author Alessandro tempia Calvino
 */
 
-/* include stores */
-#include "store/aig.hpp"
+#pragma once
 
-/* include i/o commands */
-#include "commands/io/read.hpp"
+#include <fstream>
+#include <iostream>
+#include <string>
 
-int main( int argc, char** argv )
+namespace mockturtle
 {
-  std::cout << "EPFL Mockturtle v0.3\n";
 
-  _ALICE_MAIN_BODY( mockturtle )
-  return cli.run( argc, argv );
+bool check_extension( std::string const& filename, std::string const& extension )
+{
+  if ( filename.substr( filename.find_last_of( "." ) + 1 ) == extension )
+  {
+    return true;
+  }
+
+  return false;
 }
+
+} // namespace mockturtle
