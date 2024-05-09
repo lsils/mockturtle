@@ -48,14 +48,12 @@
 namespace alice
 {
 
-/* Reads an aig file and stores the AIG network in a store*/
 class read_command : public alice::command
 {
-
 public:
   explicit read_command( const environment::ptr& env )
       : command( env,
-                 "Reads an RTL file into a specified network type" )
+                 "Reads an RTL file into a specified network type." )
   {
     opts.add_option( "--filename,filename", filename,
                      "File to read in [.aig, .blif, .v]" )
@@ -100,7 +98,7 @@ protected:
                                                            mockturtle::verilog_reader( ntk_name ) );
         if ( result != lorina::return_code::success )
         {
-          env->err() << "[e]" << "Unable to read verilog file\n";
+          env->err() << "[e]" << "Unable to read verilog file.\n";
           return;
         }
 

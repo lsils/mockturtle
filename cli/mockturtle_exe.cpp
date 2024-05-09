@@ -35,6 +35,7 @@
 
 /* include i/o commands */
 #include "commands/io/read.hpp"
+#include "commands/io/write.hpp"
 
 int main( int argc, char** argv )
 {
