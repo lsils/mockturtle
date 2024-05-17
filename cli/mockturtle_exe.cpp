@@ -33,12 +33,15 @@
 /* include stores */
 #include "store/network_manager.hpp"
 
-/* include printing commands */
-#include "commands/printing/print_stats.hpp"
-
 /* include i/o commands */
 #include "commands/io/read.hpp"
 #include "commands/io/write.hpp"
+
+/* include synthesis commands */
+#include "commands/synthesis/rewrite.hpp"
+
+/* include printing commands */
+#include "commands/printing/print_stats.hpp"
 
 int main( int argc, char** argv )
 {

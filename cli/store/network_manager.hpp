@@ -63,8 +63,7 @@ enum network_manager_type
 
 class network_manager
 {
-
-private:
+public:
   using aig_names = mockturtle::names_view<mockturtle::aig_network>;
   using aig_ntk = std::shared_ptr<aig_names>;
   using mig_names = mockturtle::names_view<mockturtle::mig_network>;
