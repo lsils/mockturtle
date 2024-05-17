@@ -57,11 +57,6 @@ public:
     opts.add_option( "--filename,filename", filename,
                      "Name of the file to write [.aig, .bench, .blif, .v]" )
         ->required();
-    add_flag( "--aig,-a", "Writes the AIG network (default without flags)" );
-    add_flag( "--mig,-m", "Writes the MIG network" );
-    add_flag( "--xag,-x", "Writes the XAG network" );
-    add_flag( "--xmg,-g", "Writes the XMG network" );
-    add_flag( "--klut,-k", "Writes the k-LUT network" );
   }
 
 protected:
@@ -70,37 +65,37 @@ protected:
     if ( mockturtle::check_extension( filename, "aig" ) )
     {
       /* TODO: check network type: currently it writes only AIGs */
-      if ( !store<aig_ntk>().empty() )
+      if ( !store<network_manager>().empty() )
       {
-        mockturtle::write_aiger( *store<aig_ntk>().current(), filename );
+        mockturtle::write_aiger( store<network_manager>().current().get_aig(), filename );
       }
       else
       {
-        env->err() << "Empty AIG network.\n";
+        env->err() << "Empty logic network.\n";
       }
     }
     else if ( mockturtle::check_extension( filename, "bench" ) )
     {
-      if ( !store<aig_ntk>().empty() )
+      if ( !store<network_manager>().empty() )
       {
-        mockturtle::write_bench( *store<aig_ntk>().current(), filename );
+        mockturtle::write_bench( store<network_manager>().current().get_aig(), filename );
       }
       else
       {
-        env->err() << "Empty AIG network.\n";
+        env->err() << "Empty logic network.\n";
       }
     }
     /* add support for BLIF file */
     else if ( mockturtle::check_extension( filename, "v" ) )
     {
       /* TODO: check network type: currently it writes only AIGs */
-      if ( !store<aig_ntk>().empty() )
+      if ( !store<network_manager>().empty() )
       {
-        mockturtle::write_verilog( *store<aig_ntk>().current(), filename );
+        mockturtle::write_verilog( store<network_manager>().current().get_aig(), filename );
       }
       else
       {
-        env->err() << "Empty AIG network.\n";
+        env->err() << "Empty logic network.\n";
       }
     }
     else

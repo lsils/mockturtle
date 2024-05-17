@@ -24,26 +24,44 @@
  */
 
 /*!
-  \file mockturtle_exe.cpp
-  \brief CLI mockturtle
+  \file print_stats.hpp
+  \brief Printing statistics command
 
   \author Alessandro tempia Calvino
 */
 
-/* include stores */
-#include "store/network_manager.hpp"
+#pragma once
 
-/* include printing commands */
-#include "commands/printing/print_stats.hpp"
+#include <alice/alice.hpp>
 
-/* include i/o commands */
-#include "commands/io/read.hpp"
-#include "commands/io/write.hpp"
-
-int main( int argc, char** argv )
+namespace alice
 {
-  std::cout << "EPFL Mockturtle v0.3\n";
 
-  _ALICE_MAIN_BODY( mockturtle )
-  return cli.run( argc, argv );
-}
+/* Writes a network to file */
+class print_stats_command : public alice::command
+{
+public:
+  explicit print_stats_command( const environment::ptr& env )
+      : command( env,
+                 "Prints the statistics of the current logic network." )
+  {
+    /* TODO: add flags for additional custom statistics */
+  }
+
+protected:
+  void execute()
+  {
+    if ( !store<network_manager>().empty() )
+    {
+      env->out() << store<network_manager>().current().stats() << std::endl;
+    }
+    else
+    {
+      env->err() << "No logic network" << std::endl;
+    }
+  }
+};
+
+ALICE_ADD_COMMAND( print_stats, "Printing" );
+
+} // namespace alice

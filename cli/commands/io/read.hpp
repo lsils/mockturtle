@@ -72,8 +72,9 @@ protected:
     {
       /* TODO: check network type: currently it loads only AIGs */
       {
-        mockturtle::aig_network ntk;
-        mockturtle::names_view<mockturtle::aig_network> ntk_name{ ntk };
+        network_manager &man = store<network_manager>().extend();
+        mockturtle::names_view<mockturtle::aig_network>& ntk_name = man.add_aig();
+
         lorina::return_code result = lorina::read_aiger( filename,
                                                          mockturtle::aiger_reader( ntk_name ) );
         if ( result != lorina::return_code::success )
@@ -84,7 +85,6 @@ protected:
 
         filename.erase( filename.end() - 4, filename.end() );
         ntk_name.set_network_name( filename );
-        store<aig_ntk>().extend() = std::make_shared<aig_names>( ntk_name );
       }
     }
     /* add support for BLIF file */
@@ -92,8 +92,8 @@ protected:
     {
       /* TODO: check network type: currently it loads only AIGs */
       {
-        mockturtle::aig_network ntk;
-        mockturtle::names_view<mockturtle::aig_network> ntk_name{ ntk };
+        network_manager &man = store<network_manager>().extend();
+        mockturtle::names_view<mockturtle::aig_network>& ntk_name = man.add_aig();
         lorina::return_code result = lorina::read_verilog( filename,
                                                            mockturtle::verilog_reader( ntk_name ) );
         if ( result != lorina::return_code::success )
@@ -102,9 +102,8 @@ protected:
           return;
         }
 
-        filename.erase( filename.end() - 2, filename.end() );
+        filename.erase( filename.end() - 4, filename.end() );
         ntk_name.set_network_name( filename );
-        store<aig_ntk>().extend() = std::make_shared<aig_names>( ntk_name );
       }
     }
     else
