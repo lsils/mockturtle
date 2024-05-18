@@ -58,13 +58,12 @@ public:
     add_flag( "--size,-s", "Toggles load minimum size cells only [default=true]" );
     add_flag( "--dom,-d", "Toggles removing dominated cells [default=true]" );
     add_flag( "--xms,-x", "Toggles using multi-output cells for single-output mapping [default=false]" );
+    add_flag( "--verbose,-v", "Toggles verbose output [default=true]" );
   }
 
 protected:
   void execute()
   {
-    bool large = true, multi = true, sym = false, size = true, dom = true, xms = false;
-
     tech_library_store& lib = store<tech_library_store>().extend();
 
     std::vector<mockturtle::gate> gates;
@@ -77,13 +76,13 @@ protected:
     }
 
     mockturtle::tech_library_params ps;
-    ps.load_large_gates = large ^ is_set( "large" );
-    ps.load_multioutput_gates = multi ^ is_set( "multi" );
-    ps.ignore_symmetries = sym ^ is_set( "sym" );
-    ps.load_minimum_size_only = size ^ is_set( "sym" );
-    ps.remove_dominated_gates = dom ^ is_set( "dom" );
-    ps.load_multioutput_gates_single = xms ^ is_set( "xms" );
-    ps.verbose = true;
+    ps.load_large_gates = !is_set( "large" );
+    ps.load_multioutput_gates = !is_set( "multi" );
+    ps.ignore_symmetries = is_set( "sym" );
+    ps.load_minimum_size_only = !is_set( "size" );
+    ps.remove_dominated_gates = !is_set( "dom" );
+    ps.load_multioutput_gates_single = is_set( "xms" );
+    ps.verbose = !is_set( "verbose" );
 
     lib = std::make_shared<mockturtle::tech_library<9u, mockturtle::classification_type::np_configurations>>( gates, ps );
     lib->set_library_name( filename );

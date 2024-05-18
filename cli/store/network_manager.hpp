@@ -49,16 +49,16 @@
 
 namespace alice
 {
-enum network_manager_type
+enum network_manager_type : uint32_t
 {
-  EMPTY,
-  AIG,
-  XAG,
-  MIG,
-  XMG,
-  KLUT,
-  MAPPED,
-  MAPPED2
+  EMPTY = 0u,
+  AIG = 1u,
+  XAG = 2u,
+  MIG = 4u,
+  XMG = 8u,
+  KLUT = 16u,
+  MAPPED = 32u,
+  MAPPED2 = 64u
 };
 
 class network_manager
@@ -74,7 +74,7 @@ public:
   using xmg_ntk = std::shared_ptr<xmg_names>;
   using klut_names = mockturtle::names_view<mockturtle::klut_network>;
   using klut_ntk = std::shared_ptr<klut_names>;
-  using mapped_names = mockturtle::cell_view<mockturtle::names_view<mockturtle::block_network>>;
+  using mapped_names = mockturtle::names_view<mockturtle::cell_view<mockturtle::block_network>>;
   using mapped_ntk = std::shared_ptr<mapped_names>;
 
 public:
@@ -86,6 +86,11 @@ public:
   network_manager_type const& get_current_type() const
   {
     return current_type;
+  }
+
+  bool is_type( uint32_t allowed_types ) const
+  {
+    return ( current_type & allowed_types ) > 0;
   }
 
   /* return previous type before deleting */
@@ -199,7 +204,8 @@ public:
   mapped_names& add_mapped( std::vector<mockturtle::standard_cell> const& cells )
   {
     delete_current();
-    mapped = std::make_shared<mapped_names>( mapped_names{ cells } );
+    mockturtle::cell_view<mockturtle::block_network> ntk{ cells };
+    mapped = std::make_shared<mapped_names>( mapped_names{ ntk } );
     current_type = network_manager_type::MAPPED;
     return *mapped;
   }

@@ -62,41 +62,41 @@ public:
 protected:
   void execute()
   {
+    if ( store<network_manager>().empty() )
+    {
+      env->err() << "[e] Empty logic network.\n";
+      return;
+    }
+
+    network_manager& ntk = store<network_manager>().current();
     if ( mockturtle::check_extension( filename, "aig" ) )
     {
       /* TODO: check network type: currently it writes only AIGs */
-      if ( !store<network_manager>().empty() )
-      {
-        mockturtle::write_aiger( store<network_manager>().current().get_aig(), filename );
-      }
+      if ( ntk.is_type( network_manager_type::AIG ) )
+        mockturtle::write_aiger( ntk.get_aig(), filename );
       else
-      {
-        env->err() << "[e] Empty logic network.\n";
-      }
+        env->err() << "[e] Can write only AIGs into aiger files.\n";
     }
     else if ( mockturtle::check_extension( filename, "bench" ) )
     {
-      if ( !store<network_manager>().empty() )
-      {
-        mockturtle::write_bench( store<network_manager>().current().get_aig(), filename );
-      }
-      else
-      {
-        env->err() << "[e] Empty logic network.\n";
-      }
+      /* TODO: add checks */
+      mockturtle::write_bench( ntk.get_aig(), filename );
     }
     /* add support for BLIF file */
     else if ( mockturtle::check_extension( filename, "v" ) )
     {
-      /* TODO: check network type: currently it writes only AIGs */
-      if ( !store<network_manager>().empty() )
-      {
-        mockturtle::write_verilog( store<network_manager>().current().get_aig(), filename );
-      }
+      if ( ntk.is_type( network_manager_type::AIG ) )
+        mockturtle::write_verilog( ntk.get_aig(), filename );
+      if ( ntk.is_type( network_manager_type::MIG ) )
+        mockturtle::write_verilog( ntk.get_mig(), filename );
+      if ( ntk.is_type( network_manager_type::XAG ) )
+        mockturtle::write_verilog( ntk.get_xag(), filename );
+      if ( ntk.is_type( network_manager_type::XMG ) )
+        mockturtle::write_verilog( ntk.get_xmg(), filename );
+      else if ( ntk.is_type( network_manager_type::MAPPED ) )
+        mockturtle::write_verilog_with_cell( ntk.get_mapped(), filename );
       else
-      {
-        env->err() << "[e] Empty logic network.\n";
-      }
+        env->err() << "[e] Logic network type not supported.\n";
     }
     else
     {

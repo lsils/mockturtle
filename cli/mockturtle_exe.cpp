@@ -42,6 +42,9 @@
 /* include synthesis commands */
 #include "commands/synthesis/rewrite.hpp"
 
+/* include mapping commands */
+#include "commands/mapping/emap.hpp"
+
 /* include printing commands */
 #include "commands/printing/print_stats.hpp"
 
