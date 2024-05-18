@@ -24,44 +24,44 @@
  */
 
 /*!
-  \file print_stats.hpp
-  \brief Printing statistics command
+  \file cell_library.hpp
+  \brief Store cell library
 
   \author Alessandro tempia Calvino
 */
 
 #pragma once
+#include <string>
 
 #include <alice/alice.hpp>
+#include <fmt/format.h>
+#include <mockturtle/utils/standard_cell.hpp>
+#include <mockturtle/utils/tech_library.hpp>
 
 namespace alice
 {
 
-/* Writes a network to file */
-class print_stats_command : public alice::command
+using tech_library_store = std::shared_ptr<mockturtle::tech_library<9u, mockturtle::classification_type::np_configurations>>;
+
+ALICE_ADD_STORE( tech_library_store, "cell", "c", "Cell library", "Cell libraries" )
+
+ALICE_DESCRIBE_STORE( tech_library_store, lib )
 {
-public:
-  explicit print_stats_command( const environment::ptr& env )
-      : command( env,
-                 "Prints the statistics of the current logic network." )
-  {
-    /* TODO: add flags for additional custom statistics */
-  }
+  return lib->get_library_name();
+}
 
-protected:
-  void execute()
-  {
-    if ( !store<network_manager>().empty() )
-    {
-      env->out() << store<network_manager>().current().stats() << std::endl;
-    }
-    else
-    {
-      env->err() << "[e] No logic network" << std::endl;
-    }
-  }
-};
+ALICE_PRINT_STORE_STATISTICS( tech_library_store, os, lib )
+{
+  os << fmt::format( "{} containing {} cells",
+                     lib->get_library_name(),
+                     lib->get_cells().size() )
+     << std::endl;
+}
 
-ALICE_ADD_COMMAND( print_stats, "Printing" );
+ALICE_LOG_STORE_STATISTICS( tech_library_store, lib )
+{
+  return { { "name", lib->get_library_name() },
+           { "cells", lib->get_cells().size() } };
+}
 
 } // namespace alice

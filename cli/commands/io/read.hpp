@@ -72,14 +72,14 @@ protected:
     {
       /* TODO: check network type: currently it loads only AIGs */
       {
-        network_manager &man = store<network_manager>().extend();
+        network_manager& man = store<network_manager>().extend();
         mockturtle::names_view<mockturtle::aig_network>& ntk_name = man.add_aig();
 
         lorina::return_code result = lorina::read_aiger( filename,
                                                          mockturtle::aiger_reader( ntk_name ) );
         if ( result != lorina::return_code::success )
         {
-          env->err() << "[e]" << "Unable to read aiger file\n";
+          env->err() << "[e] " << "Unable to read aiger file\n";
           return;
         }
 
@@ -92,13 +92,13 @@ protected:
     {
       /* TODO: check network type: currently it loads only AIGs */
       {
-        network_manager &man = store<network_manager>().extend();
+        network_manager& man = store<network_manager>().extend();
         mockturtle::names_view<mockturtle::aig_network>& ntk_name = man.add_aig();
         lorina::return_code result = lorina::read_verilog( filename,
                                                            mockturtle::verilog_reader( ntk_name ) );
         if ( result != lorina::return_code::success )
         {
-          env->err() << "[e]" << "Unable to read verilog file.\n";
+          env->err() << "[e] " << "Unable to read verilog file.\n";
           return;
         }
 
@@ -108,7 +108,7 @@ protected:
     }
     else
     {
-      env->err() << "[e]" << filename << " is not a valid input file. Accepted file extensions are .aig, .blif, and .v\n";
+      env->err() << "[e] " << filename << " is not a valid input file. Accepted file extensions are .aig, .blif, and .v\n";
     }
   }
 

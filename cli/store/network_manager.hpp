@@ -41,11 +41,11 @@
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/xmg.hpp>
+#include <mockturtle/utils/standard_cell.hpp>
 #include <mockturtle/views/binding_view.hpp>
 #include <mockturtle/views/cell_view.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/names_view.hpp>
-#include <mockturtle/utils/standard_cell.hpp>
 
 namespace alice
 {
@@ -79,7 +79,7 @@ public:
 
 public:
   explicit network_manager()
-    : current_type( network_manager_type::EMPTY )
+      : current_type( network_manager_type::EMPTY )
   {}
 
 public:
@@ -326,7 +326,7 @@ private:
     std::string name, type;
     uint32_t input, output, gates, depth;
     switch ( current_type )
-    {      
+    {
     case network_manager_type::AIG:
       name = aig->get_network_name();
       type = "AIG";
@@ -462,7 +462,7 @@ ALICE_PRINT_STORE_STATISTICS( network_manager, os, man )
 
 ALICE_LOG_STORE_STATISTICS( network_manager, man )
 {
-  auto [name, inputs, outputs, gates ] = man.log();
+  auto [name, inputs, outputs, gates] = man.log();
   return { { "name", name },
            { "inputs", inputs },
            { "outputs", outputs },

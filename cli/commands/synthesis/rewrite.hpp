@@ -37,9 +37,8 @@
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/rewrite.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/views/names_view.hpp>
 #include <mockturtle/utils/tech_library.hpp>
-
+#include <mockturtle/views/names_view.hpp>
 
 namespace alice
 {
@@ -74,7 +73,7 @@ protected:
       rewrite_params ps;
       ps.allow_zero_gain = is_set( "zero" );
       ps.verbose = is_set( "verbose" );
-      network_manager::aig_names &aig = store<network_manager>().current().get_aig();
+      network_manager::aig_names& aig = store<network_manager>().current().get_aig();
       rewrite( aig, lib, ps );
     }
   }

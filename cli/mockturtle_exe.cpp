@@ -31,10 +31,12 @@
 */
 
 /* include stores */
+#include "store/cell_library.hpp"
 #include "store/network_manager.hpp"
 
 /* include i/o commands */
 #include "commands/io/read.hpp"
+#include "commands/io/read_genlib.hpp"
 #include "commands/io/write.hpp"
 
 /* include synthesis commands */

@@ -71,7 +71,7 @@ protected:
       }
       else
       {
-        env->err() << "Empty logic network.\n";
+        env->err() << "[e] Empty logic network.\n";
       }
     }
     else if ( mockturtle::check_extension( filename, "bench" ) )
@@ -82,7 +82,7 @@ protected:
       }
       else
       {
-        env->err() << "Empty logic network.\n";
+        env->err() << "[e] Empty logic network.\n";
       }
     }
     /* add support for BLIF file */
@@ -95,7 +95,7 @@ protected:
       }
       else
       {
-        env->err() << "Empty logic network.\n";
+        env->err() << "[e] Empty logic network.\n";
       }
     }
     else
