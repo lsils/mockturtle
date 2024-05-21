@@ -87,11 +87,11 @@ protected:
     {
       if ( ntk.is_type( network_manager_type::AIG ) )
         mockturtle::write_verilog( ntk.get_aig(), filename );
-      if ( ntk.is_type( network_manager_type::MIG ) )
+      else if ( ntk.is_type( network_manager_type::MIG ) )
         mockturtle::write_verilog( ntk.get_mig(), filename );
-      if ( ntk.is_type( network_manager_type::XAG ) )
+      else if ( ntk.is_type( network_manager_type::XAG ) )
         mockturtle::write_verilog( ntk.get_xag(), filename );
-      if ( ntk.is_type( network_manager_type::XMG ) )
+      else if ( ntk.is_type( network_manager_type::XMG ) )
         mockturtle::write_verilog( ntk.get_xmg(), filename );
       else if ( ntk.is_type( network_manager_type::MAPPED ) )
         mockturtle::write_verilog_with_cell( ntk.get_mapped(), filename );
