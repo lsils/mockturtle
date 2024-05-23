@@ -251,7 +251,7 @@ public:
   }
 
 private:
-  std::vector<gate> const _library;
+  std::vector<gate> _library;
   node_map<uint32_t, Ntk, std::unordered_map<node, uint32_t>> _bindings;
 }; /* binding_view */
 
