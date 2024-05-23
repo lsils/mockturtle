@@ -45,24 +45,6 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
-  build-gcc13:
-    name: GNU GCC 13
-    runs-on: macOS-latest
-
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=$(which g++-13) -DMOCKTURTLE_TEST=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests "~[quality]"
   build-clang14:
     name: Clang 14
     runs-on: macOS-latest
