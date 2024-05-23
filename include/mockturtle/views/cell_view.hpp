@@ -287,7 +287,7 @@ public:
   }
 
 private:
-  std::vector<standard_cell> const _library;
+  std::vector<standard_cell> _library;
   node_map<uint32_t, Ntk, std::unordered_map<node, uint32_t>> _cells;
 }; /* cell_view */
 

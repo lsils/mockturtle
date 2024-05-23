@@ -11,7 +11,7 @@ on:
 jobs:
   build-gcc10:
     name: GNU GCC 10
-    runs-on: macOS-11
+    runs-on: macOS-12
 
     steps:
     - uses: actions/checkout@v1
