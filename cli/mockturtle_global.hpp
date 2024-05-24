@@ -24,37 +24,22 @@
  */
 
 /*!
-  \file mockturtle_exe.cpp
-  \brief CLI mockturtle
+  \file mockturtle_global.hpp
+  \brief Global data for mockturtle
 
   \author Alessandro tempia Calvino
 */
 
-/* include global data */
-#include "mockturtle_global.hpp"
+#include "global_data/exact_library.hpp"
 
-/* include stores */
-#include "store/cell_library.hpp"
-#include "store/network_manager.hpp"
-
-/* include i/o commands */
-#include "commands/io/read.hpp"
-#include "commands/io/read_genlib.hpp"
-#include "commands/io/write.hpp"
-
-/* include synthesis commands */
-#include "commands/synthesis/rewrite.hpp"
-
-/* include mapping commands */
-#include "commands/mapping/emap.hpp"
-
-/* include printing commands */
-#include "commands/printing/print_stats.hpp"
-
-int main( int argc, char** argv )
+namespace alice
 {
-  std::cout << "EPFL Mockturtle v0.3\n";
 
-  _ALICE_MAIN_BODY( mockturtle )
-  return cli.run( argc, argv );
-}
+struct mockturtle_global_data
+{
+  exact_library_manager exact_lib_man;
+};
+
+mockturtle_global_data _mockturtle_global;
+
+} // namespace alice

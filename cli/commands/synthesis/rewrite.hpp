@@ -69,7 +69,7 @@ protected:
     {
       using namespace mockturtle;
       xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
-      exact_library<aig_network> lib( resyn );
+      exact_library<aig_network>& lib = _mockturtle_global.exact_lib_man.get_aig_library();
       rewrite_params ps;
       ps.allow_zero_gain = is_set( "zero" );
       ps.verbose = is_set( "verbose" );
