@@ -476,7 +476,33 @@ public:
     else /* AREA */
     {
       ipos = std::upper_bound( _pcuts.begin(), _pend, &cut, []( auto a, auto b ) { return sort_area( *a, *b ); } );
+      /* check if the same cut already exists */
+      // if ( ipos != _pcuts.begin() && ( *( ipos - 1 ) )->signature() == cut.signature() )
+      // {
+      //   return;
+      // }
     }
+
+    /* check for 0 repetition */
+    // typename std::array<CutType*, MaxCuts>::iterator jpos = ipos;
+    // if ( cut->ignore )
+    // {
+    //   while ( jpos != _pcuts.begin() )
+    //   {
+    //     --jpos;
+    //     if ( ( *jpos )->size() < cut.size() )
+    //       break;
+    //     if ( ( *jpos )->signature() == cut.signature() && std::equal( cut.begin(), cut.end(), ( *jpos )->begin() ) )
+    //       return;
+    //   }
+    // }
+    // else if ( ipos != _pcuts.begin() )
+    // {
+    //   if ( ( *( ipos - 1 ) )->signature() == cut.signature() && std::equal( cut.begin(), cut.end(), ( *( ipos - 1 ) )->begin() ) )
+    //   {
+    //     return;
+    //   }
+    // }
 
     /* too many cuts, we need to remove one */
     if ( _pend == _pcuts.end() || limit_reached )

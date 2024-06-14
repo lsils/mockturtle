@@ -55,7 +55,7 @@ int main()
 
   /* library to map to technology */
   fmt::print( "[i] processing technology library\n" );
-  std::string library = "multioutput";
+  std::string library = "asap7";
   std::vector<gate> gates;
   std::ifstream in( cell_libraries_path( library ) );
 
@@ -67,7 +67,7 @@ int main()
   tech_library_params tps;
   tps.ignore_symmetries = false; // set to true to drastically speed-up mapping with minor delay increase
   tps.verbose = true;
-  tech_library<9> tech_lib( gates, tps );
+  tech_library<6> tech_lib( gates, tps );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
@@ -89,22 +89,22 @@ int main()
     const uint32_t depth_before = depth_view( aig ).depth();
 
     emap_params ps;
-    ps.matching_mode = emap_params::hybrid;
+    ps.matching_mode = emap_params::boolean;
     ps.area_oriented_mapping = false;
-    ps.map_multioutput = true;
+    ps.map_multioutput = false;
     ps.relax_required = 0;
     emap_stats st;
-    cell_view<block_network> res = emap<9>( aig, tech_lib, ps, &st );
+    cell_view<block_network> res = emap<6>( aig, tech_lib, ps, &st );
 
     names_view res_names{ res };
     restore_network_name( aig, res_names );
     restore_pio_names_by_order( aig, res_names );
-    const auto cec = benchmark == "hyp" ? true : abc_cec_mapped_cell( res_names, benchmark, library );
+    // const auto cec = benchmark == "hyp" ? true : abc_cec_mapped_cell( res_names, benchmark, library );
 
     /* write verilog netlist */
     // write_verilog_with_cell( res_names, benchmark + "_mapped.v" );
 
-    exp( benchmark, size_before, res.compute_area(), depth_before, res.compute_worst_delay(), st.multioutput_gates, to_seconds( st.time_total ), cec );
+    exp( benchmark, size_before, res.compute_area(), depth_before, res.compute_worst_delay(), st.multioutput_gates, to_seconds( st.time_total ), true );
   }
 
   exp.save();
