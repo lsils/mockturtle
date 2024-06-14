@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2023  EPFL
+ * Copyright (C) 2018-2024  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -476,6 +476,27 @@ public:
     else /* AREA */
     {
       ipos = std::upper_bound( _pcuts.begin(), _pend, &cut, []( auto a, auto b ) { return sort_area( *a, *b ); } );
+    }
+
+    /* check for redundant cut */
+    typename std::array<CutType*, MaxCuts>::iterator jpos = ipos;
+    if ( cut->ignore )
+    {
+      while ( jpos != _pcuts.begin() )
+      {
+        --jpos;
+        if ( ( *jpos )->size() < cut.size() )
+          break;
+        if ( ( *jpos )->signature() == cut.signature() && std::equal( cut.begin(), cut.end(), ( *jpos )->begin() ) )
+          return;
+      }
+    }
+    else if ( ipos != _pcuts.begin() )
+    {
+      if ( ( *( ipos - 1 ) )->signature() == cut.signature() && std::equal( cut.begin(), cut.end(), ( *( ipos - 1 ) )->begin() ) )
+      {
+        return;
+      }
     }
 
     /* too many cuts, we need to remove one */
