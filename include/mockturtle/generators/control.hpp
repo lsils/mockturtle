@@ -56,7 +56,12 @@ inline std::vector<signal<Ntk>> constant_word( Ntk& ntk, uint64_t value, uint32_
   std::vector<signal<Ntk>> word( bitwidth );
   for ( auto i = 0u; i < bitwidth; ++i )
   {
-    word[i] = ntk.get_constant( static_cast<bool>( ( value >> i ) & 1 ) );
+    bool bit = false;
+    if ( i < 64 )
+    {
+      bit = static_cast<bool>( ( value >> i ) & 1 );
+    }
+    word[i] = ntk.get_constant( bit );
   }
   return word;
 }
