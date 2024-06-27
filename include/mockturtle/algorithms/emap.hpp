@@ -4707,7 +4707,7 @@ private:
 #pragma region Cuts and matching utils
   void compute_cut_data( cut_t& cut, node<Ntk> const& n )
   {
-    cut->delay = std::numeric_limits<float>::max();
+    cut->delay = std::numeric_limits<uint32_t>::max();
     cut->flow = std::numeric_limits<float>::max();
     cut->ignore = false;
 
@@ -4767,7 +4767,7 @@ private:
 
   void compute_cut_data_structural( cut_t& cut, node<Ntk> const& n )
   {
-    cut->delay = std::numeric_limits<float>::max();
+    cut->delay = std::numeric_limits<uint32_t>::max();
     cut->flow = std::numeric_limits<float>::max();
     cut->ignore = false;
 
