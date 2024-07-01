@@ -93,7 +93,10 @@ public:
   bool operator()( phmap::BinaryOutputArchive& os, regular_node<Fanin, Size, PointerFieldSize> const& n ) const
   {
     uint64_t size = n.children.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
 
     for ( const auto& c : n.children )
     {
@@ -105,7 +108,10 @@ public:
     }
 
     size = n.data.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( const auto& d : n.data )
     {
       bool result = this->operator()( os, d );
@@ -122,7 +128,11 @@ public:
   bool operator()( phmap::BinaryInputArchive& ar_input, const regular_node<Fanin, Size, PointerFieldSize>* n ) const
   {
     uint64_t size;
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
+    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
+
     for ( uint64_t i = 0; i < size; ++i )
     {
       pointer_type ptr;
@@ -163,7 +173,10 @@ public:
   {
     /* nodes */
     uint64_t size = storage.nodes.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( const auto& n : storage.nodes )
     {
       if ( !this->operator()( os, n ) )
@@ -174,7 +187,10 @@ public:
 
     /* inputs */
     size = storage.inputs.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( const auto& i : storage.inputs )
     {
       if ( !this->operator()( os, i ) )
@@ -185,7 +201,10 @@ public:
 
     /* outputs */
     size = storage.outputs.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( const auto& o : storage.outputs )
     {
       if ( !this->operator()( os, o ) )
@@ -200,7 +219,10 @@ public:
       return false;
     }
 
-    os.dump( (char*)&storage.trav_id, sizeof( uint32_t ) );
+    if ( !os.dump( (char*)&storage.trav_id, sizeof( uint32_t ) ) )
+    {
+      return false;
+    }
 
     return true;
   }
@@ -209,7 +231,10 @@ public:
   {
     /* nodes */
     uint64_t size;
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
+    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( uint64_t i = 0; i < size; ++i )
     {
       node_type n;
@@ -221,16 +246,25 @@ public:
     }
 
     /* inputs */
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
+    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( uint64_t i = 0; i < size; ++i )
     {
       uint64_t value;
-      ar_input.load( (char*)&value, sizeof( uint64_t ) );
+      if ( !ar_input.load( (char*)&value, sizeof( uint64_t ) ) )
+      {
+        return false;
+      }
       storage->inputs.push_back( value );
     }
 
     /* outputs */
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
+    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( uint64_t i = 0; i < size; ++i )
     {
       pointer_type ptr;
@@ -247,7 +281,10 @@ public:
       return false;
     }
 
-    ar_input.load( (char*)&storage->trav_id, sizeof( uint32_t ) );
+    if ( !ar_input.load( (char*)&storage->trav_id, sizeof( uint32_t ) ) )
+    {
+      return false;
+    }
 
     return true;
   }
