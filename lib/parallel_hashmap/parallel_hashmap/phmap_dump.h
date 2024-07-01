@@ -68,10 +68,14 @@ bool raw_hash_set<Policy, Hash, Eq, Alloc>::dump(OutputArchive& ar) const {
         std::cerr << "Failed to dump ctrl_" << std::endl;
         return false;
     }
-    if (!ar.dump(reinterpret_cast<char*>(slots_),
-                    sizeof(slot_type) * capacity_)) {
-        std::cerr << "Failed to dump slot_" << std::endl;
-        return false;
+    for (size_t i = 0; i < capacity_; ++i) {
+        if (IsFull(ctrl_[i])) {
+            if (!ar.dump(reinterpret_cast<char*>(slots_) + sizeof(slot_type) * i,
+                            sizeof(slot_type))) {
+                std::cerr << "Failed to dump slot_ " << i << std::endl;
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -101,10 +105,15 @@ bool raw_hash_set<Policy, Hash, Eq, Alloc>::load(InputArchive& ar) {
         std::cerr << "Failed to load ctrl" << std::endl;
         return false;
     }
-    if (!ar.load(reinterpret_cast<char*>(slots_),
-                    sizeof(slot_type) * capacity_)) {
-        std::cerr << "Failed to load slot" << std::endl;
-        return false;
+    for (size_t i = 0; i < capacity_; ++i) {
+        if (IsFull(ctrl_[i])) {
+            SanitizerUnpoisonObject(slots_ + i);
+            if (!ar.load(reinterpret_cast<char*>(slots_) + sizeof(slot_type) * i,
+                            sizeof(slot_type))) {
+                std::cerr << "Failed to load slot_ " << i << std::endl;
+                return false;
+            }
+        }
     }
     return true;
 }
