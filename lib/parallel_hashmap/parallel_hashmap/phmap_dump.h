@@ -185,14 +185,19 @@ public:
 
     bool dump(const char *p, size_t sz) {
         ofs_.write(p, sz);
-        return true;
+        return ofs_.good();
     }
 
     template<typename V>
     typename std::enable_if<type_traits_internal::IsTriviallyCopyable<V>::value, bool>::type
     dump(const V& v) {
         ofs_.write(reinterpret_cast<const char *>(&v), sizeof(V));
-        return true;
+        return ofs_.good();
+    }
+
+    bool close() {
+        ofs_.close();
+        return ofs_.good();
     }
 
 private:
@@ -208,14 +213,14 @@ public:
 
     bool load(char* p, size_t sz) {
         ifs_.read(p, sz);
-        return true;
+        return ifs_.good();
     }
 
     template<typename V>
     typename std::enable_if<type_traits_internal::IsTriviallyCopyable<V>::value, bool>::type
     load(V* v) {
         ifs_.read(reinterpret_cast<char *>(v), sizeof(V));
-        return true;
+        return ifs_.good();
     }
 
 private:

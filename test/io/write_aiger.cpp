@@ -78,7 +78,6 @@ TEST_CASE( "write AIG for XOR into AIGERfile", "[write_aiger]" )
   seq_buffer<char> buffer;
   std::ostream os( &buffer );
   write_aiger( aig, os );
-  write_aiger( aig, "test.aig" );
 
   CHECK( buffer.data() ==
          std::vector<char>{
