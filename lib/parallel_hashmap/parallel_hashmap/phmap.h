@@ -2097,7 +2097,7 @@ private:
 
     // Reset all ctrl bytes back to kEmpty, except the sentinel.
     void reset_ctrl() {
-        std::memset(ctrl_, kEmpty, capacity_ + Group::kWidth);
+        std::memset(ctrl_, kEmpty, capacity_ + Group::kWidth + 1);
         ctrl_[capacity_] = kSentinel;
         SanitizerPoisonMemoryRegion(slots_, sizeof(slot_type) * capacity_);
     }
