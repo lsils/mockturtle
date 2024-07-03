@@ -121,7 +121,7 @@ private:
 
         std::vector<uint32_t> new_config( config.begin(), config.begin() + ( config.size() - size ) );
         new_config.push_back( sp_lev );
-        std::sort( new_config.begin(), new_config.end() );
+        std::stable_sort( new_config.begin(), new_config.end() );
 
         temp += cost_for_config( new_config, ignore_initial_buffers );
 
@@ -209,7 +209,7 @@ struct aqfp_network_cost
 
       if ( rellev.size() > 1u || ( rellev.size() == 1u && rellev[0] > 0 ) )
       {
-        std::sort( rellev.begin(), rellev.end() );
+        std::stable_sort( rellev.begin(), rellev.end() );
         auto net_cost = fanout_cc( rellev, ntk.is_ci( n ) && !assume.balance_pis );
         if ( net_cost == std::numeric_limits<double>::infinity() )
         {

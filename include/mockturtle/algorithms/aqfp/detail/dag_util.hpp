@@ -299,7 +299,7 @@ private:
         for ( auto i = last_count; i > 0; --i )
         {
           t.push_back( last_elem );
-          std::sort( t.begin(), t.end() );
+          std::stable_sort( t.begin(), t.end() );
           result.insert( t );
         }
       }

@@ -217,9 +217,9 @@ private:
 
   void compute_sets()
   {
-    // std::sort( _nodes.begin(), _nodes.end(),
+    // std::stable_sort( _nodes.begin(), _nodes.end(),
     //            [&]( auto const& n1, auto const& n2 ) { return static_cast<Ntk*>( this )->node_to_index( n1 ) < static_cast<Ntk*>( this )->node_to_index( n2 ); } );
-    std::sort( _nodes.begin(), _nodes.end() );
+    std::stable_sort( _nodes.begin(), _nodes.end() );
 
     for ( auto const& n : _nodes )
     {

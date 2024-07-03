@@ -721,7 +721,7 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
     }
   }
 
-  std::sort( std::begin( used ), std::end( used ) );
+  std::stable_sort( std::begin( used ), std::end( used ) );
 
   for ( uint32_t index = 0u; index < used.size(); ++index )
   {
@@ -761,7 +761,7 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
           if ( std::find( std::begin( used ), std::end( used ), node_level ) == std::end( used ) )
           {
             used.push_back( node_level );
-            std::sort( std::begin( used ), std::end( used ) );
+            std::stable_sort( std::begin( used ), std::end( used ) );
           }
         }
 
@@ -841,7 +841,7 @@ std::vector<typename Ntk::node> cover( Ntk const& ntk, typename Ntk::node const&
   detail::cover_recursive( ntk, root, nodes );
 
   /* remove duplicates */
-  std::sort( std::begin( nodes ), std::end( nodes ) );
+  std::stable_sort( std::begin( nodes ), std::end( nodes ) );
   auto last = std::unique( std::begin( nodes ), std::end( nodes ) );
   nodes.erase( last, std::end( nodes ) );
 
@@ -923,7 +923,7 @@ public:
       *nodes = cover( ntk, pivot, inputs );
 
       /* expand the nodes towards the TFO */
-      std::sort( std::begin( inputs ), std::end( inputs ) );
+      std::stable_sort( std::begin( inputs ), std::end( inputs ) );
       detail::levelized_expand_towards_tfo( ntk, inputs, *nodes, levels );
     }
 
@@ -933,8 +933,8 @@ public:
     }
 
     /* top. sort nodes */
-    std::sort( std::begin( inputs ), std::end( inputs ) );
-    std::sort( std::begin( *nodes ), std::end( *nodes ) );
+    std::stable_sort( std::begin( inputs ), std::end( inputs ) );
+    std::stable_sort( std::begin( *nodes ), std::end( *nodes ) );
 
     /* collect the nodes with fanout outside of nodes */
     std::vector<signal> outputs = collect_outputs( ntk, inputs, *nodes, refs );

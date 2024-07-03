@@ -192,7 +192,7 @@ namespace percy
                 }
                 if (!std::next_permutation(_fence.begin(), _fence.end())) {
                     if (next_partition(_fence)) {
-                        std::sort(_fence.begin(), _fence.end());
+                        std::stable_sort(_fence.begin(), _fence.end());
                     } else {
                         _fences_finished = true;
                     }
@@ -216,7 +216,7 @@ namespace percy
 
                 _fence.resize(nlevels);
                 if (next_partition(_fence)) {
-                    std::sort(_fence.begin(), _fence.end());
+                    std::stable_sort(_fence.begin(), _fence.end());
                 } else {
                     _fences_finished = true;
                 }

@@ -269,7 +269,7 @@ private:
       }
     }
 
-    std::sort( to_be_removed.begin(), to_be_removed.end() );
+    std::stable_sort( to_be_removed.begin(), to_be_removed.end() );
     to_be_removed.erase( std::unique( to_be_removed.begin(), to_be_removed.end() ), to_be_removed.end() );
 
     std::reverse( std::begin( to_be_removed ), std::end( to_be_removed ) );

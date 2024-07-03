@@ -235,7 +235,7 @@ public:
     {
       auto& rank = ranks[level];
 
-      std::sort( rank.begin(), rank.end(), cmp );
+      std::stable_sort( rank.begin(), rank.end(), cmp );
       std::for_each( rank.cbegin(), rank.cend(), [this, i = 0u]( auto const& n ) mutable { rank_pos[n] = i++; } );
     }
   }
@@ -323,7 +323,7 @@ public:
     pis.reserve( this->num_pis() );
 
     depth_view<Ntk>::foreach_pi( [&pis]( auto const& pi ) { pis.push_back( pi ); } );
-    std::sort( pis.begin(), pis.end(), [this]( auto const& n1, auto const& n2 ) { return rank_pos[n1] < rank_pos[n2]; } );
+    std::stable_sort( pis.begin(), pis.end(), [this]( auto const& n1, auto const& n2 ) { return rank_pos[n1] < rank_pos[n2]; } );
     detail::foreach_element( pis.cbegin(), pis.cend(), std::forward<Fn>( fn ) );
   }
   /**

@@ -2172,7 +2172,7 @@ private:
     }
 
     /* sort leaves in topo order */
-    std::sort( leaves.begin(), leaves.end() );
+    std::stable_sort( leaves.begin(), leaves.end() );
 
     ntk.add_to_mapping( n, leaves.begin(), leaves.end() );
 

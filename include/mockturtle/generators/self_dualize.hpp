@@ -79,7 +79,7 @@ inline aig_network self_dualize_aig( aig_network const& src_aig )
 
   src_aig.foreach_po( [&]( const auto& f ) {
     auto leaves = cut_generator.run( { src_aig.get_node( f ) } ).first;
-    std::sort( std::begin( leaves ), std::end( leaves ) );
+    std::stable_sort( std::begin( leaves ), std::end( leaves ) );
 
     /* check if all leaves are pis */
     for ( const auto& l : leaves )

@@ -123,7 +123,7 @@ struct lut_mapping_update_cuts<cut_enumeration_spectr_cut>
       }
     } );
 
-    std::sort( node_to_cut[n].begin(), node_to_cut[n].end() );
+    std::stable_sort( node_to_cut[n].begin(), node_to_cut[n].end() );
     node_to_cut[n].erase( unique( node_to_cut[n].begin(), node_to_cut[n].end() ), node_to_cut[n].end() );
   }
 

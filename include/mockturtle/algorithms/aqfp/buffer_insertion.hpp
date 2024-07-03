@@ -979,7 +979,7 @@ private:
     } );
 
     /* sort by descending order of levels */
-    std::sort( level_assignment.begin(), level_assignment.end(), std::greater<uint32_t>() );
+    std::stable_sort( level_assignment.begin(), level_assignment.end(), std::greater<uint32_t>() );
 
     /* simulate splitter tree reconstruction */
     uint32_t nodes_in_level = 0;
@@ -1076,7 +1076,7 @@ private:
     }
 
     /* sort by descending order of levels */
-    std::sort( level_assignment.begin(), level_assignment.end(), []( auto const& a, auto const& b ) {
+    std::stable_sort( level_assignment.begin(), level_assignment.end(), []( auto const& a, auto const& b ) {
       return a[1] > b[1];
     } );
 
