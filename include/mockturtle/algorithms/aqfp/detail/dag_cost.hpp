@@ -211,7 +211,7 @@ protected:
     {
       rellev.push_back( lev - curlev[fo] );
     }
-    std::sort( rellev.begin(), rellev.end() );
+    std::stable_sort( rellev.begin(), rellev.end() );
 
     return fanout_cc( rellev );
   }

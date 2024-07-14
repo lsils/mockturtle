@@ -139,7 +139,7 @@ private:
     assert( storage[level].size() > 1 );
 
     /* sort by decreasing level */
-    std::sort( storage[level].begin(), storage[level].end(), [this]( auto const& a, auto const& b ) {
+    std::stable_sort( storage[level].begin(), storage[level].end(), [this]( auto const& a, auto const& b ) {
       return ntk.level( ntk.get_node( a ) ) > ntk.level( ntk.get_node( b ) );
     } );
 

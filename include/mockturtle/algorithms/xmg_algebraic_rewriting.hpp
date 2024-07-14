@@ -421,7 +421,7 @@ private:
   {
     std::array<signal<Ntk>, 3> children;
     ntk.foreach_fanin( n, [&children]( auto const& f, auto i ) { children[i] = f; } );
-    std::sort( children.begin(), children.end(), [this]( auto const& c1, auto const& c2 ) {
+    std::stable_sort( children.begin(), children.end(), [this]( auto const& c1, auto const& c2 ) {
       return ntk.level( ntk.get_node( c1 ) ) < ntk.level( ntk.get_node( c2 ) );
     } );
     return children;

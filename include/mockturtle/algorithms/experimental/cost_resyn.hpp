@@ -209,7 +209,7 @@ private:
     {
       l.score = kitty::count_ones( ( l.lit & 0x1 ? ~get_div( l.lit >> 1 ) : get_div( l.lit >> 1 ) ) & on_off_sets[on_off] );
     }
-    std::sort( pos_unate_lits.begin(), pos_unate_lits.end(), [&]( unate_lit const& l1, unate_lit const& l2 ) {
+    std::stable_sort( pos_unate_lits.begin(), pos_unate_lits.end(), [&]( unate_lit const& l1, unate_lit const& l2 ) {
       return l1.score > l2.score; // descending order
     } );
   }
@@ -221,7 +221,7 @@ private:
       p.score = ( p.lit1 > p.lit2 ) ? kitty::count_ones( ( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) ) ^ ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) ) ) & on_off_sets[on_off] )
                                     : kitty::count_ones( ( p.lit1 & 0x1 ? ~get_div( p.lit1 >> 1 ) : get_div( p.lit1 >> 1 ) ) & ( p.lit2 & 0x1 ? ~get_div( p.lit2 >> 1 ) : get_div( p.lit2 >> 1 ) ) & on_off_sets[on_off] );
     }
-    std::sort( unate_pairs.begin(), unate_pairs.end(), [&]( fanin_pair const& p1, fanin_pair const& p2 ) {
+    std::stable_sort( unate_pairs.begin(), unate_pairs.end(), [&]( fanin_pair const& p1, fanin_pair const& p2 ) {
       return p1.score > p2.score; // descending order
     } );
   }

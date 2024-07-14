@@ -40,7 +40,7 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( trivial_cut );
 
-    std::sort( std::begin( inputs ), std::end( inputs ) );
+    std::stable_sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{ aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d ) } );
   }
 
@@ -57,7 +57,7 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
 
-    std::sort( std::begin( inputs ), std::end( inputs ) );
+    std::stable_sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{ aig.get_node( f3 ), aig.get_node( f4 ) } );
   }
 
@@ -74,7 +74,7 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
 
-    std::sort( std::begin( inputs ), std::end( inputs ) );
+    std::stable_sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{ aig.get_node( a ), aig.get_node( d ), aig.get_node( f2 ) } );
   }
 
@@ -91,7 +91,7 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
 
-    std::sort( std::begin( inputs ), std::end( inputs ) );
+    std::stable_sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{ aig.get_node( f3 ), aig.get_node( f4 ) } );
   }
 
@@ -108,7 +108,7 @@ TEST_CASE( "expand node set towards TFI without cut-size", "[window_utils]" )
     bool const trivial_cut = expand0_towards_tfi( aig, inputs );
     CHECK( !trivial_cut );
 
-    std::sort( std::begin( inputs ), std::end( inputs ) );
+    std::stable_sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{ aig.get_node( f3 ), aig.get_node( f4 ) } );
   }
 }
@@ -143,7 +143,7 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
 
     expand_towards_tfi( aig, inputs, 4u );
 
-    std::sort( std::begin( inputs ), std::end( inputs ) );
+    std::stable_sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{ aig.get_node( a ), aig.get_node( b ), aig.get_node( c ), aig.get_node( d ) } );
   }
 
@@ -159,7 +159,7 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
 
     expand_towards_tfi( aig, inputs, 3u );
 
-    std::sort( std::begin( inputs ), std::end( inputs ) );
+    std::stable_sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{ aig.get_node( a ), aig.get_node( d ), aig.get_node( f2 ) } );
   }
 
@@ -175,7 +175,7 @@ TEST_CASE( "expand node set towards TFI", "[window_utils]" )
 
     expand_towards_tfi( aig, inputs, 3u );
 
-    std::sort( std::begin( inputs ), std::end( inputs ) );
+    std::stable_sort( std::begin( inputs ), std::end( inputs ) );
     CHECK( inputs == std::vector<node>{ aig.get_node( a ), aig.get_node( d ), aig.get_node( f2 ) } );
   }
 }
@@ -206,7 +206,7 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
     std::vector<node> nodes;
     expand_towards_tfo( aig, inputs, nodes );
 
-    std::sort( std::begin( nodes ), std::end( nodes ) );
+    std::stable_sort( std::begin( nodes ), std::end( nodes ) );
     CHECK( nodes == std::vector<node>{ aig.get_node( f1 ), aig.get_node( f2 ), aig.get_node( f3 ),
                                        aig.get_node( f4 ), aig.get_node( f5 ) } );
   }
@@ -215,7 +215,7 @@ TEST_CASE( "expand node set towards TFO", "[window_utils]" )
     std::vector<node> nodes;
     levelized_expand_towards_tfo( aig, inputs, nodes );
 
-    std::sort( std::begin( nodes ), std::end( nodes ) );
+    std::stable_sort( std::begin( nodes ), std::end( nodes ) );
     CHECK( nodes == std::vector<node>{ aig.get_node( f1 ), aig.get_node( f2 ), aig.get_node( f3 ),
                                        aig.get_node( f4 ), aig.get_node( f5 ) } );
   }

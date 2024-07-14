@@ -295,7 +295,7 @@ private:
     uint32_t shift = 0;
 
     /* sort cells by increasing order of area */
-    std::sort( indexes.begin(), indexes.end(),
+    std::stable_sort( indexes.begin(), indexes.end(),
                [&]( auto const& a, auto const& b ) -> bool {
                  return _supergates[a].area < _supergates[b].area;
                } );

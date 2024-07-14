@@ -303,7 +303,7 @@ public:
   bool construct_cut()
   {
     assert( leaves.size() <= ps.max_leaves && "cut-size overflow" );
-    std::sort( std::begin( leaves ), std::end( leaves ),
+    std::stable_sort( std::begin( leaves ), std::end( leaves ),
                [this]( node const& a, node const& b ) {
                  return cost( a ) < cost( b );
                } );

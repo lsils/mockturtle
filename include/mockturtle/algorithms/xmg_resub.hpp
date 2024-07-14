@@ -214,7 +214,7 @@ public:
       auto const& tt_s = sim.get_tt( s );
       sorted_divs.emplace_back( static_cast<uint32_t>( *it ), static_cast<uint32_t>( relative_distinguishing_power( tt_s, tt ) ) );
     }
-    std::sort( std::rbegin( sorted_divs ), std::rend( sorted_divs ),
+    std::stable_sort( std::rbegin( sorted_divs ), std::rend( sorted_divs ),
                [&]( auto const& u, auto const& v ) {
                  if ( u.entropy == v.entropy )
                    return u.node < v.node;
