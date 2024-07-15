@@ -42,6 +42,7 @@
 
 #include "../networks/aig.hpp"
 #include <fstream>
+#include <optional>
 #include <parallel_hashmap/phmap_dump.h>
 
 namespace mockturtle
@@ -292,6 +293,17 @@ public:
 
 } /* namespace detail */
 
+/*! \brief Serializes a combinational AIG network to a archive, returning false on failure
+ *
+ * \param aig Combinational AIG network
+ * \param os Output archive
+ */
+inline bool serialize_network_fallible( aig_network const& aig, phmap::BinaryOutputArchive& os )
+{
+  detail::serializer _serializer;
+  return _serializer( os, *aig._storage );
+}
+
 /*! \brief Serializes a combinational AIG network to a archive
  *
  * \param aig Combinational AIG network
@@ -299,8 +311,7 @@ public:
  */
 inline void serialize_network( aig_network const& aig, phmap::BinaryOutputArchive& os )
 {
-  detail::serializer _serializer;
-  bool const okay = _serializer( os, *aig._storage );
+  bool const okay = serialize_network_fallible( aig, os );
   (void)okay;
   assert( okay && "failed to serialize the network onto stream" );
 }
@@ -316,12 +327,12 @@ inline void serialize_network( aig_network const& aig, std::string const& filena
   serialize_network( aig, ar_out );
 }
 
-/*! \brief Deserializes a combinational AIG network from a input archive
+/*! \brief Deserializes a combinational AIG network from a input archive, returning nullopt on failure
  *
  * \param ar_input Input archive
  * \return Deserialized AIG network
  */
-inline aig_network deserialize_network( phmap::BinaryInputArchive& ar_input )
+inline std::optional<aig_network> deserialize_network_fallible( phmap::BinaryInputArchive& ar_input )
 {
   detail::serializer _serializer;
   auto storage = std::make_shared<aig_storage>();
@@ -330,10 +341,25 @@ inline aig_network deserialize_network( phmap::BinaryInputArchive& ar_input )
   storage->outputs.clear();
   storage->hash.clear();
 
-  bool const okay = _serializer( ar_input, storage.get() );
-  (void)okay;
-  assert( okay && "failed to deserialize the network onto stream" );
-  return aig_network{ storage };
+  if ( _serializer( ar_input, storage.get() ) )
+  {
+    return aig_network{ storage };
+  }
+
+  return std::nullopt;
+}
+
+/*! \brief Deserializes a combinational AIG network from a input archive
+ *
+ * \param ar_input Input archive
+ * \return Deserialized AIG network
+ */
+inline aig_network deserialize_network( phmap::BinaryInputArchive& ar_input )
+{
+  auto result = deserialize_network_fallible( ar_input );
+  (void)result.has_value();
+  assert( result.has_value() && "failed to deserialize the network onto stream" );
+  return *result;
 }
 
 /*! \brief Deserializes a combinational AIG network from a file

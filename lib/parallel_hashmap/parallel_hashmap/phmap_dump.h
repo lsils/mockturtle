@@ -21,6 +21,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include "phmap.h"
 namespace phmap
@@ -179,11 +180,18 @@ bool parallel_hash_set<N, RefSet, Mtx_, Policy, Hash, Eq, Alloc>::load(InputArch
 // ------------------------------------------------------------------------
 class BinaryOutputArchive {
 public:
-    BinaryOutputArchive(const char *file_path) {
+    BinaryOutputArchive(const char *file_path,
+                        size_t bytes_remaining = std::numeric_limits<size_t>::max())
+        : bytes_remaining_(bytes_remaining) {
         ofs_.open(file_path, std::ios_base::binary);
     }
 
     bool dump(const char *p, size_t sz) {
+        if ( sz > bytes_remaining_ ) {
+            bytes_remaining_ = 0;
+            return false;
+        }
+        bytes_remaining_ -= sz;
         ofs_.write(p, sz);
         return ofs_.good();
     }
@@ -191,8 +199,7 @@ public:
     template<typename V>
     typename std::enable_if<type_traits_internal::IsTriviallyCopyable<V>::value, bool>::type
     dump(const V& v) {
-        ofs_.write(reinterpret_cast<const char *>(&v), sizeof(V));
-        return ofs_.good();
+        return dump(reinterpret_cast<const char *>(&v), sizeof(V));
     }
 
     bool close() {
@@ -202,16 +209,24 @@ public:
 
 private:
     std::ofstream ofs_;
+    size_t bytes_remaining_;
 };
 
 
 class BinaryInputArchive {
 public:
-    BinaryInputArchive(const char * file_path) {
+    BinaryInputArchive(const char * file_path,
+                       size_t bytes_remaining = std::numeric_limits<size_t>::max())
+        : bytes_remaining_(bytes_remaining) {
         ifs_.open(file_path, std::ios_base::binary);
     }
 
     bool load(char* p, size_t sz) {
+        if ( sz > bytes_remaining_ ) {
+            bytes_remaining_ = 0;
+            return false;
+        }
+        bytes_remaining_ -= sz;
         ifs_.read(p, sz);
         return ifs_.good();
     }
@@ -219,12 +234,12 @@ public:
     template<typename V>
     typename std::enable_if<type_traits_internal::IsTriviallyCopyable<V>::value, bool>::type
     load(V* v) {
-        ifs_.read(reinterpret_cast<char *>(v), sizeof(V));
-        return ifs_.good();
+        return load(reinterpret_cast<char *>(v), sizeof(V));
     }
 
 private:
     std::ifstream ifs_;
+    size_t bytes_remaining_;
 };
 
 } // namespace phmap
