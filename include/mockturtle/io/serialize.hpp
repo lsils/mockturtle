@@ -42,6 +42,7 @@
 
 #include "../networks/aig.hpp"
 #include <fstream>
+#include <optional>
 #include <parallel_hashmap/phmap_dump.h>
 
 namespace mockturtle
@@ -93,7 +94,10 @@ public:
   bool operator()( phmap::BinaryOutputArchive& os, regular_node<Fanin, Size, PointerFieldSize> const& n ) const
   {
     uint64_t size = n.children.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
 
     for ( const auto& c : n.children )
     {
@@ -105,7 +109,10 @@ public:
     }
 
     size = n.data.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( const auto& d : n.data )
     {
       bool result = this->operator()( os, d );
@@ -122,7 +129,11 @@ public:
   bool operator()( phmap::BinaryInputArchive& ar_input, const regular_node<Fanin, Size, PointerFieldSize>* n ) const
   {
     uint64_t size;
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
+    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
+
     for ( uint64_t i = 0; i < size; ++i )
     {
       pointer_type ptr;
@@ -163,7 +174,10 @@ public:
   {
     /* nodes */
     uint64_t size = storage.nodes.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( const auto& n : storage.nodes )
     {
       if ( !this->operator()( os, n ) )
@@ -174,7 +188,10 @@ public:
 
     /* inputs */
     size = storage.inputs.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( const auto& i : storage.inputs )
     {
       if ( !this->operator()( os, i ) )
@@ -185,7 +202,10 @@ public:
 
     /* outputs */
     size = storage.outputs.size();
-    os.dump( (char*)&size, sizeof( uint64_t ) );
+    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( const auto& o : storage.outputs )
     {
       if ( !this->operator()( os, o ) )
@@ -200,7 +220,10 @@ public:
       return false;
     }
 
-    os.dump( (char*)&storage.trav_id, sizeof( uint32_t ) );
+    if ( !os.dump( (char*)&storage.trav_id, sizeof( uint32_t ) ) )
+    {
+      return false;
+    }
 
     return true;
   }
@@ -209,7 +232,10 @@ public:
   {
     /* nodes */
     uint64_t size;
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
+    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( uint64_t i = 0; i < size; ++i )
     {
       node_type n;
@@ -221,16 +247,25 @@ public:
     }
 
     /* inputs */
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
+    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( uint64_t i = 0; i < size; ++i )
     {
       uint64_t value;
-      ar_input.load( (char*)&value, sizeof( uint64_t ) );
+      if ( !ar_input.load( (char*)&value, sizeof( uint64_t ) ) )
+      {
+        return false;
+      }
       storage->inputs.push_back( value );
     }
 
     /* outputs */
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
+    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    {
+      return false;
+    }
     for ( uint64_t i = 0; i < size; ++i )
     {
       pointer_type ptr;
@@ -247,13 +282,27 @@ public:
       return false;
     }
 
-    ar_input.load( (char*)&storage->trav_id, sizeof( uint32_t ) );
+    if ( !ar_input.load( (char*)&storage->trav_id, sizeof( uint32_t ) ) )
+    {
+      return false;
+    }
 
     return true;
   }
 }; /* struct serializer */
 
 } /* namespace detail */
+
+/*! \brief Serializes a combinational AIG network to a archive, returning false on failure
+ *
+ * \param aig Combinational AIG network
+ * \param os Output archive
+ */
+inline bool serialize_network_fallible( aig_network const& aig, phmap::BinaryOutputArchive& os )
+{
+  detail::serializer _serializer;
+  return _serializer( os, *aig._storage );
+}
 
 /*! \brief Serializes a combinational AIG network to a archive
  *
@@ -262,8 +311,7 @@ public:
  */
 inline void serialize_network( aig_network const& aig, phmap::BinaryOutputArchive& os )
 {
-  detail::serializer _serializer;
-  bool const okay = _serializer( os, *aig._storage );
+  bool const okay = serialize_network_fallible( aig, os );
   (void)okay;
   assert( okay && "failed to serialize the network onto stream" );
 }
@@ -279,12 +327,12 @@ inline void serialize_network( aig_network const& aig, std::string const& filena
   serialize_network( aig, ar_out );
 }
 
-/*! \brief Deserializes a combinational AIG network from a input archive
+/*! \brief Deserializes a combinational AIG network from a input archive, returning nullopt on failure
  *
  * \param ar_input Input archive
  * \return Deserialized AIG network
  */
-inline aig_network deserialize_network( phmap::BinaryInputArchive& ar_input )
+inline std::optional<aig_network> deserialize_network_fallible( phmap::BinaryInputArchive& ar_input )
 {
   detail::serializer _serializer;
   auto storage = std::make_shared<aig_storage>();
@@ -293,10 +341,25 @@ inline aig_network deserialize_network( phmap::BinaryInputArchive& ar_input )
   storage->outputs.clear();
   storage->hash.clear();
 
-  bool const okay = _serializer( ar_input, storage.get() );
-  (void)okay;
-  assert( okay && "failed to deserialize the network onto stream" );
-  return aig_network{ storage };
+  if ( _serializer( ar_input, storage.get() ) )
+  {
+    return aig_network{ storage };
+  }
+
+  return std::nullopt;
+}
+
+/*! \brief Deserializes a combinational AIG network from a input archive
+ *
+ * \param ar_input Input archive
+ * \return Deserialized AIG network
+ */
+inline aig_network deserialize_network( phmap::BinaryInputArchive& ar_input )
+{
+  auto result = deserialize_network_fallible( ar_input );
+  (void)result.has_value();
+  assert( result.has_value() && "failed to deserialize the network onto stream" );
+  return *result;
 }
 
 /*! \brief Deserializes a combinational AIG network from a file
