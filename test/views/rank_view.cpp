@@ -132,7 +132,8 @@ TEMPLATE_TEST_CASE( "compute ranks for a simple network", "[rank_view]", aig_net
 
 TEMPLATE_TEST_CASE( "compute ranks during node construction", "[rank_view]", aig_network, mig_network, xag_network, xmg_network, klut_network, cover_network, buffered_aig_network, buffered_mig_network, crossed_klut_network, buffered_crossed_klut_network )
 {
-  depth_view const depth_ntk{ TestType{} };
+  TestType ntk{};
+  depth_view const depth_ntk{ ntk };
   rank_view rank_ntk{ depth_ntk };
 
   auto const a = rank_ntk.create_pi();

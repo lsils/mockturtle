@@ -1009,7 +1009,7 @@ private:
       if ( ps.required_delay < delay )
       {
         if ( !ps.area_oriented_mapping && iteration == 1 )
-          std::cerr << fmt::format( "[i] MAP WARNING: cannot meet the target required time of {:.2f}", ps.required_delay ) << std::endl;
+          std::cerr << fmt::format( "[i] MAP WARNING: cannot meet the target required time of {}", ps.required_delay ) << std::endl;
       }
       else
       {
@@ -1122,7 +1122,7 @@ private:
       if ( ps.required_delay < delay )
       {
         if ( !ps.area_oriented_mapping && iteration == 1 )
-          std::cerr << fmt::format( "[i] MAP WARNING: cannot meet the target required time of {:.2f}", ps.required_delay ) << std::endl;
+          std::cerr << fmt::format( "[i] MAP WARNING: cannot meet the target required time of {}", ps.required_delay ) << std::endl;
       }
       else
       {
@@ -2172,7 +2172,7 @@ private:
     }
 
     /* sort leaves in topo order */
-    std::sort( leaves.begin(), leaves.end() );
+    std::stable_sort( leaves.begin(), leaves.end() );
 
     ntk.add_to_mapping( n, leaves.begin(), leaves.end() );
 

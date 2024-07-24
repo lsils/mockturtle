@@ -286,7 +286,7 @@ private:
     auto input_ind = 1u;
 
     auto tmp_input_slots = net.input_slots;
-    std::sort( tmp_input_slots.begin(), tmp_input_slots.end() );
+    std::stable_sort( tmp_input_slots.begin(), tmp_input_slots.end() );
     assert( tmp_input_slots == net.input_slots );
 
     for ( auto i : net.input_slots )

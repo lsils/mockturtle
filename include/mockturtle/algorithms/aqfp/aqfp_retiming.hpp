@@ -527,7 +527,7 @@ private:
       }
     } );
 
-    std::sort( classes.begin(), classes.end(), [&]( std::vector<node> const& a, std::vector<node> const& b ) { return a.size() > b.size(); } );
+    std::stable_sort( classes.begin(), classes.end(), [&]( std::vector<node> const& a, std::vector<node> const& b ) { return a.size() > b.size(); } );
 
     return classes;
   }

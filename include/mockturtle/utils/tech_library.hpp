@@ -826,7 +826,7 @@ private:
 
         std::iota( order.begin(), order.end(), 0 );
 
-        std::sort( order.begin(), order.end(), [&]( size_t a, size_t b ) {
+        std::stable_sort( order.begin(), order.end(), [&]( size_t a, size_t b ) {
           return static_tts[a] < static_tts[b];
         } );
 
@@ -834,7 +834,7 @@ private:
           return static_tts[a];
         } );
 
-        // std::sort( static_tts.begin(), static_tts.end() );
+        // std::stable_sort( static_tts.begin(), static_tts.end() );
 
         auto& v = _multi_lib[sorted_tts];
 
@@ -1418,14 +1418,14 @@ private:
       rewriting_fn( _database, function, pis.begin(), pis.end(), add_supergate );
       if ( supergates_pos.size() > 0 )
       {
-        std::sort( supergates_pos.begin(), supergates_pos.end(), [&]( auto const& a, auto const& b ) {
+        std::stable_sort( supergates_pos.begin(), supergates_pos.end(), [&]( auto const& a, auto const& b ) {
           return a.area < b.area;
         } );
         _super_lib.insert( { entry, supergates_pos } );
       }
       if ( _ps.np_classification && supergates_neg.size() > 0 )
       {
-        std::sort( supergates_neg.begin(), supergates_neg.end(), [&]( auto const& a, auto const& b ) {
+        std::stable_sort( supergates_neg.begin(), supergates_neg.end(), [&]( auto const& a, auto const& b ) {
           return a.area < b.area;
         } );
         _super_lib.insert( { not_entry, supergates_neg } );

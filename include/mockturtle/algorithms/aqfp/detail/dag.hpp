@@ -75,16 +75,16 @@ struct aqfp_dag
     {
       auto x1 = nodes[i];
       auto x2 = rhs.nodes[i];
-      std::sort( x1.begin(), x1.end() );
-      std::sort( x2.begin(), x2.end() );
+      std::stable_sort( x1.begin(), x1.end() );
+      std::stable_sort( x2.begin(), x2.end() );
       if ( x1 != x2 )
         return false;
     }
 
     auto y1 = input_slots;
     auto y2 = rhs.input_slots;
-    std::sort( y1.begin(), y1.end() );
-    std::sort( y2.begin(), y2.end() );
+    std::stable_sort( y1.begin(), y1.end() );
+    std::stable_sort( y2.begin(), y2.end() );
     if ( y1 != y2 )
       return false;
 

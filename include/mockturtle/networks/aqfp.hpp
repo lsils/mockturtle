@@ -310,7 +310,7 @@ public:
       return children[0u];
     }
 
-    std::sort( children.begin(), children.end(), []( auto f, auto s ) { return f.index < s.index; } );
+    std::stable_sort( children.begin(), children.end(), []( auto f, auto s ) { return f.index < s.index; } );
 
     for ( auto i = 1u; i < children.size(); i++ )
     {

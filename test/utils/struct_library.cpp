@@ -68,7 +68,7 @@ TEST_CASE( "Struct library creation", "[struct_library]" )
   /* translate to sorted vector */
   std::vector<uint32_t> entry_ids;
   std::for_each( library_map.begin(), library_map.end(), [&]( auto const& pair ) { entry_ids.push_back( pair.first ); return; } );
-  std::sort( entry_ids.begin(), entry_ids.end() );
+  std::stable_sort( entry_ids.begin(), entry_ids.end() );
 
   CHECK( entry_ids.size() == 8 );
 
@@ -172,7 +172,7 @@ TEST_CASE( "Struct library creation min sizes", "[struct_library]" )
   /* translate to sorted vector */
   std::vector<uint32_t> entry_ids;
   std::for_each( library_map.begin(), library_map.end(), [&]( auto const& pair ) { entry_ids.push_back( pair.first ); return; } );
-  std::sort( entry_ids.begin(), entry_ids.end() );
+  std::stable_sort( entry_ids.begin(), entry_ids.end() );
 
   CHECK( entry_ids.size() == 1 );
 
@@ -206,7 +206,7 @@ TEST_CASE( "Struct library creation dominated sizes", "[struct_library]" )
   /* translate to sorted vector */
   std::vector<uint32_t> entry_ids;
   std::for_each( library_map.begin(), library_map.end(), [&]( auto const& pair ) { entry_ids.push_back( pair.first ); return; } );
-  std::sort( entry_ids.begin(), entry_ids.end() );
+  std::stable_sort( entry_ids.begin(), entry_ids.end() );
 
   CHECK( entry_ids.size() == 1 );
 
@@ -246,7 +246,7 @@ TEST_CASE( "Struct library creation ignore reconvergence", "[struct_library]" )
   /* translate to sorted vector */
   std::vector<uint32_t> entry_ids;
   std::for_each( library_map.begin(), library_map.end(), [&]( auto const& pair ) { entry_ids.push_back( pair.first ); return; } );
-  std::sort( entry_ids.begin(), entry_ids.end() );
+  std::stable_sort( entry_ids.begin(), entry_ids.end() );
 
   CHECK( entry_ids.size() == 1 );
   CHECK( entry_ids[0] % 2 == 1 );
@@ -276,7 +276,7 @@ TEST_CASE( "Struct library creation large rules", "[struct_library]" )
   /* translate to sorted vector */
   std::vector<uint32_t> entry_ids;
   std::for_each( library_map.begin(), library_map.end(), [&]( auto const& pair ) { entry_ids.push_back( pair.first ); return; } );
-  std::sort( entry_ids.begin(), entry_ids.end() );
+  std::stable_sort( entry_ids.begin(), entry_ids.end() );
 
   CHECK( entry_ids.size() == 2 );
 

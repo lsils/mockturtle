@@ -4707,7 +4707,7 @@ private:
 #pragma region Cuts and matching utils
   void compute_cut_data( cut_t& cut, node<Ntk> const& n )
   {
-    cut->delay = std::numeric_limits<float>::max();
+    cut->delay = std::numeric_limits<uint32_t>::max();
     cut->flow = std::numeric_limits<float>::max();
     cut->ignore = false;
 
@@ -4767,7 +4767,7 @@ private:
 
   void compute_cut_data_structural( cut_t& cut, node<Ntk> const& n )
   {
-    cut->delay = std::numeric_limits<float>::max();
+    cut->delay = std::numeric_limits<uint32_t>::max();
     cut->flow = std::numeric_limits<float>::max();
     cut->ignore = false;
 
@@ -5157,7 +5157,7 @@ private:
         class_list.push_back( it );
     }
 
-    std::sort( class_list.begin(), class_list.end(), [&]( auto const& a, auto const& b ) {
+    std::stable_sort( class_list.begin(), class_list.end(), [&]( auto const& a, auto const& b ) {
       return a.first[2] > b.first[2];
     } );
 
@@ -5300,7 +5300,7 @@ private:
       }
     }
 
-    std::sort( order.begin(), order.end(), [&]( size_t a, size_t b ) {
+    std::stable_sort( order.begin(), order.end(), [&]( size_t a, size_t b ) {
       return tts[a] < tts[b];
     } );
 

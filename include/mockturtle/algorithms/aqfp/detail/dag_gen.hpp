@@ -93,7 +93,7 @@ public:
   {
     std::vector<NodeT> leaves = net.last_layer_leaves;
     leaves.insert( leaves.end(), net.other_leaves.begin(), net.other_leaves.end() );
-    std::sort( leaves.begin(), leaves.end() );
+    std::stable_sort( leaves.begin(), leaves.end() );
 
     auto max_counts = net.max_equal_fanins();
 
