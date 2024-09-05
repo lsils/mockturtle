@@ -73,6 +73,7 @@ protected:
     mockturtle::emap_params ps;
     ps.cut_enumeration_ps.cut_limit = cut_limit;
     ps.area_oriented_mapping = is_set( "area" );
+    ps.map_multioutput = is_set( "multi" );
     ps.required_time = delay;
     ps.relax_required = relax;
     ps.area_flow_rounds = flow;
