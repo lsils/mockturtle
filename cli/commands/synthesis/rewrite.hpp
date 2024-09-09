@@ -65,16 +65,43 @@ protected:
       env->err() << "Empty logic network.\n";
       return;
     }
-    else
+
+    mockturtle::rewrite_params ps;
+    ps.allow_zero_gain = is_set( "zero" );
+    ps.verbose = is_set( "verbose" );
+
+    network_manager& ntk = store<network_manager>().current();
+    if ( ntk.is_type( network_manager_type::AIG ) )
     {
       using namespace mockturtle;
-      xag_npn_resynthesis<aig_network, aig_network, xag_npn_db_kind::aig_complete> resyn;
       exact_library<aig_network>& lib = _mockturtle_global.exact_lib_man.get_aig_library();
-      rewrite_params ps;
-      ps.allow_zero_gain = is_set( "zero" );
-      ps.verbose = is_set( "verbose" );
-      network_manager::aig_names& aig = store<network_manager>().current().get_aig();
+      network_manager::aig_names& aig = ntk.get_aig();
       rewrite( aig, lib, ps );
+    }
+    else if ( ntk.is_type( network_manager_type::XAG ) )
+    {
+      using namespace mockturtle;
+      exact_library<xag_network>& lib = _mockturtle_global.exact_lib_man.get_xag_library();
+      network_manager::xag_names& xag = ntk.get_xag();
+      rewrite( xag, lib, ps );
+    }
+    else if ( ntk.is_type( network_manager_type::MIG ) )
+    {
+      using namespace mockturtle;
+      exact_library<mig_network>& lib = _mockturtle_global.exact_lib_man.get_mig_library();
+      network_manager::mig_names& mig = ntk.get_mig();
+      rewrite( mig, lib, ps );
+    }
+    else if ( ntk.is_type( network_manager_type::XMG ) )
+    {
+      using namespace mockturtle;
+      exact_library<xmg_network>& lib = _mockturtle_global.exact_lib_man.get_xmg_library();
+      network_manager::xmg_names& xmg = ntk.get_xmg();
+      rewrite( xmg, lib, ps );
+    }
+    else
+    {
+      env->err() << "[e] Network type is not supported by rewrite.\n";
     }
   }
 };
