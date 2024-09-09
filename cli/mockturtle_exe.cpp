@@ -42,6 +42,12 @@
 #include "commands/io/read_genlib.hpp"
 #include "commands/io/write.hpp"
 
+/* include data representations */
+#include "commands/representation/aig.hpp"
+#include "commands/representation/mig.hpp"
+#include "commands/representation/xag.hpp"
+#include "commands/representation/xmg.hpp"
+
 /* include synthesis commands */
 #include "commands/synthesis/rewrite.hpp"
 
