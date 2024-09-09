@@ -34,9 +34,7 @@
 
 #include <alice/alice.hpp>
 
-#include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/rewrite.hpp>
-#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/names_view.hpp>
 
@@ -52,7 +50,7 @@ public:
                  "Performs technology-independent rewriting of the logic network." )
   {
     add_flag( "--zero,-z", "Performs zero-gain rewriting [default = no]" );
-    add_flag( "--verbose,-v", "toggle verbose printout [default = no]" );
+    add_flag( "--verbose,-v", "Toggle verbose printout [default = no]" );
     /* TODO: add other flags */
   }
 
