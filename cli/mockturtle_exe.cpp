@@ -53,6 +53,7 @@
 
 /* include mapping commands */
 #include "commands/mapping/emap.hpp"
+#include "commands/mapping/convert_klut.hpp"
 
 /* include printing commands */
 #include "commands/printing/print_stats.hpp"
