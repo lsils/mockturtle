@@ -436,6 +436,7 @@ private:
       input = mapped->num_pis();
       output = mapped->num_pos();
       gates = mapped->num_gates();
+      break;
     default:
       name = "Empty network";
       break;
