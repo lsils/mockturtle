@@ -53,7 +53,7 @@ public:
                  "Performs technology-independent mapping of the logic network." )
   {
     add_flag( "--aig,-a", "Maps to an AIG" );
-    add_flag( "--mig,-m", "Maps to an MIG (default without flags" );
+    add_flag( "--mig,-m", "Maps to an MIG (default without flags)" );
     add_flag( "--xag,-x", "Maps to an XAG" );
     add_flag( "--xmg,-g", "Maps to an XMG" );
     opts.add_option( "--cut_limit,-C", cut_limit, "Max number of priority cuts (2 <= C < 50) [default = 49]" );

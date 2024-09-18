@@ -49,6 +49,8 @@
 #include "commands/representation/xmg.hpp"
 
 /* include synthesis commands */
+#include "commands/synthesis/factoring.hpp"
+#include "commands/synthesis/gmap.hpp"
 #include "commands/synthesis/rewrite.hpp"
 
 /* include mapping commands */
