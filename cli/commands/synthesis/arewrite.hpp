@@ -67,8 +67,8 @@ protected:
       case AIG: {
         mockturtle::xag_algebraic_depth_rewriting_params ps;
         ps.allow_area_increase = !is_set("prevent-increase");
-        mockturtle::depth_view depth_xag{ ntk.get_xag() };
-        mockturtle::xag_algebraic_depth_rewriting( depth_xag );
+        mockturtle::depth_view depth_aig{ ntk.get_aig() };
+        mockturtle::xag_algebraic_depth_rewriting( depth_aig );
         } break;
       
       case XAG: {

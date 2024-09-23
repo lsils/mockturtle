@@ -36,8 +36,7 @@
 
 #include <mockturtle/views/names_view.hpp>
 #include <mockturtle/algorithms/balancing.hpp>
-#include <mockturtle/algorithms/balancing/esop_balancing.hpp>
-#include <mockturtle/algorithms/balancing/sop_balancing.hpp>
+#include <mockturtle/algorithms/lut_mapper.hpp>
 
 namespace alice
 {
@@ -45,7 +44,7 @@ namespace alice
 class balance_command : public alice::command
 {
 private:
-  mockturtle::balancing_params ps;
+  mockturtle::lut_map_params ps;
   enum rebalance_type
   {
     SOP,
@@ -59,13 +58,11 @@ public:
   { 
     add_flag( "--esop", "Use ESOP rebalancing function [default = yes]" );
     add_flag( "--sop",  "Use SOP rebalancing function  [default = no]" );
-    add_flag( "--crit-path,-p", "Toggle optimizing critical path only [default = no]" );
-    add_option( "--cut-size",      ps.cut_enumeration_ps.cut_size,    "Maximum number of leaves for a cut.  [default =  4]" );
-    add_option( "--cut-limit",     ps.cut_enumeration_ps.cut_limit,   "Maximum number of cuts for a node.   [default = 25]" );
+    add_option( "--cut-size",      ps.cut_enumeration_ps.cut_size,    "Maximum number of leaves for a cut.  [default =  6]" );
+    add_option( "--cut-limit",     ps.cut_enumeration_ps.cut_limit,   "Maximum number of cuts for a node.   [default = 8]" );
     add_option( "--fanin-limit",   ps.cut_enumeration_ps.fanin_limit, "Maximum number of fanins for a node. [default = 10]" );
-    add_option( "--use-dont-care", ps.cut_enumeration_ps.minimize_truth_table, "Prune cuts by removing don't cares.  [default = no]" );
+    add_option( "--use-dont-care", ps.cut_enumeration_ps.minimize_truth_table, "Prune cuts by removing don't cares.  [default = yes]" );
     add_flag( "--verbose,-v", "Toggle verbose printout [default = no]" );
-    add_flag( "-w", "Toggle additional verbosity printout [default = no]" );
   }
 
 protected:
@@ -83,10 +80,8 @@ protected:
       rebalance = ESOP;
     }
 
-    ps.only_on_critical_path = is_set( "crit-path" );
     ps.verbose = is_set( "verbose" ) || is_set( "w" );
     ps.cut_enumeration_ps.verbose = is_set( "verbose" ) || is_set( "w" );
-    ps.cut_enumeration_ps.very_verbose = is_set( "w" );
 
     network_manager& ntk = store<network_manager>().current();
     switch (ntk.get_current_type())
@@ -126,17 +121,13 @@ private:
   template<class Ntk>
   mockturtle::names_view<Ntk> balance(Ntk& network)
   {
-    mockturtle::rebalancing_function_t<Ntk> balancing_fn;
+    Ntk res;
 
     if ( rebalance == SOP ) {
-      mockturtle::sop_rebalancing<Ntk> sop{};
-      balancing_fn = sop;
+      res = mockturtle::sop_balancing( network, ps );
     } else {
-      mockturtle::esop_rebalancing<Ntk> esop{};
-      esop.mux_optimization = true;
-      balancing_fn = esop;
+      res = mockturtle::esop_balancing( network, ps );
     }
-    Ntk res = mockturtle::balancing( network, balancing_fn, ps );
     return mockturtle::names_view<Ntk> {res};   
   }
 };

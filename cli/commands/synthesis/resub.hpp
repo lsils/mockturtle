@@ -36,6 +36,9 @@
 
 #include <mockturtle/views/names_view.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/xmg_resub.hpp>
+#include <mockturtle/algorithms/mig_resub.hpp>
 
 namespace alice
 {
@@ -76,19 +79,21 @@ protected:
     switch (ntk.get_current_type())
     {
       case AIG:
-        mockturtle::default_resubstitution( ntk.get_aig(), ps );
+        mockturtle::aig_resubstitution( ntk.get_aig(), ps );
         break;
 
       case XAG:
         mockturtle::default_resubstitution( ntk.get_xag(), ps );
         break;
 
-      case MIG:
-        mockturtle::default_resubstitution( ntk.get_mig(), ps );
-        break;
+      case MIG: {
+        mockturtle::depth_view depth_mig{ ntk.get_mig() };
+        mockturtle::fanout_view fanout_mig{ depth_mig };
+        mockturtle::mig_resubstitution2( fanout_mig, ps );
+        } break;
 
       case XMG:
-        mockturtle::default_resubstitution( ntk.get_xmg(), ps );
+        mockturtle::xmg_resubstitution( ntk.get_xmg(), ps );
         break;
 
       case KLUT:
