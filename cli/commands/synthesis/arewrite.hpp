@@ -44,13 +44,13 @@ namespace alice
 
 class arewrite_command : public alice::command
 {
-private:
-
 public:
   explicit arewrite_command( const environment::ptr& env )
       : command( env,
-                 "Performs algebraic depth rewriting (depth)." )
-  { }
+                 "Performs algebraic depth rewriting (depth optimization)." )
+  { 
+    add_flag( "--prevent-increase", "Prevent area increase while optimizing depth. [default = no]" );
+  }
 
 protected:
   void execute()
@@ -60,29 +60,36 @@ protected:
       env->err() << "Empty logic network.\n";
       return;
     }
-
     
     network_manager& ntk = store<network_manager>().current();
     switch (ntk.get_current_type())
     {
       case AIG: {
+        mockturtle::xag_algebraic_depth_rewriting_params ps;
+        ps.allow_area_increase = !is_set("prevent-increase");
         mockturtle::depth_view depth_xag{ ntk.get_xag() };
         mockturtle::xag_algebraic_depth_rewriting( depth_xag );
         } break;
       
       case XAG: {
+        mockturtle::xag_algebraic_depth_rewriting_params ps;
+        ps.allow_area_increase = !is_set("prevent-increase");
         mockturtle::depth_view depth_xag{ ntk.get_xag() };
         mockturtle::xag_algebraic_depth_rewriting( depth_xag );
         } break;
 
       case MIG: {
+        mockturtle::mig_algebraic_depth_rewriting_params ps;
+        ps.allow_area_increase = !is_set("prevent-increase");
         mockturtle::depth_view depth_mig{ ntk.get_mig() };
-        mockturtle::mig_algebraic_depth_rewriting( depth_mig );
+        mockturtle::mig_algebraic_depth_rewriting( depth_mig, ps );
         } break;
 
       case XMG: {
+        mockturtle::xmg_algebraic_depth_rewriting_params ps;
+        ps.allow_area_increase = !is_set("prevent-increase");
         mockturtle::depth_view depth_xmg{ ntk.get_xmg() };
-        mockturtle::xmg_algebraic_depth_rewriting( depth_xmg );
+        mockturtle::xmg_algebraic_depth_rewriting( depth_xmg, ps );
         } break;
 
       case KLUT:
