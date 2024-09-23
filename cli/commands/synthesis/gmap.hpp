@@ -53,7 +53,7 @@ public:
                  "Performs technology-independent mapping of the logic network." )
   {
     add_flag( "--aig,-a", "Maps to an AIG" );
-    add_flag( "--mig,-m", "Maps to an MIG (default without flags)" );
+    add_flag( "--mig,-m", "Maps to an MIG" );
     add_flag( "--xag,-x", "Maps to an XAG" );
     add_flag( "--xmg,-g", "Maps to an XMG" );
     opts.add_option( "--cut_limit,-C", cut_limit, "Max number of priority cuts (2 <= C < 50) [default = 49]" );
@@ -106,16 +106,7 @@ protected:
       using namespace mockturtle;
       network_manager::aig_names& aig = ntk.get_aig();
 
-      if ( is_set( "aig" ) )
-      {
-        exact_library<aig_network>& lib = _mockturtle_global.exact_lib_man.get_aig_library();
-        aig_network res = map( aig, lib, ps );
-        mockturtle::names_view res_names{ res };
-        mockturtle::restore_network_name( aig, res_names );
-        mockturtle::restore_pio_names_by_order( aig, res_names );
-        ntk.load_aig( res_names );
-      }
-      else if ( is_set( "xag" ) )
+      if ( is_set( "xag" ) )
       {
         exact_library<xag_network>& lib = _mockturtle_global.exact_lib_man.get_xag_library();
         xag_network res = map( aig, lib, ps );
@@ -123,6 +114,15 @@ protected:
         mockturtle::restore_network_name( aig, res_names );
         mockturtle::restore_pio_names_by_order( aig, res_names );
         ntk.load_xag( res_names );
+      }
+      else if ( is_set( "mig" ) )
+      {
+        exact_library<mig_network>& lib = _mockturtle_global.exact_lib_man.get_mig_library();
+        mig_network res = map( aig, lib, ps );
+        mockturtle::names_view res_names{ res };
+        mockturtle::restore_network_name( aig, res_names );
+        mockturtle::restore_pio_names_by_order( aig, res_names );
+        ntk.load_mig( res_names );
       }
       else if ( is_set( "xmg" ) )
       {
@@ -135,12 +135,12 @@ protected:
       }
       else
       {
-        exact_library<mig_network>& lib = _mockturtle_global.exact_lib_man.get_mig_library();
-        mig_network res = map( aig, lib, ps );
+        exact_library<aig_network>& lib = _mockturtle_global.exact_lib_man.get_aig_library();
+        aig_network res = map( aig, lib, ps );
         mockturtle::names_view res_names{ res };
         mockturtle::restore_network_name( aig, res_names );
         mockturtle::restore_pio_names_by_order( aig, res_names );
-        ntk.load_mig( res_names );
+        ntk.load_aig( res_names );
       }
     }
     else if ( ntk.is_type( network_manager_type::XAG ) )
@@ -157,15 +157,6 @@ protected:
         mockturtle::restore_pio_names_by_order( xag, res_names );
         ntk.load_aig( res_names );
       }
-      else if ( is_set( "xag" ) )
-      {
-        exact_library<xag_network>& lib = _mockturtle_global.exact_lib_man.get_xag_library();
-        xag_network res = map( xag, lib, ps );
-        mockturtle::names_view res_names{ res };
-        mockturtle::restore_network_name( xag, res_names );
-        mockturtle::restore_pio_names_by_order( xag, res_names );
-        ntk.load_xag( res_names );
-      }
       else if ( is_set( "mig" ) )
       {
         exact_library<mig_network>& lib = _mockturtle_global.exact_lib_man.get_mig_library();
@@ -175,7 +166,7 @@ protected:
         mockturtle::restore_pio_names_by_order( xag, res_names );
         ntk.load_mig( res_names );
       }
-      else
+      else if ( is_set( "xmg" ) )
       {
         exact_library<xmg_network>& lib = _mockturtle_global.exact_lib_man.get_xmg_library();
         xmg_network res = map( xag, lib, ps );
@@ -183,6 +174,15 @@ protected:
         mockturtle::restore_network_name( xag, res_names );
         mockturtle::restore_pio_names_by_order( xag, res_names );
         ntk.load_xmg( res_names );
+      }
+      else
+      {
+        exact_library<xag_network>& lib = _mockturtle_global.exact_lib_man.get_xag_library();
+        xag_network res = map( xag, lib, ps );
+        mockturtle::names_view res_names{ res };
+        mockturtle::restore_network_name( xag, res_names );
+        mockturtle::restore_pio_names_by_order( xag, res_names );
+        ntk.load_xag( res_names );
       }
     }
     else if ( ntk.is_type( network_manager_type::MIG ) )
@@ -208,16 +208,7 @@ protected:
         mockturtle::restore_pio_names_by_order( mig, res_names );
         ntk.load_xag( res_names );
       }
-      else if ( is_set( "mig" ) )
-      {
-        exact_library<mig_network>& lib = _mockturtle_global.exact_lib_man.get_mig_library();
-        mig_network res = map( mig, lib, ps );
-        mockturtle::names_view res_names{ res };
-        mockturtle::restore_network_name( mig, res_names );
-        mockturtle::restore_pio_names_by_order( mig, res_names );
-        ntk.load_mig( res_names );
-      }
-      else
+      else if ( is_set( "xmg" ) )
       {
         exact_library<xmg_network>& lib = _mockturtle_global.exact_lib_man.get_xmg_library();
         xmg_network res = map( mig, lib, ps );
@@ -225,6 +216,15 @@ protected:
         mockturtle::restore_network_name( mig, res_names );
         mockturtle::restore_pio_names_by_order( mig, res_names );
         ntk.load_xmg( res_names );
+      }
+      else
+      {
+        exact_library<mig_network>& lib = _mockturtle_global.exact_lib_man.get_mig_library();
+        mig_network res = map( mig, lib, ps );
+        mockturtle::names_view res_names{ res };
+        mockturtle::restore_network_name( mig, res_names );
+        mockturtle::restore_pio_names_by_order( mig, res_names );
+        ntk.load_mig( res_names );
       }
     }
     else if ( ntk.is_type( network_manager_type::XMG ) )

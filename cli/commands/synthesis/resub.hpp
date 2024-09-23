@@ -35,6 +35,7 @@
 #include <alice/alice.hpp>
 
 #include <mockturtle/algorithms/aig_resub.hpp>
+#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/resubstitution.hpp>
 #include <mockturtle/algorithms/xmg_resub.hpp>
@@ -80,10 +81,12 @@ protected:
     {
     case AIG:
       mockturtle::aig_resubstitution( ntk.get_aig(), ps );
+      ntk.get_aig() = cleanup_dangling( ntk.get_aig() );
       break;
 
     case XAG:
       mockturtle::default_resubstitution( ntk.get_xag(), ps );
+      ntk.get_xag() = cleanup_dangling( ntk.get_xag() );
       break;
 
     case MIG:
@@ -91,11 +94,13 @@ protected:
       mockturtle::depth_view depth_mig{ ntk.get_mig() };
       mockturtle::fanout_view fanout_mig{ depth_mig };
       mockturtle::mig_resubstitution2( fanout_mig, ps );
+      ntk.get_mig() = cleanup_dangling( ntk.get_mig() );
     }
     break;
 
     case XMG:
       mockturtle::xmg_resubstitution( ntk.get_xmg(), ps );
+      ntk.get_xmg() = cleanup_dangling( ntk.get_xmg() );
       break;
 
     case KLUT:
