@@ -63,6 +63,21 @@ public:
   exact_library_manager() {};
 
 public:
+  template<typename LibType>
+  LibType& get()
+  {
+    if constexpr ( std::is_same_v<LibType, aig_lib_type> )
+      return *aig_lib;
+    if constexpr ( std::is_same_v<LibType, mig_lib_type> )
+      return *xag_lib;
+    if constexpr ( std::is_same_v<LibType, xag_lib_type> )
+      return *mig_lib;
+    if constexpr ( std::is_same_v<LibType, xmg_lib_type> )
+      return *xmg_lib;
+    
+    static_assert( "LibType is not a compatible Library type" );
+  }
+
   aig_lib_type& get_aig_library()
   {
     if ( aig_lib == nullptr )

@@ -88,6 +88,25 @@ public:
     return current_type;
   }
 
+  template<typename Ntk>
+  Ntk& get()
+  {
+    if constexpr ( std::is_same_v<Ntk, aig_names> )
+      return *aig;
+    if constexpr ( std::is_same_v<Ntk, xag_names> )
+      return *xag;
+    if constexpr ( std::is_same_v<Ntk, mig_names> )
+      return *mig;
+    if constexpr ( std::is_same_v<Ntk, xmg_names> )
+      return *xmg;
+    if constexpr ( std::is_same_v<Ntk, klut_names> )
+      return *klut;
+    if constexpr ( std::is_same_v<Ntk, mapped_names> )
+      return *mapped;
+    
+    static_assert( "Ntk is not a compatible network type" );
+  }
+
   bool is_type( uint32_t allowed_types ) const
   {
     return ( current_type & allowed_types ) > 0;
