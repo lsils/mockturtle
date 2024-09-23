@@ -49,6 +49,9 @@ namespace alice
 /* Writes a network to file */
 class write_command : public alice::command
 {
+private:
+  std::string filename{};
+
 public:
   explicit write_command( const environment::ptr& env )
       : command( env,
@@ -69,43 +72,73 @@ protected:
     }
 
     network_manager& ntk = store<network_manager>().current();
-    if ( mockturtle::check_extension( filename, "aig" ) )
+
+    switch (ntk.get_current_type())
     {
-      /* TODO: check network type: currently it writes only AIGs */
-      if ( ntk.is_type( network_manager_type::AIG ) )
-        mockturtle::write_aiger( ntk.get_aig(), filename );
-      else
-        env->err() << "[e] Can write only AIGs into aiger files.\n";
-    }
-    else if ( mockturtle::check_extension( filename, "bench" ) )
-    {
-      /* TODO: add checks */
-      mockturtle::write_bench( ntk.get_aig(), filename );
-    }
-    /* add support for BLIF file */
-    else if ( mockturtle::check_extension( filename, "v" ) )
-    {
-      if ( ntk.is_type( network_manager_type::AIG ) )
-        mockturtle::write_verilog( ntk.get_aig(), filename );
-      else if ( ntk.is_type( network_manager_type::MIG ) )
-        mockturtle::write_verilog( ntk.get_mig(), filename );
-      else if ( ntk.is_type( network_manager_type::XAG ) )
-        mockturtle::write_verilog( ntk.get_xag(), filename );
-      else if ( ntk.is_type( network_manager_type::XMG ) )
-        mockturtle::write_verilog( ntk.get_xmg(), filename );
-      else if ( ntk.is_type( network_manager_type::MAPPED ) )
-        mockturtle::write_verilog_with_cell( ntk.get_mapped(), filename );
-      else
-        env->err() << "[e] Logic network type not supported.\n";
-    }
-    else
-    {
-      env->err() << "[e]" << filename << " file extention has not been recognized.\n";
+    case AIG:
+			env->out() << "[i] writing AIG network to " << filename << std::endl;
+			write_file(ntk.get_aig()); break;
+
+    case MIG:
+			env->out() << "[i] writing MIG network to " << filename << std::endl;
+			write_file(ntk.get_mig()); break;
+
+    case XAG:
+			env->out() << "[i] writing XAG network to " << filename << std::endl;
+			write_file(ntk.get_xag()); break;
+
+    case XMG:
+			env->out() << "[i] writing XMG network to " << filename << std::endl;
+			write_file(ntk.get_xmg()); break;
+
+    case KLUT:
+			env->out() << "[i] writing k-LUT network to " << filename << std::endl;
+			write_file(ntk.get_klut()); break;
+
+    case MAPPED:
+			env->out() << "[i] writing MAPPED network to " << filename << std::endl;
+			write_file(ntk.get_mapped()); break;
+
+    default: break;
     }
   }
 
 private:
-  std::string filename{};
+  // most network types can be written to any format
+  template<class Ntk_View>
+  void write_file(Ntk_View& network)
+	{
+		if ( mockturtle::check_extension( filename, "aig" ) ) {
+			mockturtle::write_aiger( network, filename );
+		}
+		else if ( mockturtle::check_extension( filename, "bench" ) ) {
+			mockturtle::write_bench( network, filename );
+		}
+		else if ( mockturtle::check_extension( filename, "blif" ) ) {
+			mockturtle::write_blif( network, filename );
+		}
+		else if ( mockturtle::check_extension( filename, "v" ) ) {
+			if constexpr (std::is_same_v<Ntk_View, network_manager::klut_names>) {
+				env->err() << "[e] k-LUT networks cannot be written to Verilog.\n";
+			} else {
+				mockturtle::write_verilog( network, filename );
+			}
+		}
+		else {
+				env->err() << "[e] " << filename << " file extention has not been recognized.\n";
+		}
+	}
+
+  // mapped networks require a special writer, only exists for Verilog
+  void write_file(network_manager::mapped_names& network)
+	{
+		if ( mockturtle::check_extension( filename, "v" ) ) {
+			mockturtle::write_verilog_with_cell( network, filename );
+		}
+		else {
+				env->err() << "[e]" << filename << " mapped networks currently only support verilog writeout.\n";
+		}
+	}
 };
 
 ALICE_ADD_COMMAND( write, "I/O" );

@@ -52,9 +52,13 @@
 #include "commands/synthesis/factoring.hpp"
 #include "commands/synthesis/gmap.hpp"
 #include "commands/synthesis/rewrite.hpp"
+#include "commands/synthesis/balance.hpp"
+#include "commands/synthesis/arewrite.hpp"
+#include "commands/synthesis/resub.hpp"
 
 /* include mapping commands */
 #include "commands/mapping/emap.hpp"
+#include "commands/mapping/strash.hpp"
 
 /* include printing commands */
 #include "commands/printing/print_stats.hpp"
