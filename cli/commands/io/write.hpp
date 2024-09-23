@@ -73,72 +73,89 @@ protected:
 
     network_manager& ntk = store<network_manager>().current();
 
-    switch (ntk.get_current_type())
+    switch ( ntk.get_current_type() )
     {
     case AIG:
-			env->out() << "[i] writing AIG network to " << filename << std::endl;
-			write_file(ntk.get_aig()); break;
+      env->out() << "[i] writing AIG network to " << filename << std::endl;
+      write_file( ntk.get_aig() );
+      break;
 
     case MIG:
-			env->out() << "[i] writing MIG network to " << filename << std::endl;
-			write_file(ntk.get_mig()); break;
+      env->out() << "[i] writing MIG network to " << filename << std::endl;
+      write_file( ntk.get_mig() );
+      break;
 
     case XAG:
-			env->out() << "[i] writing XAG network to " << filename << std::endl;
-			write_file(ntk.get_xag()); break;
+      env->out() << "[i] writing XAG network to " << filename << std::endl;
+      write_file( ntk.get_xag() );
+      break;
 
     case XMG:
-			env->out() << "[i] writing XMG network to " << filename << std::endl;
-			write_file(ntk.get_xmg()); break;
+      env->out() << "[i] writing XMG network to " << filename << std::endl;
+      write_file( ntk.get_xmg() );
+      break;
 
     case KLUT:
-			env->out() << "[i] writing k-LUT network to " << filename << std::endl;
-			write_file(ntk.get_klut()); break;
+      env->out() << "[i] writing k-LUT network to " << filename << std::endl;
+      write_file( ntk.get_klut() );
+      break;
 
     case MAPPED:
-			env->out() << "[i] writing MAPPED network to " << filename << std::endl;
-			write_file(ntk.get_mapped()); break;
+      env->out() << "[i] writing MAPPED network to " << filename << std::endl;
+      write_file( ntk.get_mapped() );
+      break;
 
-    default: break;
+    default:
+      break;
     }
   }
 
 private:
   // most network types can be written to any format
   template<class Ntk_View>
-  void write_file(Ntk_View& network)
-	{
-		if ( mockturtle::check_extension( filename, "aig" ) ) {
-			mockturtle::write_aiger( network, filename );
-		}
-		else if ( mockturtle::check_extension( filename, "bench" ) ) {
-			mockturtle::write_bench( network, filename );
-		}
-		else if ( mockturtle::check_extension( filename, "blif" ) ) {
-			mockturtle::write_blif( network, filename );
-		}
-		else if ( mockturtle::check_extension( filename, "v" ) ) {
-			if constexpr (std::is_same_v<Ntk_View, network_manager::klut_names>) {
-				env->err() << "[e] k-LUT networks cannot be written to Verilog.\n";
-			} else {
-				mockturtle::write_verilog( network, filename );
-			}
-		}
-		else {
-				env->err() << "[e] " << filename << " file extention has not been recognized.\n";
-		}
-	}
+  void write_file( Ntk_View& network )
+  {
+    if ( mockturtle::check_extension( filename, "aig" ) )
+    {
+      mockturtle::write_aiger( network, filename );
+    }
+    else if ( mockturtle::check_extension( filename, "bench" ) )
+    {
+      mockturtle::write_bench( network, filename );
+    }
+    else if ( mockturtle::check_extension( filename, "blif" ) )
+    {
+      mockturtle::write_blif( network, filename );
+    }
+    else if ( mockturtle::check_extension( filename, "v" ) )
+    {
+      if constexpr ( std::is_same_v<Ntk_View, network_manager::klut_names> )
+      {
+        env->err() << "[e] k-LUT networks cannot be written to Verilog.\n";
+      }
+      else
+      {
+        mockturtle::write_verilog( network, filename );
+      }
+    }
+    else
+    {
+      env->err() << "[e] " << filename << " file extention has not been recognized.\n";
+    }
+  }
 
   // mapped networks require a special writer, only exists for Verilog
-  void write_file(network_manager::mapped_names& network)
-	{
-		if ( mockturtle::check_extension( filename, "v" ) ) {
-			mockturtle::write_verilog_with_cell( network, filename );
-		}
-		else {
-				env->err() << "[e]" << filename << " mapped networks currently only support verilog writeout.\n";
-		}
-	}
+  void write_file( network_manager::mapped_names& network )
+  {
+    if ( mockturtle::check_extension( filename, "v" ) )
+    {
+      mockturtle::write_verilog_with_cell( network, filename );
+    }
+    else
+    {
+      env->err() << "[e]" << filename << " mapped networks currently only support verilog writeout.\n";
+    }
+  }
 };
 
 ALICE_ADD_COMMAND( write, "I/O" );

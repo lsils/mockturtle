@@ -34,11 +34,11 @@
 
 #include <alice/alice.hpp>
 
-#include <mockturtle/networks/aig.hpp>
-#include <mockturtle/views/names_view.hpp>
-#include <mockturtle/views/mapping_view.hpp>
-#include <mockturtle/algorithms/klut_to_graph.hpp>
 #include <mockturtle/algorithms/collapse_mapped.hpp>
+#include <mockturtle/algorithms/klut_to_graph.hpp>
+#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/views/mapping_view.hpp>
+#include <mockturtle/views/names_view.hpp>
 
 namespace alice
 {
@@ -64,77 +64,114 @@ protected:
   void execute()
   {
     int ntk_type_count = 0;
-    if( is_set( "aig" ) )  { ntk_type = AIG;  ntk_type_count++; }
-    if( is_set( "mig" ) )  { ntk_type = MIG;  ntk_type_count++; }
-    if( is_set( "xag" ) )  { ntk_type = XAG;  ntk_type_count++; }
-    if( is_set( "xmg" ) )  { ntk_type = XMG;  ntk_type_count++; }
-    if( is_set( "klut" ) ) { ntk_type = KLUT; ntk_type_count++; }
+    if ( is_set( "aig" ) )
+    {
+      ntk_type = AIG;
+      ntk_type_count++;
+    }
+    if ( is_set( "mig" ) )
+    {
+      ntk_type = MIG;
+      ntk_type_count++;
+    }
+    if ( is_set( "xag" ) )
+    {
+      ntk_type = XAG;
+      ntk_type_count++;
+    }
+    if ( is_set( "xmg" ) )
+    {
+      ntk_type = XMG;
+      ntk_type_count++;
+    }
+    if ( is_set( "klut" ) )
+    {
+      ntk_type = KLUT;
+      ntk_type_count++;
+    }
 
-    if (ntk_type_count > 1) {
-        env->err() << "[e] Multiple network types set. Network type flags are mututally exclusive.\n";
-        return;
+    if ( ntk_type_count > 1 )
+    {
+      env->err() << "[e] Multiple network types set. Network type flags are mututally exclusive.\n";
+      return;
     }
 
     network_manager& ntk = store<network_manager>().current();
 
     // convert mapped networks first to k-LUT
-    if ( ntk.is_type( MAPPED ) ) {
+    if ( ntk.is_type( MAPPED ) )
+    {
       auto const& mapped = ntk.get_mapped();
-      mockturtle::mapping_view mapped_cell { mapped };
+      mockturtle::mapping_view mapped_cell{ mapped };
       auto const klut_optional = mockturtle::collapse_mapped_network<mockturtle::klut_network>( mapped_cell );
-      
-      if ( klut_optional ) {
-          mockturtle::names_view klut_names { *klut_optional };
-          ntk.load_klut( klut_names );
-      } else {
-          std::cerr << "[ERROR] Unable to collapse mapped network to k-LUT.\n";
+
+      if ( klut_optional )
+      {
+        mockturtle::names_view klut_names{ *klut_optional };
+        ntk.load_klut( klut_names );
+      }
+      else
+      {
+        std::cerr << "[ERROR] Unable to collapse mapped network to k-LUT.\n";
       }
     }
 
-    if ( ntk.is_type( KLUT ) ) {
+    if ( ntk.is_type( KLUT ) )
+    {
       auto const& klut = ntk.get_klut();
 
-      switch (ntk_type)
+      switch ( ntk_type )
       {
-        case AIG: {
-          env->out() << "[i] convert to AIG.\n";
-          mockturtle::aig_network res = mockturtle::convert_klut_to_graph<mockturtle::aig_network>( klut );
-          mockturtle::names_view res_names { res };
-          mockturtle::restore_network_name( klut, res_names );
-          mockturtle::restore_pio_names_by_order( klut, res_names );
-          ntk.load_aig( res_names );
-          } break;
-
-        case MIG: {
-          env->out() << "[i] convert to MIG.\n";
-          mockturtle::mig_network res = mockturtle::convert_klut_to_graph<mockturtle::mig_network>( klut );
-          mockturtle::names_view res_names { res };
-          mockturtle::restore_network_name( klut, res_names );
-          mockturtle::restore_pio_names_by_order( klut, res_names );
-          ntk.load_mig( res_names );
-          } break;
-
-        case XAG: {
-          env->out() << "[i] convert to XAG.\n";
-          mockturtle::xag_network res = mockturtle::convert_klut_to_graph<mockturtle::xag_network>( klut );
-          mockturtle::names_view res_names { res };
-          mockturtle::restore_network_name( klut, res_names );
-          mockturtle::restore_pio_names_by_order( klut, res_names );
-          ntk.load_xag( res_names );
-          } break;
-
-        case XMG: {
-          env->out() << "[i] convert to XMG.\n";
-          mockturtle::xmg_network res = mockturtle::convert_klut_to_graph<mockturtle::xmg_network>( klut );
-          mockturtle::names_view res_names { res };
-          mockturtle::restore_network_name( klut, res_names );
-          mockturtle::restore_pio_names_by_order( klut, res_names );
-          ntk.load_xmg( res_names );
-          } break;
-
-        default: break;
+      case AIG:
+      {
+        env->out() << "[i] convert to AIG.\n";
+        mockturtle::aig_network res = mockturtle::convert_klut_to_graph<mockturtle::aig_network>( klut );
+        mockturtle::names_view res_names{ res };
+        mockturtle::restore_network_name( klut, res_names );
+        mockturtle::restore_pio_names_by_order( klut, res_names );
+        ntk.load_aig( res_names );
       }
-    } else {
+      break;
+
+      case MIG:
+      {
+        env->out() << "[i] convert to MIG.\n";
+        mockturtle::mig_network res = mockturtle::convert_klut_to_graph<mockturtle::mig_network>( klut );
+        mockturtle::names_view res_names{ res };
+        mockturtle::restore_network_name( klut, res_names );
+        mockturtle::restore_pio_names_by_order( klut, res_names );
+        ntk.load_mig( res_names );
+      }
+      break;
+
+      case XAG:
+      {
+        env->out() << "[i] convert to XAG.\n";
+        mockturtle::xag_network res = mockturtle::convert_klut_to_graph<mockturtle::xag_network>( klut );
+        mockturtle::names_view res_names{ res };
+        mockturtle::restore_network_name( klut, res_names );
+        mockturtle::restore_pio_names_by_order( klut, res_names );
+        ntk.load_xag( res_names );
+      }
+      break;
+
+      case XMG:
+      {
+        env->out() << "[i] convert to XMG.\n";
+        mockturtle::xmg_network res = mockturtle::convert_klut_to_graph<mockturtle::xmg_network>( klut );
+        mockturtle::names_view res_names{ res };
+        mockturtle::restore_network_name( klut, res_names );
+        mockturtle::restore_pio_names_by_order( klut, res_names );
+        ntk.load_xmg( res_names );
+      }
+      break;
+
+      default:
+        break;
+      }
+    }
+    else
+    {
       env->err() << "[e] Network type support is not currently implemented in strash.\n";
     }
   }

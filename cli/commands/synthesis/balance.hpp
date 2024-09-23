@@ -34,9 +34,9 @@
 
 #include <alice/alice.hpp>
 
-#include <mockturtle/views/names_view.hpp>
 #include <mockturtle/algorithms/balancing.hpp>
 #include <mockturtle/algorithms/lut_mapper.hpp>
+#include <mockturtle/views/names_view.hpp>
 
 namespace alice
 {
@@ -55,12 +55,12 @@ public:
   explicit balance_command( const environment::ptr& env )
       : command( env,
                  "Performs logic network balancing using dynamic-programming and cut-enumeration." )
-  { 
+  {
     add_flag( "--esop", "Use ESOP rebalancing function [default = yes]" );
-    add_flag( "--sop",  "Use SOP rebalancing function  [default = no]" );
-    add_option( "--cut-size",      ps.cut_enumeration_ps.cut_size,    "Maximum number of leaves for a cut.  [default =  6]" );
-    add_option( "--cut-limit",     ps.cut_enumeration_ps.cut_limit,   "Maximum number of cuts for a node.   [default = 8]" );
-    add_option( "--fanin-limit",   ps.cut_enumeration_ps.fanin_limit, "Maximum number of fanins for a node. [default = 10]" );
+    add_flag( "--sop", "Use SOP rebalancing function  [default = no]" );
+    add_option( "--cut-size", ps.cut_enumeration_ps.cut_size, "Maximum number of leaves for a cut.  [default =  6]" );
+    add_option( "--cut-limit", ps.cut_enumeration_ps.cut_limit, "Maximum number of cuts for a node.   [default = 8]" );
+    add_option( "--fanin-limit", ps.cut_enumeration_ps.fanin_limit, "Maximum number of fanins for a node. [default = 10]" );
     add_option( "--use-dont-care", ps.cut_enumeration_ps.minimize_truth_table, "Prune cuts by removing don't cares.  [default = yes]" );
     add_flag( "--verbose,-v", "Toggle verbose printout [default = no]" );
   }
@@ -74,9 +74,12 @@ protected:
       return;
     }
 
-    if ( is_set( "sop" ) ) {
+    if ( is_set( "sop" ) )
+    {
       rebalance = SOP;
-    } else {
+    }
+    else
+    {
       rebalance = ESOP;
     }
 
@@ -84,51 +87,68 @@ protected:
     ps.cut_enumeration_ps.verbose = is_set( "verbose" ) || is_set( "w" );
 
     network_manager& ntk = store<network_manager>().current();
-    switch (ntk.get_current_type())
+    switch ( ntk.get_current_type() )
     {
-      case AIG: {
-        network_manager::aig_names aig = balance<mockturtle::aig_network>( ntk.get_aig() );
-        ntk.load_aig( aig ); 
-        } break;
+    case AIG:
+    {
+      network_manager::aig_names aig = balance<network_manager::aig_names>( ntk.get_aig() );
+      ntk.load_aig( aig );
+    }
+    break;
 
-      case XAG: {
-        network_manager::xag_names xag = balance<mockturtle::xag_network>( ntk.get_xag() );
-        ntk.load_xag( xag ); 
-        } break;
+    case XAG:
+    {
+      network_manager::xag_names xag = balance<network_manager::xag_names>( ntk.get_xag() );
+      ntk.load_xag( xag );
+    }
+    break;
 
-      case MIG: {
-        network_manager::mig_names mig = balance<mockturtle::mig_network>( ntk.get_mig() );
-        ntk.load_mig( mig );  
-        } break;
+    case MIG:
+    {
+      network_manager::mig_names mig = balance<network_manager::mig_names>( ntk.get_mig() );
+      ntk.load_mig( mig );
+    }
+    break;
 
-      case XMG: {
-        network_manager::xmg_names xmg = balance<mockturtle::xmg_network>( ntk.get_xmg() );
-        ntk.load_xmg( xmg ); 
-        } break;
+    case XMG:
+    {
+      network_manager::xmg_names xmg = balance<network_manager::xmg_names>( ntk.get_xmg() );
+      ntk.load_xmg( xmg );
+    }
+    break;
 
-      case KLUT: {
-        network_manager::klut_names klut = balance<mockturtle::klut_network>( ntk.get_klut() );
-        ntk.load_klut( klut ); 
-        } break;
+    case KLUT:
+    {
+      network_manager::klut_names klut = balance<network_manager::klut_names>( ntk.get_klut() );
+      ntk.load_klut( klut );
+    }
+    break;
 
-      default: 
-        env->err() << "[e] Network type is not supported by balance.\n";
-        break;
+    default:
+      env->err() << "[e] Network type is not supported by balance.\n";
+      break;
     }
   }
 
 private:
-  template<class Ntk>
-  mockturtle::names_view<Ntk> balance(Ntk& network)
+  template<typename Ntk>
+  Ntk balance( Ntk& ntk )
   {
     Ntk res;
 
-    if ( rebalance == SOP ) {
-      res = mockturtle::sop_balancing( network, ps );
-    } else {
-      res = mockturtle::esop_balancing( network, ps );
+    if ( rebalance == SOP )
+    {
+      res = mockturtle::sop_balancing( ntk, ps );
     }
-    return mockturtle::names_view<Ntk> {res};   
+    else
+    {
+      res = mockturtle::esop_balancing( ntk, ps );
+    }
+
+    mockturtle::restore_network_name( ntk, res );
+    mockturtle::restore_pio_names_by_order( ntk, res );
+
+    return res;
   }
 };
 

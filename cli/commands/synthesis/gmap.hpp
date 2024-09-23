@@ -37,8 +37,8 @@
 #include <alice/alice.hpp>
 
 #include <mockturtle/algorithms/mapper.hpp>
-#include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/utils/name_utils.hpp>
+#include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/names_view.hpp>
 
 namespace alice
@@ -124,16 +124,7 @@ protected:
         mockturtle::restore_pio_names_by_order( aig, res_names );
         ntk.load_xag( res_names );
       }
-      else if ( is_set( "mig" ) )
-      {
-        exact_library<mig_network>& lib = _mockturtle_global.exact_lib_man.get_mig_library();
-        mig_network res = map( aig, lib, ps );
-        mockturtle::names_view res_names{ res };
-        mockturtle::restore_network_name( aig, res_names );
-        mockturtle::restore_pio_names_by_order( aig, res_names );
-        ntk.load_mig( res_names );
-      }
-      else
+      else if ( is_set( "xmg" ) )
       {
         exact_library<xmg_network>& lib = _mockturtle_global.exact_lib_man.get_xmg_library();
         xmg_network res = map( aig, lib, ps );
@@ -141,6 +132,15 @@ protected:
         mockturtle::restore_network_name( aig, res_names );
         mockturtle::restore_pio_names_by_order( aig, res_names );
         ntk.load_xmg( res_names );
+      }
+      else
+      {
+        exact_library<mig_network>& lib = _mockturtle_global.exact_lib_man.get_mig_library();
+        mig_network res = map( aig, lib, ps );
+        mockturtle::names_view res_names{ res };
+        mockturtle::restore_network_name( aig, res_names );
+        mockturtle::restore_pio_names_by_order( aig, res_names );
+        ntk.load_mig( res_names );
       }
     }
     else if ( ntk.is_type( network_manager_type::XAG ) )

@@ -73,28 +73,28 @@ protected:
     {
       using namespace mockturtle;
       exact_library<aig_network>& lib = _mockturtle_global.exact_lib_man.get_aig_library();
-      network_manager::aig_names& aig = ntk.get_aig();
+      network_manager::aig_names& aig = ntk.get<network_manager::aig_names>();
       rewrite( aig, lib, ps );
     }
     else if ( ntk.is_type( network_manager_type::XAG ) )
     {
       using namespace mockturtle;
       exact_library<xag_network>& lib = _mockturtle_global.exact_lib_man.get_xag_library();
-      network_manager::xag_names& xag = ntk.get_xag();
+      network_manager::xag_names& xag = ntk.get<network_manager::xag_names>();
       rewrite( xag, lib, ps );
     }
     else if ( ntk.is_type( network_manager_type::MIG ) )
     {
       using namespace mockturtle;
       exact_library<mig_network>& lib = _mockturtle_global.exact_lib_man.get_mig_library();
-      network_manager::mig_names& mig = ntk.get_mig();
+      network_manager::mig_names& mig = ntk.get<network_manager::mig_names>();
       rewrite( mig, lib, ps );
     }
     else if ( ntk.is_type( network_manager_type::XMG ) )
     {
       using namespace mockturtle;
       exact_library<xmg_network>& lib = _mockturtle_global.exact_lib_man.get_xmg_library();
-      network_manager::xmg_names& xmg = ntk.get_xmg();
+      network_manager::xmg_names& xmg = ntk.get<network_manager::xmg_names>();
       rewrite( xmg, lib, ps );
     }
     else

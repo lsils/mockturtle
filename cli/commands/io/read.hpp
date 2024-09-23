@@ -78,87 +78,134 @@ protected:
   void execute()
   {
     int ntk_type_count = 0;
-    if( is_set( "aig" ) )  { ntk_type = AIG;  ntk_type_count++; }
-    if( is_set( "mig" ) )  { ntk_type = MIG;  ntk_type_count++; }
-    if( is_set( "xag" ) )  { ntk_type = XAG;  ntk_type_count++; }
-    if( is_set( "xmg" ) )  { ntk_type = XMG;  ntk_type_count++; }
-    if( is_set( "klut" ) ) { ntk_type = KLUT; ntk_type_count++; }
+    if ( is_set( "aig" ) )
+    {
+      ntk_type = AIG;
+      ntk_type_count++;
+    }
+    if ( is_set( "mig" ) )
+    {
+      ntk_type = MIG;
+      ntk_type_count++;
+    }
+    if ( is_set( "xag" ) )
+    {
+      ntk_type = XAG;
+      ntk_type_count++;
+    }
+    if ( is_set( "xmg" ) )
+    {
+      ntk_type = XMG;
+      ntk_type_count++;
+    }
+    if ( is_set( "klut" ) )
+    {
+      ntk_type = KLUT;
+      ntk_type_count++;
+    }
 
-    if (ntk_type_count > 1) {
-        env->err() << "[e] Multiple network types set. Network type flags are mututally exclusive.\n";
-        return;
+    if ( ntk_type_count > 1 )
+    {
+      env->err() << "[e] Multiple network types set. Network type flags are mututally exclusive.\n";
+      return;
     }
 
     network_manager& man = store<network_manager>().extend();
     int retcode;
 
-    switch (ntk_type)
+    switch ( ntk_type )
     {
-    case AIG:  retcode = handle_file<mockturtle::aig_network>(man.add_aig()); break;
+    case AIG:
+      retcode = handle_file<mockturtle::aig_network>( man.add_aig() );
+      break;
 
-    case MIG:  retcode = handle_file<mockturtle::mig_network>(man.add_mig()); break;
+    case MIG:
+      retcode = handle_file<mockturtle::mig_network>( man.add_mig() );
+      break;
 
-    case XAG:  retcode = handle_file<mockturtle::xag_network>(man.add_xag()); break;
+    case XAG:
+      retcode = handle_file<mockturtle::xag_network>( man.add_xag() );
+      break;
 
-    case XMG:  retcode = handle_file<mockturtle::xmg_network>(man.add_xmg()); break;
+    case XMG:
+      retcode = handle_file<mockturtle::xmg_network>( man.add_xmg() );
+      break;
 
-    case KLUT: retcode = handle_file<mockturtle::klut_network>(man.add_klut()); break;
+    case KLUT:
+      retcode = handle_file<mockturtle::klut_network>( man.add_klut() );
+      break;
 
-    default: retcode = -1; break;
+    default:
+      retcode = -1;
+      break;
     }
 
-    if(retcode != 0) {
+    if ( retcode != 0 )
+    {
       store<network_manager>().pop_current();
     }
   }
 
 private:
   template<class Ntk>
-  int handle_file(mockturtle::names_view<Ntk>& network)
+  int handle_file( mockturtle::names_view<Ntk>& network )
   {
     lorina::return_code result;
 
-    if ( mockturtle::check_extension( filename, "aig" ) ) {
-        result = lorina::read_aiger( filename, mockturtle::aiger_reader( network ) );
+    if ( mockturtle::check_extension( filename, "aig" ) )
+    {
+      result = lorina::read_aiger( filename, mockturtle::aiger_reader( network ) );
 
-        if (result != lorina::return_code::success) {
-            env->err() << "[e] Unable to read aiger file\n";
-            return -1;
-        }
-        filename.erase( filename.end() - strlen(".aig"), filename.end() );
+      if ( result != lorina::return_code::success )
+      {
+        env->err() << "[e] Unable to read aiger file\n";
+        return -1;
+      }
+      filename.erase( filename.end() - strlen( ".aig" ), filename.end() );
     }
-    else if ( mockturtle::check_extension( filename, "v" ) ) {
-        result = lorina::read_verilog( filename, mockturtle::verilog_reader( network ) );
+    else if ( mockturtle::check_extension( filename, "v" ) )
+    {
+      result = lorina::read_verilog( filename, mockturtle::verilog_reader( network ) );
 
-        if (result != lorina::return_code::success) {
-            env->err() << "[e] Unable to read verilog file.\n";
-            return -1;
-        }
-        filename.erase( filename.end() - strlen(".v"), filename.end() );
+      if ( result != lorina::return_code::success )
+      {
+        env->err() << "[e] Unable to read verilog file.\n";
+        return -1;
+      }
+      filename.erase( filename.end() - strlen( ".v" ), filename.end() );
     }
-    else if ( mockturtle::check_extension( filename, "blif" ) ) {
+    else if ( mockturtle::check_extension( filename, "blif" ) )
+    {
 
-        if constexpr (std::is_same_v<Ntk, mockturtle::klut_network>) {
-          result = lorina::read_blif( filename, mockturtle::blif_reader( network ) );
+      if constexpr ( std::is_same_v<Ntk, mockturtle::klut_network> )
+      {
+        result = lorina::read_blif( filename, mockturtle::blif_reader( network ) );
 
-          if (result != lorina::return_code::success) {
-              env->err() << "[e] Unable to read blif file.\n";
-              return -1;
-          }
-          filename.erase( filename.end() - strlen(".blif"), filename.end() );
-        } else {
-          env->err() << "[e] BLIF files can only be read into klut networks. (--klut)\n";
+        if ( result != lorina::return_code::success )
+        {
+          env->err() << "[e] Unable to read blif file.\n";
           return -1;
         }
-    }
-    else {
-        env->err() << "[e] " << filename << " is not a valid input file. Accepted file extensions are .aig, .blif, and .v\n";
+        filename.erase( filename.end() - strlen( ".blif" ), filename.end() );
+      }
+      else
+      {
+        env->err() << "[e] BLIF files can only be read into klut networks. (--klut)\n";
         return -1;
+      }
+    }
+    else
+    {
+      env->err() << "[e] " << filename << " is not a valid input file. Accepted file extensions are .aig, .blif, and .v\n";
+      return -1;
     }
 
-    if ( ntk_name.length() > 0 ) {
+    if ( ntk_name.length() > 0 )
+    {
       network.set_network_name( ntk_name );
-    } else {
+    }
+    else
+    {
       network.set_network_name( filename );
     }
     return 0;

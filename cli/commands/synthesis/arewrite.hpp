@@ -34,10 +34,10 @@
 
 #include <alice/alice.hpp>
 
-#include <mockturtle/views/names_view.hpp>
 #include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/xag_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/xmg_algebraic_rewriting.hpp>
+#include <mockturtle/views/names_view.hpp>
 
 namespace alice
 {
@@ -48,7 +48,7 @@ public:
   explicit arewrite_command( const environment::ptr& env )
       : command( env,
                  "Performs algebraic depth rewriting (depth optimization)." )
-  { 
+  {
     add_flag( "--prevent-increase", "Prevent area increase while optimizing depth. [default = no]" );
   }
 
@@ -60,43 +60,51 @@ protected:
       env->err() << "Empty logic network.\n";
       return;
     }
-    
+
     network_manager& ntk = store<network_manager>().current();
-    switch (ntk.get_current_type())
+    switch ( ntk.get_current_type() )
     {
-      case AIG: {
-        mockturtle::xag_algebraic_depth_rewriting_params ps;
-        ps.allow_area_increase = !is_set("prevent-increase");
-        mockturtle::depth_view depth_aig{ ntk.get_aig() };
-        mockturtle::xag_algebraic_depth_rewriting( depth_aig );
-        } break;
-      
-      case XAG: {
-        mockturtle::xag_algebraic_depth_rewriting_params ps;
-        ps.allow_area_increase = !is_set("prevent-increase");
-        mockturtle::depth_view depth_xag{ ntk.get_xag() };
-        mockturtle::xag_algebraic_depth_rewriting( depth_xag );
-        } break;
+    case AIG:
+    {
+      mockturtle::xag_algebraic_depth_rewriting_params ps;
+      ps.allow_area_increase = !is_set( "prevent-increase" );
+      mockturtle::depth_view depth_aig{ ntk.get_aig() };
+      mockturtle::xag_algebraic_depth_rewriting( depth_aig );
+    }
+    break;
 
-      case MIG: {
-        mockturtle::mig_algebraic_depth_rewriting_params ps;
-        ps.allow_area_increase = !is_set("prevent-increase");
-        mockturtle::depth_view depth_mig{ ntk.get_mig() };
-        mockturtle::mig_algebraic_depth_rewriting( depth_mig, ps );
-        } break;
+    case XAG:
+    {
+      mockturtle::xag_algebraic_depth_rewriting_params ps;
+      ps.allow_area_increase = !is_set( "prevent-increase" );
+      mockturtle::depth_view depth_xag{ ntk.get_xag() };
+      mockturtle::xag_algebraic_depth_rewriting( depth_xag );
+    }
+    break;
 
-      case XMG: {
-        mockturtle::xmg_algebraic_depth_rewriting_params ps;
-        ps.allow_area_increase = !is_set("prevent-increase");
-        mockturtle::depth_view depth_xmg{ ntk.get_xmg() };
-        mockturtle::xmg_algebraic_depth_rewriting( depth_xmg, ps );
-        } break;
+    case MIG:
+    {
+      mockturtle::mig_algebraic_depth_rewriting_params ps;
+      ps.allow_area_increase = !is_set( "prevent-increase" );
+      mockturtle::depth_view depth_mig{ ntk.get_mig() };
+      mockturtle::mig_algebraic_depth_rewriting( depth_mig, ps );
+    }
+    break;
 
-      case KLUT:
-      case MAPPED:
-      default: 
-        env->err() << "[e] Network type is not supported by balance.\n";
-        break;
+    case XMG:
+    {
+      mockturtle::xmg_algebraic_depth_rewriting_params ps;
+      ps.allow_area_increase = !is_set( "prevent-increase" );
+      mockturtle::depth_view depth_xmg{ ntk.get_xmg() };
+      mockturtle::xmg_algebraic_depth_rewriting( depth_xmg, ps );
+    }
+    break;
+
+    case KLUT:
+    case MAPPED:
+    default:
+      env->err() << "[e] Network type is not supported by balance.\n";
+      break;
     }
   }
 };
