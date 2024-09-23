@@ -49,12 +49,13 @@
 #include "commands/representation/xmg.hpp"
 
 /* include synthesis commands */
+#include "commands/synthesis/arewrite.hpp"
+#include "commands/synthesis/balance.hpp"
 #include "commands/synthesis/factoring.hpp"
 #include "commands/synthesis/gmap.hpp"
-#include "commands/synthesis/rewrite.hpp"
-#include "commands/synthesis/balance.hpp"
-#include "commands/synthesis/arewrite.hpp"
 #include "commands/synthesis/resub.hpp"
+#include "commands/synthesis/rewrite.hpp"
+#include "commands/synthesis/sim_resub.hpp"
 
 /* include mapping commands */
 #include "commands/mapping/emap.hpp"

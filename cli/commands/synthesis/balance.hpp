@@ -36,6 +36,7 @@
 
 #include <mockturtle/algorithms/balancing.hpp>
 #include <mockturtle/algorithms/lut_mapper.hpp>
+#include <mockturtle/utils/name_utils.hpp>
 #include <mockturtle/views/names_view.hpp>
 
 namespace alice
