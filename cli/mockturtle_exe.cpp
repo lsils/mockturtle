@@ -51,6 +51,7 @@
 /* include synthesis commands */
 #include "commands/synthesis/rewrite.hpp"
 #include "commands/synthesis/balance.hpp"
+#include "commands/synthesis/arewrite.hpp"
 
 /* include mapping commands */
 #include "commands/mapping/emap.hpp"
