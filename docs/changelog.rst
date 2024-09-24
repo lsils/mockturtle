@@ -19,7 +19,7 @@ v0.4 (not yet released)
     - Adding a new network type to represent multi-output gates (`block_network`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
 * Algorithms:
     - AIG balancing (`aig_balance`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
-    - AIG resubstitution (`xag_resubstitution2`) `#658 <https://github.com/lsils/mockturtle/pull/658>`_
+    - AIG resubstitution (`aig_resubstitution2`) `#658 <https://github.com/lsils/mockturtle/pull/658>`_
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Resynthesis based on SOP factoring (`sop_factoring`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_

@@ -56,7 +56,7 @@ struct xag_resyn_resub_stats
 
   void report() const
   {
-    fmt::print( "[i]     <ResubFn: mig_resyn_functor>\n" );
+    fmt::print( "[i]     <ResubFn: xag_resyn_functor>\n" );
     fmt::print( "[i]         #solution = {:6d}\n", num_success );
     fmt::print( "[i]         #invoke   = {:6d}\n", num_success + num_fail );
     fmt::print( "[i]         engine time: {:>5.2f} secs\n", to_seconds( time_compute_function ) );
