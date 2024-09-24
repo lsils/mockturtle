@@ -27,6 +27,7 @@
   \file arewrite.hpp
   \brief Algebraic depth rewrite command
 
+  \author Alessandro Tempia Calvino
   \author Philippe Sauter
 */
 
@@ -34,6 +35,7 @@
 
 #include <alice/alice.hpp>
 
+#include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/mig_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/xag_algebraic_rewriting.hpp>
 #include <mockturtle/algorithms/xmg_algebraic_rewriting.hpp>
@@ -49,7 +51,7 @@ public:
       : command( env,
                  "Performs algebraic depth rewriting (depth optimization)." )
   {
-    add_flag( "--prevent-increase", "Prevent area increase while optimizing depth. [default = no]" );
+    add_flag( "--area,-a", "Prevent area increase while optimizing depth. [default = no]" );
   }
 
 protected:
@@ -67,36 +69,44 @@ protected:
     case AIG:
     {
       mockturtle::xag_algebraic_depth_rewriting_params ps;
-      ps.allow_area_increase = !is_set( "prevent-increase" );
+      ps.allow_area_increase = !is_set( "area" );
       mockturtle::depth_view depth_aig{ ntk.get_aig() };
-      mockturtle::xag_algebraic_depth_rewriting( depth_aig );
+      mockturtle::fanout_view fanout_aig{ depth_aig };
+      mockturtle::xag_algebraic_depth_rewriting( fanout_aig, ps );
+      ntk.get_aig() = mockturtle::cleanup_dangling( ntk.get_aig() );
     }
     break;
 
     case XAG:
     {
       mockturtle::xag_algebraic_depth_rewriting_params ps;
-      ps.allow_area_increase = !is_set( "prevent-increase" );
+      ps.allow_area_increase = !is_set( "area" );
       mockturtle::depth_view depth_xag{ ntk.get_xag() };
-      mockturtle::xag_algebraic_depth_rewriting( depth_xag );
+      mockturtle::fanout_view fanout_xag{ depth_xag };
+      mockturtle::xag_algebraic_depth_rewriting( fanout_xag, ps );
+      ntk.get_xag() = mockturtle::cleanup_dangling( ntk.get_xag() );
     }
     break;
 
     case MIG:
     {
       mockturtle::mig_algebraic_depth_rewriting_params ps;
-      ps.allow_area_increase = !is_set( "prevent-increase" );
+      ps.allow_area_increase = !is_set( "area" );
       mockturtle::depth_view depth_mig{ ntk.get_mig() };
-      mockturtle::mig_algebraic_depth_rewriting( depth_mig, ps );
+      mockturtle::fanout_view fanout_mig{ depth_mig };
+      mockturtle::mig_algebraic_depth_rewriting( fanout_mig, ps );
+      ntk.get_mig() = mockturtle::cleanup_dangling( ntk.get_mig() );
     }
     break;
 
     case XMG:
     {
       mockturtle::xmg_algebraic_depth_rewriting_params ps;
-      ps.allow_area_increase = !is_set( "prevent-increase" );
+      ps.allow_area_increase = !is_set( "area" );
       mockturtle::depth_view depth_xmg{ ntk.get_xmg() };
-      mockturtle::xmg_algebraic_depth_rewriting( depth_xmg, ps );
+      mockturtle::fanout_view fanout_xmg{ depth_xmg };
+      mockturtle::xmg_algebraic_depth_rewriting( fanout_xmg, ps );
+      ntk.get_xmg() = mockturtle::cleanup_dangling( ntk.get_xmg() );
     }
     break;
 
