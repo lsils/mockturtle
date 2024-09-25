@@ -27,6 +27,7 @@
   \file strash.hpp
   \brief Structural hashing command
 
+  \author Alessandro Tempia Calvino
   \author Philippe Sauter
 */
 
@@ -34,8 +35,9 @@
 
 #include <alice/alice.hpp>
 
-#include <mockturtle/algorithms/collapse_mapped.hpp>
+#include <mockturtle/algorithms/experimental/decompose_multioutput.hpp>
 #include <mockturtle/algorithms/klut_to_graph.hpp>
+#include <mockturtle/algorithms/node_resynthesis.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/views/mapping_view.hpp>
 #include <mockturtle/views/names_view.hpp>
@@ -58,6 +60,7 @@ public:
     add_flag( "--mig,-m", "Stores the network as an MIG" );
     add_flag( "--xag,-x", "Stores the network as an XAG" );
     add_flag( "--xmg,-g", "Stores the network as an XMG" );
+    add_flag( "--factoring,-f", "Use factoring-based strashing for AIGs [default = false]" );
   }
 
 protected:
@@ -102,18 +105,8 @@ protected:
     if ( ntk.is_type( MAPPED ) )
     {
       auto const& mapped = ntk.get_mapped();
-      mockturtle::mapping_view mapped_cell{ mapped };
-      auto const klut_optional = mockturtle::collapse_mapped_network<mockturtle::klut_network>( mapped_cell );
-
-      if ( klut_optional )
-      {
-        mockturtle::names_view klut_names{ *klut_optional };
-        ntk.load_klut( klut_names );
-      }
-      else
-      {
-        std::cerr << "[ERROR] Unable to collapse mapped network to k-LUT.\n";
-      }
+      network_manager::klut_names klut = mockturtle::decompose_multioutput<network_manager::mapped_names, network_manager::klut_names>( mapped );
+      ntk.load_klut( klut );
     }
 
     if ( ntk.is_type( KLUT ) )
@@ -125,7 +118,16 @@ protected:
       case AIG:
       {
         env->out() << "[i] convert to AIG.\n";
-        mockturtle::aig_network res = mockturtle::convert_klut_to_graph<mockturtle::aig_network>( klut );
+        mockturtle::aig_network res;
+        if ( is_set( "factoring" ) )
+        {
+          mockturtle::sop_factoring<mockturtle::aig_network> resyn;
+          mockturtle::node_resynthesis( res, klut, resyn );
+        }
+        else
+        {
+          res = mockturtle::convert_klut_to_graph<mockturtle::aig_network>( klut );
+        }
         mockturtle::names_view res_names{ res };
         mockturtle::restore_network_name( klut, res_names );
         mockturtle::restore_pio_names_by_order( klut, res_names );

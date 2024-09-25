@@ -64,14 +64,14 @@ public:
                      "File to read in [.aig, .blif, .v]" )
         ->required();
 
-    opts.add_option( "--ntk-name", ntk_name,
+    opts.add_option( "--ntk-name,-N", ntk_name,
                      "Name of the network (defaults to filename)" );
 
     add_flag( "--aig,-a", "Stores the network as an AIG (default without flags)" );
     add_flag( "--mig,-m", "Stores the network as an MIG" );
     add_flag( "--xag,-x", "Stores the network as an XAG" );
     add_flag( "--xmg,-g", "Stores the network as an XMG" );
-    add_flag( "--klut,-k", "Stores the network as a k-LUT network" );
+    add_flag( "--klut,-k", "Stores the network as a k-LUT network (default for blif)" );
   }
 
 protected:
@@ -113,6 +113,15 @@ protected:
     network_manager& man = store<network_manager>().extend();
     int retcode;
 
+    if ( mockturtle::check_extension( filename, "blif" ) )
+    {
+      if ( ntk_type_count > 0 && ntk_type != KLUT )
+      {
+        env->err() << "[i] BLIF files can only be read into klut networks.\n";
+      }
+      ntk_type = KLUT;
+    }
+
     switch ( ntk_type )
     {
     case AIG:
@@ -144,6 +153,9 @@ protected:
     {
       store<network_manager>().pop_current();
     }
+
+    ntk_type = AIG;
+    ntk_name = {};
   }
 
 private:
@@ -176,7 +188,6 @@ private:
     }
     else if ( mockturtle::check_extension( filename, "blif" ) )
     {
-
       if constexpr ( std::is_same_v<Ntk, mockturtle::klut_network> )
       {
         result = lorina::read_blif( filename, mockturtle::blif_reader( network ) );
