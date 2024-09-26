@@ -107,6 +107,44 @@ public:
     static_assert( "Ntk is not a compatible network type" );
   }
 
+  template<typename Ntk>
+  void load( Ntk& ntk )
+  {
+    delete_current();
+    if constexpr ( std::is_same_v<Ntk, aig_names> )
+    {
+      aig = std::make_shared<aig_names>( ntk );
+      current_type = network_manager_type::AIG;
+    }
+    if constexpr ( std::is_same_v<Ntk, xag_names> )
+    {
+      xag = std::make_shared<xag_names>( ntk );
+      current_type = network_manager_type::XAG;
+    }
+    if constexpr ( std::is_same_v<Ntk, mig_names> )
+    {
+      mig = std::make_shared<mig_names>( ntk );
+      current_type = network_manager_type::MIG;
+    }
+    if constexpr ( std::is_same_v<Ntk, xmg_names> )
+    {
+      xmg = std::make_shared<xmg_names>( ntk );
+      current_type = network_manager_type::XMG;
+    }
+    if constexpr ( std::is_same_v<Ntk, klut_names> )
+    {
+      klut = std::make_shared<klut_names>( ntk );
+      current_type = network_manager_type::KLUT;
+    }
+    if constexpr ( std::is_same_v<Ntk, mapped_names> )
+    {
+      mapped = std::make_shared<mapped_names>( ntk );
+      current_type = network_manager_type::MAPPED;
+    }
+    
+    static_assert( "Ntk is not a compatible network type" );
+  }
+
   bool is_type( uint32_t allowed_types ) const
   {
     return ( current_type & allowed_types ) > 0;

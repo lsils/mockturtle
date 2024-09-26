@@ -43,7 +43,6 @@
 namespace alice
 {
 
-/* Writes a network to file */
 class emap_command : public alice::command
 {
 public:
@@ -64,7 +63,6 @@ public:
     add_flag( "--alternatives,-l", "Toggle using alternative matches [default = yes]" );
     add_flag( "--dom,-d", "Toggle removing dominated cuts [default = no]" );
     add_flag( "--verbose,-v", "Toggle verbose printout [default = no]" );
-    /* TODO: add other flags */
   }
 
 protected:
