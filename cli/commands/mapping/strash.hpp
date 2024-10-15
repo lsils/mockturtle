@@ -38,6 +38,7 @@
 #include <mockturtle/algorithms/experimental/decompose_multioutput.hpp>
 #include <mockturtle/algorithms/klut_to_graph.hpp>
 #include <mockturtle/algorithms/node_resynthesis.hpp>
+#include <mockturtle/algorithms/node_resynthesis/sop_factoring.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/views/mapping_view.hpp>
 #include <mockturtle/views/names_view.hpp>
