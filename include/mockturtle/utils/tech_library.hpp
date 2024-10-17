@@ -248,6 +248,9 @@ public:
     }
   }
 
+  tech_library ( const tech_library& ) = delete;
+  tech_library& operator=( const tech_library& ) = delete;
+
   /*! \brief Get the gates matching the function.
    *
    * Returns a list of gates that match the function represented
@@ -1163,7 +1166,7 @@ private:
   bool _use_supergates;
 
   std::vector<gate> const _gates;    /* collection of gates */
-  super_lib const& _supergates_spec; /* collection of supergates declarations */
+  super_lib const _supergates_spec;  /* collection of supergates declarations */
   tech_library_params const _ps;
 
   std::vector<standard_cell> const _cells; /* collection of standard cells */
