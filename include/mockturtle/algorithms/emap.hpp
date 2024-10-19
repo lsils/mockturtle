@@ -100,7 +100,7 @@ struct emap_params
    * Structural uses pattern matching for fully-DSD cells,
    * Hybrid combines the two.
    */
-  enum
+  enum matching_mode_t
   {
     boolean,
     structural,
