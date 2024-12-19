@@ -433,6 +433,8 @@ public:
       if ( mffc_size( ntk, n ) == 1 )
         return true;
 
+      int32_t best_gain{ -1 };
+
       /* foreach cut */
       for ( auto& cut : cuts.cuts( ntk.node_to_index( n ) ) )
       {
@@ -454,7 +456,6 @@ public:
         int32_t value = recursive_deref<Ntk, NodeCostFn>( ntk, n );
         {
           stopwatch t( st.time_rewriting );
-          int32_t best_gain{ -1 };
 
           const auto on_signal = [&]( auto const& f_new ) {
             auto [v, contains] = recursive_ref_contains( ntk.get_node( f_new ), n );
