@@ -9,6 +9,7 @@ on:
     - master
 
 jobs:
+
   build-gcc9:
     runs-on: ubuntu-latest
     name: GNU GCC 9
@@ -17,6 +18,10 @@ jobs:
     - uses: actions/checkout@v1
       with:
         submodules: true
+    - name: Install GCC 9
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++-9
     - name: Build mockturtle
       run: |
         mkdir build
@@ -27,6 +32,7 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  
   build-gcc10:
     runs-on: ubuntu-latest
     name: GNU GCC 10
@@ -35,6 +41,10 @@ jobs:
     - uses: actions/checkout@v1
       with:
         submodules: true
+    - name: Install GCC 10
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++-10
     - name: Build mockturtle
       run: |
         mkdir build
@@ -45,6 +55,7 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  
   build-gcc10-cpp20:
     runs-on: ubuntu-latest
     name: GNU GCC 10 (c++20)
@@ -53,6 +64,10 @@ jobs:
     - uses: actions/checkout@v1
       with:
         submodules: true
+    - name: Install GCC 10 (c++20)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-10 g++-10
     - name: Build mockturtle
       run: |
         mkdir build
@@ -63,6 +78,7 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  
   build-gcc12:
     runs-on: ubuntu-latest
     name: GNU GCC 12
@@ -71,6 +87,10 @@ jobs:
     - uses: actions/checkout@v1
       with:
         submodules: true
+    - name: Install GCC 12
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++-12
     - name: Build mockturtle
       run: |
         mkdir build
@@ -81,14 +101,19 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  
   build-clang11:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Clang 11
     
     steps:
     - uses: actions/checkout@v1
       with:
         submodules: true
+    - name: Install Clang 11
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-11
     - name: Build mockturtle
       run: |
         mkdir build
@@ -99,14 +124,19 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  
   build-clang13:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Clang 13
     
     steps:
     - uses: actions/checkout@v1
       with:
         submodules: true
+    - name: Install Clang 13
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-13
     - name: Build mockturtle
       run: |
         mkdir build
@@ -117,14 +147,19 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  
   build-clang13-asan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Clang 13 + ASAN
 
     steps:
     - uses: actions/checkout@v1
       with:
         submodules: true
+    - name: Install Clang 13
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-13
     - name: Build mockturtle with ASAN
       run: |
         mkdir build
@@ -135,6 +170,7 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
+  
   compile-gcc9:
     runs-on: ubuntu-latest
     name: Compile everything (GCC 9)
@@ -143,6 +179,10 @@ jobs:
     - uses: actions/checkout@v1
       with:
         submodules: true
+    - name: Install GCC 9
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++-9
     - name: Build mockturtle
       run: |
         mkdir build
