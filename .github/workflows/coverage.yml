@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-gcc9-codecov:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: GNU GCC 9 and run codecov
     
     steps:
