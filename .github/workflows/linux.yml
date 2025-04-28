@@ -117,24 +117,6 @@ jobs:
       run: |
         cd build
         ./test/run_tests "~[quality]"
-  build-clang13-asan:
-    runs-on: ubuntu-latest
-    name: Clang 13 + ASAN
-
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Build mockturtle with ASAN
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-13 -DENABLE_ASAN=ON -DMOCKTURTLE_TEST=ON ..
-        make run_tests
-    - name: Run tests with ASAN
-      run: |
-        cd build
-        ./test/run_tests "~[quality]"
   compile-gcc9:
     runs-on: ubuntu-latest
     name: Compile everything (GCC 9)
