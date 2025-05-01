@@ -61,8 +61,11 @@ namespace mockturtle
  * - `get_constant`
  *
    \verbatim embed:rst
+
    Example
+
    .. code-block:: c++
+
       klut_network klut;
       lorina::read_blif( "file.blif", blif_reader( klut ) );
 
