@@ -26,7 +26,7 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/run_tests "~[quality]"
+        ./test/run_tests
   build-clang14:
     name: Clang 14
     runs-on: macOS-latest
@@ -44,7 +44,7 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/run_tests "~[quality]"
+        ./test/run_tests
   build-clang15:
     name: Clang 15
     runs-on: macOS-latest
@@ -62,4 +62,4 @@ jobs:
     - name: Run tests
       run: |
         cd build
-        ./test/run_tests "~[quality]"
+        ./test/run_tests
