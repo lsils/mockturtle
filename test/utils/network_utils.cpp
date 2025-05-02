@@ -5,7 +5,7 @@
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/utils/debugging_utils.hpp>
-#include <mockturtle/utils/index_list.hpp>
+#include <mockturtle/utils/index_list/index_list.hpp>
 #include <mockturtle/utils/network_utils.hpp>
 
 using namespace mockturtle;
