@@ -36,7 +36,7 @@
 #pragma once
 
 #include "../networks/mig.hpp"
-#include "../utils/index_list.hpp"
+#include "../utils/index_list/index_list.hpp"
 #include "../utils/truth_table_utils.hpp"
 #include "resubstitution.hpp"
 #include "resyn_engines/mig_resyn.hpp"

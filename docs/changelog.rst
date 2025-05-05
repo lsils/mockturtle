@@ -59,6 +59,7 @@ v0.4 (not yet released)
     - Adding utils to perform pattern matching and derive patterns from standard cells (`struct_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - Adding Boolean matching for multi-output cells (`tech_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - Adding Boolean matching with don't cares for databases (`exact_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding Boolean evaluation for index lists (`list_simulator`) `#675 <https://github.com/lsils/mockturtle/pull/675>`_
 
 v0.3 (July 12, 2022)
 --------------------

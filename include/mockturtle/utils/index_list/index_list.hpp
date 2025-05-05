@@ -27,13 +27,14 @@
   \file index_list.hpp
   \brief List of indices to represent small networks.
 
+  \author Andrea Costamagna
   \author Heinz Riener
   \author Siang-Yun (Sonia) Lee
 */
 
 #pragma once
 
-#include "../traits.hpp"
+#include "../../traits.hpp"
 
 #include <fmt/format.h>
 
@@ -516,6 +517,8 @@ struct xag_index_list
 {
 public:
   using element_type = uint32_t;
+  /* Literal used for the first primary input */
+  static constexpr uint32_t offset = 1;
 
 public:
   explicit xag_index_list( uint32_t num_pis = 0 )
@@ -666,6 +669,60 @@ public:
     }
 
     values.push_back( lit );
+  }
+
+  /*! \brief Shift right the literal, removing the complementation bit */
+  inline uint32_t get_index( element_type const& lit ) const
+  {
+    return lit >> 1;
+  }
+
+  /*! \brief Returns the node index excluding the constants and the inputs */
+  inline uint32_t get_node_index( element_type const& lit ) const
+  {
+    return get_index( lit ) - num_pis() - offset;
+  }
+
+  /*! \brief Returns index of an input literal */
+  inline uint32_t get_pi_index( element_type const& lit ) const
+  {
+    return get_index( lit ) - offset;
+  }
+
+  /*! \brief When the literal is even ( bit0 = 0 ), it is not complemented */
+  inline bool is_complemented( element_type const& lit ) const
+  {
+    return lit % 2;
+  }
+
+  /*! \brief The AND gate is distinguished by the EXOR gate based on the order of the input literals */
+  inline bool is_and( element_type const& lit_lhs, element_type const& lit_rhs ) const
+  {
+    return lit_lhs < lit_rhs;
+  }
+
+  /*! \brief Check if a literal is a PI
+   *
+   * The index of the literal is shifted based on the usage of the separate_header.
+   * There are two cases identifying that the literal is not an input:
+   * -  The shifted index overflows : the literal was a constant 0.aig_hash
+   * -  The shifted integer is larger than the number of inputs.
+   */
+  inline bool is_pi( element_type const& lit ) const
+  {
+    uint32_t index = get_index( lit );
+    return index < num_pis() + 1;
+  }
+
+  inline bool is_constant( element_type const& lit ) const
+  {
+    return lit <= 1;
+  }
+
+  inline element_type po_at( uint32_t index )
+  {
+    assert( index < num_pos() );
+    return *( values.end() - num_pos() + index );
   }
 
 private:
@@ -819,16 +876,16 @@ void insert( Ntk& ntk, BeginIter begin, EndIter end, xag_index_list<separate_hea
 
   indices.foreach_gate( [&]( uint32_t lit0, uint32_t lit1 ) {
     assert( lit0 != lit1 );
-    uint32_t const i0 = lit0 >> 1;
-    uint32_t const i1 = lit1 >> 1;
-    signal const s0 = ( lit0 % 2 ) ? ntk.create_not( signals.at( i0 ) ) : signals.at( i0 );
-    signal const s1 = ( lit1 % 2 ) ? ntk.create_not( signals.at( i1 ) ) : signals.at( i1 );
+    uint32_t const i0 = indices.get_index( lit0 );
+    uint32_t const i1 = indices.get_index( lit1 );
+    signal const s0 = indices.is_complemented( lit0 ) ? ntk.create_not( signals.at( i0 ) ) : signals.at( i0 );
+    signal const s1 = indices.is_complemented( lit1 ) ? ntk.create_not( signals.at( i1 ) ) : signals.at( i1 );
     signals.push_back( lit0 > lit1 ? ntk.create_xor( s0, s1 ) : ntk.create_and( s0, s1 ) );
   } );
 
   indices.foreach_po( [&]( uint32_t lit ) {
-    uint32_t const i = lit >> 1;
-    fn( ( lit % 2 ) ? ntk.create_not( signals.at( i ) ) : signals.at( i ) );
+    uint32_t const i = indices.get_index( lit );
+    fn( indices.is_complemented( lit ) ? ntk.create_not( signals.at( i ) ) : signals.at( i ) );
   } );
 }
 

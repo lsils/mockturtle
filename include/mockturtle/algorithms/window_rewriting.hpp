@@ -35,7 +35,7 @@
 #include "../networks/events.hpp"
 #include "../networks/xag.hpp"
 #include "../utils/debugging_utils.hpp"
-#include "../utils/index_list.hpp"
+#include "../utils/index_list/index_list.hpp"
 #include "../utils/network_utils.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"

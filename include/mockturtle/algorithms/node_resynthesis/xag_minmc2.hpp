@@ -39,7 +39,7 @@
 #include <vector>
 
 #include "../../networks/xag.hpp"
-#include "../../utils/index_list.hpp"
+#include "../../utils/index_list/index_list.hpp"
 #include "../detail/minmc_xags.hpp"
 #include "../equivalence_classes.hpp"
 

@@ -185,7 +185,7 @@
 #include "mockturtle/utils/debugging_utils.hpp"
 #include "mockturtle/utils/hash_functions.hpp"
 #include "mockturtle/utils/include/percy.hpp"
-#include "mockturtle/utils/index_list.hpp"
+#include "mockturtle/utils/index_list/index_list.hpp"
 #include "mockturtle/utils/json_utils.hpp"
 #include "mockturtle/utils/mixed_radix.hpp"
 #include "mockturtle/utils/name_utils.hpp"
