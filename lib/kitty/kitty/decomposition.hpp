@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2022  EPFL
+ * Copyright (C) 2017-2025  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -594,7 +594,7 @@ inline std::tuple<std::vector<int>, std::vector<int>, bi_decomposition> best_var
 {
   if ( xor_cost )
   {
-    if ( ( x_xor.first.size() != 0 ) & ( x_xor.second.size() != 0 ) )
+    if ( ( x_xor.first.size() != 0 ) && ( x_xor.second.size() != 0 ) )
     {
       return std::make_tuple( x_xor.first, x_xor.second, bi_decomposition::xor_ );
     }
