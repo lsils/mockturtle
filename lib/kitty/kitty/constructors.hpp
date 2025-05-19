@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2022  EPFL
+ * Copyright (C) 2017-2025  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -46,8 +46,9 @@
 #include "dynamic_truth_table.hpp"
 #include "operations.hpp"
 #include "operators.hpp"
-#include "static_truth_table.hpp"
 #include "partial_truth_table.hpp"
+#include "static_truth_table.hpp"
+#include "ternary_truth_table.hpp"
 
 namespace kitty
 {
@@ -155,6 +156,15 @@ void create_nth_var( static_truth_table<NumVars, true>& tt, uint8_t var_index, b
   /* assign from precomputed table */
   tt._bits = complement ? ~detail::projections[var_index] : detail::projections[var_index];
 
+  /* mask if truth table does not require all bits */
+  tt.mask_bits();
+}
+
+template<typename TT>
+void create_nth_var( ternary_truth_table<TT>& tt, uint8_t var_index, bool complement = false )
+{
+  create_nth_var( tt._bits, var_index, complement );
+  tt._care = ~( tt._bits.construct() );
   /* mask if truth table does not require all bits */
   tt.mask_bits();
 }

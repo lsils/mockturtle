@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2022  EPFL
+ * Copyright (C) 2017-2025  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -210,6 +210,8 @@ bool is_dont_care( const quaternary_truth_table<TT>& tt, uint64_t index )
 template<typename TT>
 bool is_dont_care( const TT& tt, uint64_t index )
 {
+  (void)tt;
+  (void)index;
   return false;
 }
 
@@ -263,6 +265,8 @@ bool is_dont_know( const quaternary_truth_table<TT>& tt, uint64_t index )
 template<typename TT>
 bool is_dont_know( const TT& tt, uint64_t index )
 {
+  (void)tt;
+  (void)index;
   return false;
 }
 
@@ -278,12 +282,15 @@ void set_dont_know( quaternary_truth_table<TT>& tt, uint64_t index )
 template<typename TT>
 uint64_t get_block( const TT& tt, uint64_t block_index )
 {
+  assert( block_index < tt.num_blocks() );
   return tt._bits[block_index];
 }
 
 template<uint32_t NumVars>
 uint64_t get_block( const static_truth_table<NumVars, true>& tt, uint64_t block_index )
 {
+  assert( block_index == 0 );
+  (void)block_index;
   return tt._bits;
 }
 
@@ -337,7 +344,7 @@ inline uint64_t count_ones( const TT& tt )
   return std::accumulate( tt.cbegin(), tt.cend(), uint64_t( 0 ),
                           []( auto accu, auto word )
                           {
-                            return accu + __builtin_popcount( word & 0xffffffff ) + __builtin_popcount( word >> 32 );
+                            return accu + __builtin_popcountll( word );
                           } );
 }
 
@@ -345,7 +352,7 @@ inline uint64_t count_ones( const TT& tt )
 template<uint32_t NumVars>
 inline uint64_t count_ones( const static_truth_table<NumVars, true>& tt )
 {
-  return __builtin_popcount( tt._bits & 0xffffffff ) + __builtin_popcount( tt._bits >> 32 );
+  return __builtin_popcountll( tt._bits );
 }
 /*! \endcond */
 

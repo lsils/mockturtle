@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2022  EPFL
+ * Copyright (C) 2017-2025  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -117,6 +117,8 @@ inline ternary_truth_table<TT> binary_and( const ternary_truth_table<TT>& first,
 {
   auto const op_bits = []( auto b1, auto c1, auto b2, auto c2 )
   {
+    (void)c1;
+    (void)c2;
     return b1 & b2;
   };
   auto const op_care = []( auto b1, auto c1, auto b2, auto c2 )
@@ -173,6 +175,8 @@ inline ternary_truth_table<TT> binary_or( const ternary_truth_table<TT>& first, 
 {
   auto const op_bits = []( auto b1, auto c1, auto b2, auto c2 )
   {
+    (void)c1;
+    (void)c2;
     return b1 | b2;
   };
   auto const op_care = []( auto b1, auto c1, auto b2, auto c2 )
@@ -232,6 +236,8 @@ inline ternary_truth_table<TT> binary_xor( const ternary_truth_table<TT>& first,
   };
   auto const op_care = []( auto b1, auto c1, auto b2, auto c2 )
   {
+    (void)b1;
+    (void)b2;
     return c1 & c2;
   };
 
@@ -762,18 +768,6 @@ bool has_var( const static_truth_table<NumVars, true>& tt, uint8_t var_index )
 }
 /*! \endcond */
 
-/*! \brief Checks whether a ternary truth table depends on given variable index
-           Don't cares are treated like zeros.
-
-  \param tt Truth table
-  \param var_index Variable index
-*/
-template<typename TT>
-bool has_var( const ternary_truth_table<TT>& tt, uint8_t var_index )
-{
-  return has_var( tt._bits, var_index );
-}
-
 /*! \brief Checks whether a quaternary truth table depends on given variable index.
            This function returns false if the truth table potentially does not depend
            on the variable (due to don't cares) and returns true if the truth table potentially
@@ -836,6 +830,74 @@ bool has_var( const quaternary_truth_table<TT>& tt, uint8_t var_index )
     }
   }
   return false;
+}
+
+/*! \brief Checks whether a ternary truth table depends on given variable index.\
+
+           When the template parameter UseDCs is false, don't cares are treated like zeros.
+           When the template parameter UseDCs is true, this function returns:
+           - true if the onset shows that the function depends on the variable.
+           - false if a don't cares assignments makes the function independent of the variable.
+
+           For example, let the hexadecimal representation of the onset be 0xF0000000, and
+           the hexadecimal representation of the careset be 0xF0000000. This function is
+           independent of the variable 2, with projection function 0xF0F0F0F0 for the following
+           onset, careset pair ( 0xFF000000, 0xFF000000 ).
+
+           Reassigning the careset and the onset is essential when checking if an incompletely
+           specified function depends on multiple variables, since different variables might
+           require different don't cares assignments to achieve indendence on different variables.
+
+  \param tt Truth table
+  \param var_index Variable index
+*/
+template<typename TT, bool UseDCs = false, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
+bool has_var_inplace( ternary_truth_table<TT>& tt, uint8_t var_index )
+{
+  if constexpr ( UseDCs )
+  {
+    ternary_truth_table<TT> tt0 = tt;
+    ternary_truth_table<TT> tt1 = tt;
+    cofactor0_inplace( tt0, var_index );
+    cofactor1_inplace( tt1, var_index );
+    const TT diff = tt0._bits ^ tt1._bits;
+    const TT mask = tt0._care & tt1._care;
+    if ( kitty::count_ones( diff & mask ) > 0 )
+      return true;
+    /* Adjust the careset and the onset to avoid contradictions. */
+    tt._care |= ( ~mask ) & diff;
+    tt._bits = tt0._bits | tt1._bits;
+    return false;
+  }
+  else
+  {
+    return has_var( tt._bits, var_index );
+  }
+}
+
+/*! \brief Checks whether a ternary truth table depends on given variable index.\
+
+           When the template parameter UseDCs is false, don't cares are treated like zeros.
+           When the template parameter UseDCs is true, this function returns:
+           - true if the onset shows that the function depends on the variable.
+           - false if a don't cares assignments makes the function independent of the variable.
+
+           For example, let the hexadecimal representation of the onset be 0xF0000000, and
+           the hexadecimal representation of the careset be 0xF0000000. This function is
+           independent of the variable 2, with projection function 0xF0F0F0F0 for the following
+           onset, careset pair ( 0xFF000000, 0xFF000000 ).
+
+           Warning. This function DOES NOT perform the reassignment. Use has_var_inplace if that
+           is the desired behavior.
+
+  \param tt Truth table
+  \param var_index Variable index
+*/
+template<typename TT, bool UseDCs = false, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
+bool has_var( ternary_truth_table<TT> const& tt, uint8_t var_index )
+{
+  ternary_truth_table<TT> ttc = tt;
+  return has_var_inplace<TT, UseDCs>( ttc, var_index );
 }
 
 /*! \brief Computes the next lexicographically larger truth table
@@ -930,8 +992,8 @@ template<typename TT>
 void next_inplace( quaternary_truth_table<TT>& tt )
 {
   auto copy = tt;
-  auto first_bit_on = find_first_one_bit( tt._onset );
-  auto first_bit_of = find_first_one_bit( tt._offset );
+  int64_t first_bit_on = find_first_one_bit( tt._onset );
+  int64_t first_bit_of = find_first_one_bit( tt._offset );
   if ( first_bit_on == -1 )
     first_bit_on = tt._onset.num_bits();
   if ( first_bit_of == -1 )
@@ -940,7 +1002,7 @@ void next_inplace( quaternary_truth_table<TT>& tt )
   {
     clear_bit( tt._offset, first_bit_of );
     set_bit( tt._onset, first_bit_of );
-    for ( uint64_t i = 0; i < first_bit_of; i++ )
+    for ( int64_t i = 0; i < first_bit_of; i++ )
     {
       set_bit( tt._offset, i );
       clear_bit( tt._onset, i );
@@ -951,7 +1013,7 @@ void next_inplace( quaternary_truth_table<TT>& tt )
     if ( first_bit_of > first_bit_on )
     {
       set_bit( tt._offset, first_bit_on );
-      for ( uint64_t i = 0; i < first_bit_on; i++ )
+      for ( int64_t i = 0; i < first_bit_on; i++ )
       {
         set_bit( tt._offset, i );
         clear_bit( tt._onset, i );
@@ -959,14 +1021,14 @@ void next_inplace( quaternary_truth_table<TT>& tt )
     }
     else
     {
-      if ( first_bit_of == tt._offset.num_bits() && first_bit_on == tt._onset.num_bits() )
+      if ( uint64_t( first_bit_of ) == tt._offset.num_bits() && uint64_t( first_bit_on ) == tt._onset.num_bits() )
         set_bit( tt._offset, first_bit_of - 1 );
       else
       {
         clear_bit( tt._onset, first_bit_on );
         clear_bit( tt._offset, first_bit_on );
       }
-      for ( uint64_t i = 0; i < first_bit_of; i++ )
+      for ( int64_t i = 0; i < first_bit_of; i++ )
       {
         set_bit( tt._offset, i );
         clear_bit( tt._onset, i );
@@ -1528,6 +1590,45 @@ std::vector<uint8_t> min_base_inplace( TT& tt )
   for ( auto i = 0u; i < tt.num_vars(); ++i )
   {
     if ( !has_var( tt, i ) )
+    {
+      continue;
+    }
+    if ( k < i )
+    {
+      swap_inplace( tt, k, i );
+    }
+    support.push_back( i );
+    ++k;
+  }
+
+  return support;
+}
+
+/*! \brief Reorders truth table to have minimum base
+
+  This function will reorder variables, such that there are no
+  "holes".  For example, the function \f$ x_0 \land x_2 \f$ will be
+  changed to \f$ x_0 \land x_1 \f$ by swapping \f$ x_1 \f$ with \f$
+  x_2 \f$.  That is all variables that are not in the functional
+  support will be moved to the back.  Note that the size of the truth
+  table is not changed, because for `static_truth_table` one cannot
+  compute it at compile-time.
+
+  The function changes the truth table and returns a vector with all
+  variable indexes that were in the functional support of the original
+  function.
+
+  \param tt Truth table
+ */
+template<typename TT, bool UseDCs, typename = std::enable_if_t<is_complete_truth_table<TT>::value>>
+std::vector<uint8_t> min_base_inplace( ternary_truth_table<TT>& tt )
+{
+  std::vector<uint8_t> support;
+
+  auto k = 0u;
+  for ( auto i = 0u; i < tt.num_vars(); ++i )
+  {
+    if ( !has_var<TT, UseDCs>( tt, i ) )
     {
       continue;
     }
@@ -2395,16 +2496,16 @@ inline void shift_with_mask_inplace( quaternary_truth_table<TT>& f, uint8_t mask
   }
   assert( mask_to.size() == mask_from.size() );
   std::vector<uint8_t> index_remove = {};
-  for ( auto i = 0; i < mask_from.size(); i++ )
+  for ( auto i = 0u; i < mask_from.size(); i++ )
   {
-    int index = std::find( begin( mask_to ), end( mask_to ), mask_from[i] ) - mask_to.begin();
-    if ( index < mask_to.size() )
+    auto it = std::find( mask_to.begin(), mask_to.end(), mask_from[i] );
+    if ( it != mask_to.end() )
     {
-      mask_to.erase( mask_to.begin() + index );
+      mask_to.erase( it );
       mask_from.erase( mask_from.begin() + i );
     }
   }
-  for ( auto i = 0; i < mask_from.size(); i++ )
+  for ( auto i = 0u; i < mask_from.size(); i++ )
   {
     swap_inplace( f, mask_from[i], mask_to[i] );
   }
