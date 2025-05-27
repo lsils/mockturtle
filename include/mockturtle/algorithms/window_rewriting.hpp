@@ -315,6 +315,7 @@ public:
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
 
+        bool fSuccess = true;
         std::list<std::pair<node, signal>> substitutions;
         insert_ntk( ntk, std::begin( signals ), std::end( signals ), win,
                     [&]( signal const& _new ) {
@@ -327,26 +328,28 @@ public:
 
                       /* ensure that _old is not in the TFI of _new */
                       // assert( !is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) );
-                      if ( ps.filter_cyclic_substitutions &&
+                      if ( fSuccess && ps.filter_cyclic_substitutions &&
                            call_with_stopwatch( st.time_window, [&]() { return is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ); } ) )
                       {
-                        std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
-                        substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
-                        for ( auto it = std::rbegin( substitutions ); it != std::rend( substitutions ); ++it )
-                        {
-                          if ( ntk.fanout_size( ntk.get_node( it->second ) ) == 0u )
-                          {
-                            ntk.take_out_node( ntk.get_node( it->second ) );
-                          }
-                        }
-                        substitutions.clear();
-                        return false;
+                        fSuccess = false;
                       }
 
                       substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
                       return true;
                     } );
 
+        if ( !fSuccess )
+        {
+          for ( auto it = std::rbegin( substitutions ); it != std::rend( substitutions ); ++it )
+          {
+            if ( ntk.fanout_size( ntk.get_node( it->second ) ) == 0u )
+            {
+              ntk.take_out_node( ntk.get_node( it->second ) );
+            }
+          }
+          substitutions.clear();
+        }
+                        
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
         substitute_nodes( substitutions );
