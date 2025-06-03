@@ -582,7 +582,7 @@ private:
 private:
   std::shared_ptr<std::vector<node>> _choice_repr;
   std::shared_ptr<std::vector<signal>> _choice_phase;
-  choice_view_params const _ps;
+  choice_view_params _ps;
   std::shared_ptr<typename network_events<Ntk>::add_event_type> _add_event;
 };
 
