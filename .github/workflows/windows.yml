@@ -12,11 +12,11 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ windows-2019 ]
+        os: [ windows-2022 ]
         toolset: [ v142, ClangCL ]
         include:
-          - os: windows-2019
-            env: "Visual Studio 16 2019"
+          - os: windows-2022
+            env: "Visual Studio 17 2022"
 
     name: ${{matrix.os}} with ${{matrix.env}} and ${{matrix.toolset}} toolset
     runs-on: ${{matrix.os}}
