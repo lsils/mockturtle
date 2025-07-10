@@ -349,7 +349,7 @@ public:
           }
           substitutions.clear();
         }
-                        
+
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
         substitute_nodes( substitutions );
