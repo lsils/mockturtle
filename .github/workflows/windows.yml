@@ -28,7 +28,7 @@ jobs:
       - name: Create build directory
         run: cmake -E make_directory ${{github.workspace}}\build
       - name: Run CMake
-        run: cmake ${{github.workspace}} -G "${{matrix.env}}" -A x64 -T ${{matrix.toolset}} -DMOCKTURTLE_TEST=ON
+        run: cmake ${{github.workspace}} -G "${{matrix.env}}" -A x64 -T ${{matrix.toolset}} -DMOCKTURTLE_BUILD_TESTS=ON
         working-directory: ${{github.workspace}}\build
       - name: Build mockturtle
         run: cmake --build . -j2
