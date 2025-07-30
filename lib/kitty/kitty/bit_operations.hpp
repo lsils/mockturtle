@@ -32,16 +32,16 @@
 
 #pragma once
 
-#include <cstdint>
-#include <cassert>
-#include <numeric>
 #include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <numeric>
 
+#include "detail/mscfix.hpp"
+#include "partial_truth_table.hpp"
+#include "quaternary_truth_table.hpp"
 #include "static_truth_table.hpp"
 #include "ternary_truth_table.hpp"
-#include "quaternary_truth_table.hpp"
-#include "partial_truth_table.hpp"
-#include "detail/mscfix.hpp"
 
 namespace kitty
 {
@@ -342,8 +342,7 @@ template<typename TT>
 inline uint64_t count_ones( const TT& tt )
 {
   return std::accumulate( tt.cbegin(), tt.cend(), uint64_t( 0 ),
-                          []( auto accu, auto word )
-                          {
+                          []( auto accu, auto word ) {
                             return accu + __builtin_popcountll( word );
                           } );
 }
@@ -353,6 +352,12 @@ template<uint32_t NumVars>
 inline uint64_t count_ones( const static_truth_table<NumVars, true>& tt )
 {
   return __builtin_popcountll( tt._bits );
+}
+
+template<typename TT>
+inline uint64_t count_ones( const ternary_truth_table<TT>& tt )
+{
+  return count_ones( tt._bits & tt._care );
 }
 /*! \endcond */
 
@@ -471,8 +476,7 @@ int64_t find_first_one_bit( const TT& tt, int64_t start = 0 )
     return -1;
   }
 
-  it = std::find_if( it + 1, tt.cend(), []( auto word )
-                     { return word != 0; } );
+  it = std::find_if( it + 1, tt.cend(), []( auto word ) { return word != 0; } );
 
   if ( it == tt.cend() )
   {
@@ -491,8 +495,7 @@ int64_t find_first_one_bit( const TT& tt, int64_t start = 0 )
 template<typename TT>
 int64_t find_last_one_bit( const TT& tt )
 {
-  const auto it = std::find_if( tt.crbegin(), tt.crend(), []( auto word )
-                                { return word != 0; } );
+  const auto it = std::find_if( tt.crbegin(), tt.crend(), []( auto word ) { return word != 0; } );
 
   if ( it == tt.crend() )
   {
