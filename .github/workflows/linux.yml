@@ -26,7 +26,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-9 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=g++-9 -DMOCKTURTLE_BUILD_TESTS=ON ..
         make run_tests
     - name: Run tests
       run: |
@@ -49,7 +49,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_BUILD_TESTS=ON ..
         make run_tests
     - name: Run tests
       run: |
@@ -72,7 +72,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DMOCKTURTLE_CXX_STANDARD=20 -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_TEST=ON ..
+        cmake -DMOCKTURTLE_CXX_STANDARD=20 -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_BUILD_TESTS=ON ..
         make run_tests
     - name: Run tests
       run: |
@@ -95,7 +95,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-12 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=g++-12 -DMOCKTURTLE_BUILD_TESTS=ON ..
         make run_tests
     - name: Run tests
       run: |
@@ -118,7 +118,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-11 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=clang++-11 -DMOCKTURTLE_BUILD_TESTS=ON ..
         make run_tests
     - name: Run tests
       run: |
@@ -141,7 +141,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-13 -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=clang++-13 -DMOCKTURTLE_BUILD_TESTS=ON ..
         make run_tests
     - name: Run tests
       run: |
@@ -164,7 +164,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-13 -DENABLE_ASAN=ON -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=clang++-13 -DMOCKTURTLE_ENABLE_ASAN=ON -DMOCKTURTLE_BUILD_TESTS=ON ..
         make run_tests
     - name: Run tests with ASAN
       run: |
@@ -187,5 +187,5 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-9 -DMOCKTURTLE_EXAMPLES=ON -DMOCKTURTLE_EXPERIMENTS=ON -DMOCKTURTLE_TEST=ON ..
+        cmake -DCMAKE_CXX_COMPILER=g++-9 -DMOCKTURTLE_BUILD_EXAMPLES=ON -DMOCKTURTLE_BUILD_EXPERIMENTS=ON -DMOCKTURTLE_BUILD_TESTS=ON ..
         make
