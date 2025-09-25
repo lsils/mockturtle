@@ -12,6 +12,7 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/block.hpp>
 #include <mockturtle/networks/klut.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/utils/tech_library.hpp>
 #include <mockturtle/views/binding_view.hpp>
 #include <mockturtle/views/cell_view.hpp>
@@ -273,7 +274,7 @@ TEST_CASE( "Emap on ripple carry adder with multi-output gates", "[emap]" )
   tech_library<3, classification_type::p_configurations> lib( gates, tps );
 
   aig_network aig;
-  
+
   std::vector<aig_network::signal> a( 8 ), b( 8 );
   std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
   std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
@@ -316,7 +317,7 @@ TEST_CASE( "Emap on ripple carry adder with multi-output cells", "[emap]" )
   tech_library<3, classification_type::p_configurations> lib( gates, tps );
 
   aig_network aig;
-  
+
   std::vector<aig_network::signal> a( 8 ), b( 8 );
   std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
   std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
@@ -721,7 +722,7 @@ TEST_CASE( "Emap with global required times", "[emap]" )
   tech_library<6> lib( gates );
 
   aig_network aig;
-  
+
   std::vector<aig_network::signal> a( 8 ), b( 8 );
   std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
   std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
@@ -761,7 +762,7 @@ TEST_CASE( "Emap with required times", "[emap]" )
   tech_library<6> lib( gates );
 
   aig_network aig;
-  
+
   std::vector<aig_network::signal> a( 8 ), b( 8 );
   std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
   std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
@@ -802,7 +803,7 @@ TEST_CASE( "Emap with required time relaxation", "[emap]" )
   tech_library<6> lib( gates );
 
   aig_network aig;
-  
+
   std::vector<aig_network::signal> a( 8 ), b( 8 );
   std::generate( a.begin(), a.end(), [&aig]() { return aig.create_pi(); } );
   std::generate( b.begin(), b.end(), [&aig]() { return aig.create_pi(); } );
@@ -1011,4 +1012,38 @@ TEST_CASE( "Emap on circuit with don't touch cells", "[emap]" )
   CHECK( st.area < 11.0f + eps );
   CHECK( st.delay > 5.8f - eps );
   CHECK( st.delay < 5.8f + eps );
+}
+
+TEST_CASE( "Failing test case", "[emap]" )
+{
+  std::string const failing_library = "GATE  zero  0 O=CONST0;\n"
+                                      "GATE  one   0 O=CONST1;\n"
+                                      "GATE  buf   1 O=a;            PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+                                      "GATE  inv1  1 O=!a;           PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+                                      "GATE  and2  1 O=a*b;          PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+                                      "GATE  or2   1 O=a+b;          PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n"
+                                      "GATE  maj3  1 O=a*b+a*c+b*c;  PIN * NONINV 1 999 1.0 1.0 1.0 1.0\n";
+
+  std::vector<gate> gates;
+
+  std::istringstream in( failing_library );
+  auto result = lorina::read_genlib( in, genlib_reader( gates ) );
+  CHECK( result == lorina::return_code::success );
+
+  tech_library<3> lib( gates );
+
+  xag_network xag;
+  const auto a = xag.create_pi();
+  const auto b = xag.create_pi();
+  const auto c = xag.create_pi();
+
+  const auto f = xag.create_maj( a, b, c );
+  xag.create_po( f );
+
+  emap_params ps;
+  emap_stats st;
+  cell_view<block_network> ntk = emap( xag, lib, ps, &st );
+
+  CHECK( ntk.num_pis() == 3u );
+  CHECK( ntk.num_pos() == 1u );
 }
