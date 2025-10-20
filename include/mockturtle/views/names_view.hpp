@@ -73,6 +73,15 @@ public:
     return *this;
   }
 
+  names_view<Ntk>& operator=( Ntk const& ntk )
+  {
+    Ntk::operator=( ntk );
+    _signal_names.clear();
+    _network_name.clear();
+    _output_names.clear();
+    return *this;
+  }
+
   /*! \brief Creates a primary input and set its name.
    *
    * \param name Name of the created primary input
