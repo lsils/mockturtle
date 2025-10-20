@@ -225,10 +225,11 @@ public:
     _levels.resize();
   }
 
-  void create_po( signal const& f )
+  uint32_t create_po( signal const& f )
   {
-    Ntk::create_po( f );
+    const auto po = Ntk::create_po( f );
     _depth = std::max( _depth, _levels[f] );
+    return po;
   }
 
 private:
