@@ -51,9 +51,7 @@ public:
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
 
-public:
-  template<typename StrType = const char*>
-  names_view( Ntk const& ntk = Ntk(), StrType name = "" )
+  explicit names_view( Ntk const& ntk = Ntk(), std::string const& name = {} )
       : Ntk( ntk ), _network_name{ name }
   {
   }
@@ -78,6 +76,7 @@ public:
   /*! \brief Creates a primary input and set its name.
    *
    * \param name Name of the created primary input
+   * \return Index of the created primary input
    */
   signal create_pi( std::string const& name = {} )
   {
@@ -93,23 +92,24 @@ public:
    *
    * \param s Signal that drives the created primary output
    * \param name Name of the created primary output
+   * \return Index of the created primary output
    */
-  void create_po( signal const& s, std::string const& name = {} )
+  uint32_t create_po( signal const& s, std::string const& name = {} )
   {
     const auto index = Ntk::num_pos();
-    Ntk::create_po( s );
+    const auto po = Ntk::create_po( s );
     if ( !name.empty() )
     {
       set_output_name( index, name );
     }
+    return po;
   }
 
   /*! \brief Sets network name.
    *
    * \param name Name of the network
    */
-  template<typename StrType = const char*>
-  void set_network_name( StrType name ) noexcept
+  void set_network_name( std::string const& name ) noexcept
   {
     _network_name = name;
   }
@@ -132,7 +132,7 @@ public:
    */
   bool has_name( signal const& s ) const
   {
-    return ( _signal_names.find( s ) != _signal_names.end() );
+    return ( _signal_names.find( s ) != _signal_names.cend() );
   }
 
   /*! \brief Sets the name for a signal.
@@ -164,7 +164,7 @@ public:
    * \param index Index of the primary output to be checked
    * \return Whether the primary output has a name in record
    */
-  bool has_output_name( uint32_t index ) const
+  bool has_output_name( uint32_t const index ) const
   {
     return ( _output_names.find( index ) != _output_names.end() );
   }
@@ -177,7 +177,7 @@ public:
    * \param index Index of the primary output to set a name
    * \param name Name of the primary output
    */
-  void set_output_name( uint32_t index, std::string const& name )
+  void set_output_name( uint32_t const index, std::string const& name )
   {
     _output_names[index] = name;
   }
@@ -190,7 +190,7 @@ public:
    * \param index Index of the primary output to be queried
    * \return Name of the primary output
    */
-  std::string get_output_name( uint32_t index ) const
+  std::string get_output_name( uint32_t const index ) const
   {
     return _output_names.at( index );
   }
