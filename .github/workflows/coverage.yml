@@ -9,9 +9,9 @@ on:
     - master
 
 jobs:
-  build-gcc9-codecov:
+  build-gcc10-codecov:
     runs-on: ubuntu-22.04
-    name: GNU GCC 9 and run codecov
+    name: GNU GCC 10 and run codecov
     
     steps:
     - uses: actions/checkout@v1
@@ -21,7 +21,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-9 -DMOCKTURTLE_BUILD_TESTS=ON -DMOCKTURTLE_ENABLE_COVERAGE=ON ..
+        cmake -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_BUILD_TESTS=ON -DMOCKTURTLE_ENABLE_COVERAGE=ON ..
         make run_tests
     - name: Run tests
       run: |
