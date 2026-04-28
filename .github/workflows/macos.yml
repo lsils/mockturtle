@@ -9,8 +9,8 @@ on:
     - master
 
 jobs:
-  build-gcc12:
-    name: GNU GCC 12
+  build-gcc13:
+    name: GNU GCC 13
     runs-on: macOS-latest
 
     steps:
@@ -21,14 +21,14 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=$(which g++-12) -DMOCKTURTLE_BUILD_TESTS=ON ..
+        cmake -DCMAKE_CXX_COMPILER=$(which g++-13) -DMOCKTURTLE_BUILD_TESTS=ON ..
         make run_tests
     - name: Run tests
       run: |
         cd build
         ./test/run_tests
-  build-clang14:
-    name: Clang 14
+  build-clang17:
+    name: Clang 17
     runs-on: macOS-latest
 
     steps:
@@ -45,8 +45,8 @@ jobs:
       run: |
         cd build
         ./test/run_tests
-  build-clang15:
-    name: Clang 15
+  build-clang18:
+    name: Clang 18
     runs-on: macOS-latest
 
     steps:
@@ -57,7 +57,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake -DCMAKE_CXX_COMPILER=$(brew --prefix llvm@15)/bin/clang++ -DMOCKTURTLE_BUILD_TESTS=ON ..
+        cmake -DCMAKE_CXX_COMPILER=$(brew --prefix llvm@18)/bin/clang++ -DMOCKTURTLE_BUILD_TESTS=ON ..
         make run_tests
     - name: Run tests
       run: |
