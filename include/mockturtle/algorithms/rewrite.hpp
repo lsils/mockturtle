@@ -777,7 +777,7 @@ private:
       auto const g = ntk.get_node( f );
 
       /* recur if it is still a node to explore and to update */
-      if ( ntk.node_to_index( g ) > root && ( ntk.node_to_index( g ) >= size || required[g] > req ) )
+      if ( ntk.node_to_index( g ) > root && ( ntk.node_to_index( g ) >= size || required[g] >= req ) )
         propagate_required_rec( root, g, size, req - 1 );
 
       /* update the required time */
