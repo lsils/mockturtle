@@ -11,6 +11,7 @@
 #include <mockturtle/traits.hpp>
 #include <mockturtle/utils/cost_functions.hpp>
 #include <mockturtle/utils/tech_library.hpp>
+#include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/fanout_view.hpp>
 
 using namespace mockturtle;
@@ -215,4 +216,36 @@ TEST_CASE( "Rewrite depth-preserving", "[rewrite]" )
   CHECK( aig.num_pis() == 3 );
   CHECK( aig.num_pos() == 2 );
   CHECK( aig.num_gates() == 8 );
+}
+
+TEST_CASE( "Rewrite AIG with zero-gain substitutions preserves depth", "[rewrite]" )
+{
+  aig_network aig;
+  const auto x0 = aig.create_pi();
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+  const auto x3 = aig.create_pi();
+  const auto x4 = aig.create_pi();
+
+  const auto n0 = aig.create_and( x2, !x0 );
+  const auto n1 = aig.create_and( x4, !x3 );
+  const auto n2 = aig.create_and( !n1, x1 );
+  const auto n3 = aig.create_and( !n2, !n0 );
+  const auto n4 = aig.create_and( !x2, x0 );
+  const auto n5 = aig.create_and( !n4, !n3 );
+  const auto n6 = aig.create_and( !n5, !x1 );
+  aig.create_po( n6 );
+  aig.create_po( !n1 );
+
+  auto const depth_before = depth_view{ aig }.depth();
+
+  xag_npn_resynthesis<aig_network> resyn;
+  exact_library<aig_network> exact_lib( resyn );
+
+  rewrite_params ps;
+  ps.preserve_depth = true;
+  ps.allow_zero_gain = true;
+  rewrite( aig, exact_lib, ps );
+
+  CHECK( depth_view{ aig }.depth() <= depth_before );
 }
