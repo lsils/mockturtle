@@ -1,12 +1,12 @@
 #include <catch.hpp>
 
-#include <mockturtle/algorithms/rewrite.hpp>
 #include <mockturtle/algorithms/node_resynthesis/mig_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xag_npn.hpp>
 #include <mockturtle/algorithms/node_resynthesis/xmg3_npn.hpp>
+#include <mockturtle/algorithms/rewrite.hpp>
 #include <mockturtle/networks/aig.hpp>
-#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/mig.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/networks/xmg.hpp>
 #include <mockturtle/traits.hpp>
 #include <mockturtle/utils/cost_functions.hpp>

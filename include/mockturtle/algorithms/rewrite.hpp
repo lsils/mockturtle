@@ -636,16 +636,25 @@ private:
     auto& db = library.get_database();
     db.incr_trav_id();
 
-    return evaluate_entry_rec( current_root, n, leaves );
+    unordered_node_map<uint32_t, std::decay_t<decltype( db )>> levels( db );
+    return evaluate_entry_rec( current_root, n, leaves, levels );
   }
 
-  std::pair<int32_t, uint32_t> evaluate_entry_rec( node<Ntk> const& current_root, node<Ntk> const& n, std::array<signal<Ntk>, num_vars> const& leaves )
+  template<typename Container>
+  std::pair<int32_t, uint32_t> evaluate_entry_rec( node<Ntk> const& current_root, node<Ntk> const& n, std::array<signal<Ntk>, num_vars> const& leaves, Container& levels )
   {
     auto& db = library.get_database();
     if ( db.is_pi( n ) || db.is_constant( n ) )
       return { 0, 0 };
     if ( db.visited( n ) == db.trav_id() )
+    {
+      if constexpr ( has_level_v<Ntk> )
+      {
+        assert( levels.has( n ) );
+        return { 0, levels[n] };
+      }
       return { 0, 0 };
+    }
 
     db.set_visited( n, db.trav_id() );
 
@@ -671,7 +680,7 @@ private:
         return;
       }
 
-      auto [area_rec, level_rec] = evaluate_entry_rec( current_root, g, leaves );
+      auto [area_rec, level_rec] = evaluate_entry_rec( current_root, g, leaves, levels );
       area += area_rec;
       level = std::max( level, level_rec );
 
@@ -687,6 +696,11 @@ private:
         hashed = false;
       }
     } );
+
+    if constexpr ( has_level_v<Ntk> )
+    {
+      levels[n] = level + 1;
+    }
 
     if ( hashed )
     {
