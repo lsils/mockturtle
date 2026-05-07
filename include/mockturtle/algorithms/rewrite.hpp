@@ -130,24 +130,11 @@ public:
   rewrite_impl( Ntk& ntk, Library&& library, rewrite_params const& ps, rewrite_stats& st, NodeCostFn const& cost_fn )
       : ntk( ntk ), library( library ), ps( ps ), st( st ), cost_fn( cost_fn ), required( ntk, UINT32_MAX )
   {
-    register_events();
-  }
-
-  ~rewrite_impl()
-  {
-    if constexpr ( has_level_v<Ntk> )
-    {
-      ntk.events().release_add_event( add_event );
-      ntk.events().release_modified_event( modified_event );
-      ntk.events().release_delete_event( delete_event );
-    }
   }
 
   void run()
   {
     stopwatch t( st.time_total );
-
-    ntk.incr_trav_id();
 
     if ( ps.preserve_depth )
     {
@@ -195,12 +182,7 @@ private:
       {
         if ( ps.preserve_depth )
         {
-          uint32_t level = 0;
-          ntk.foreach_fanin( n, [&]( auto const& f ) {
-            level = std::max( level, ntk.level( ntk.get_node( f ) ) );
-          } );
-          ntk.set_level( n, level + 1 );
-          best_level = level + 1;
+          best_level = ntk.level( n );
         }
       }
 
@@ -325,6 +307,9 @@ private:
           {
             propagate_required_rec( ntk.node_to_index( n ), ntk.get_node( new_f ), size, required[n] );
             assert( ntk.level( ntk.get_node( new_f ) ) <= required[n] );
+            ntk.foreach_fanout( ntk.get_node( new_f ), [&]( const auto& p ) {
+              update_node_level( p );
+            } );
           }
         }
 
@@ -377,12 +362,7 @@ private:
       {
         if ( ps.preserve_depth )
         {
-          uint32_t level = 0;
-          ntk.foreach_fanin( n, [&]( auto const& f ) {
-            level = std::max( level, ntk.level( ntk.get_node( f ) ) );
-          } );
-          ntk.set_level( n, level + 1 );
-          best_level = level + 1;
+          best_level = ntk.level( n );
         }
       }
 
@@ -551,6 +531,9 @@ private:
           {
             propagate_required_rec( ntk.node_to_index( n ), ntk.get_node( new_f ), size, required[n] );
             assert( ntk.level( ntk.get_node( new_f ) ) <= required[n] );
+            ntk.foreach_fanout( ntk.get_node( new_f ), [&]( const auto& p ) {
+              update_node_level( p );
+            } );
           }
         }
 
@@ -813,33 +796,7 @@ private:
   }
 
 private:
-  void register_events()
-  {
-    if constexpr ( has_level_v<Ntk> )
-    {
-      auto const update_level_of_new_node = [&]( const auto& n ) {
-        ntk.resize_levels();
-        update_node_level( n );
-      };
-
-      auto const update_level_of_existing_node = [&]( node<Ntk> const& n, const auto& old_children ) {
-        (void)old_children;
-        ntk.resize_levels();
-        update_node_level( n );
-      };
-
-      auto const update_level_of_deleted_node = [&]( node<Ntk> const& n ) {
-        ntk.set_level( n, -1 );
-      };
-
-      add_event = ntk.events().register_add_event( update_level_of_new_node );
-      modified_event = ntk.events().register_modified_event( update_level_of_existing_node );
-      delete_event = ntk.events().register_delete_event( update_level_of_deleted_node );
-    }
-  }
-
-  /* maybe it should be moved to depth_view */
-  void update_node_level( node<Ntk> const& n, bool top_most = true )
+  void update_node_level( node<Ntk> const& n )
   {
     if constexpr ( has_level_v<Ntk> )
     {
@@ -859,14 +816,9 @@ private:
       if ( curr_level != max_level )
       {
         ntk.set_level( n, max_level );
-
-        /* update only one more level */
-        if ( top_most )
-        {
-          ntk.foreach_fanout( n, [&]( const auto& p ) {
-            update_node_level( p, false );
-          } );
-        }
+        ntk.foreach_fanout( n, [&]( const auto& p ) {
+          update_node_level( p );
+        } );
       }
     }
   }
@@ -882,11 +834,6 @@ private:
 
   uint32_t _candidates{ 0 };
   uint32_t _estimated_gain{ 0 };
-
-  /* events */
-  std::shared_ptr<typename network_events<Ntk>::add_event_type> add_event;
-  std::shared_ptr<typename network_events<Ntk>::modified_event_type> modified_event;
-  std::shared_ptr<typename network_events<Ntk>::delete_event_type> delete_event;
 };
 
 } /* namespace detail */
