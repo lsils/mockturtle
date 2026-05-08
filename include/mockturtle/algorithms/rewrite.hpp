@@ -828,8 +828,11 @@ private:
   {
     if ( ntk.visited( n ) == mark )
     {
-      if ( ntk.level( n ) != compute_level( n ) )
-        deferred.push_back( n );
+      if constexpr ( has_level_v<Ntk> )
+      {
+        if ( ntk.level( n ) != compute_level( n ) )
+          deferred.push_back( n );
+      }
       return;
     }
 
