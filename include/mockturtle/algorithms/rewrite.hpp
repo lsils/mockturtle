@@ -307,9 +307,7 @@ private:
           {
             propagate_required_rec( ntk.node_to_index( n ), ntk.get_node( new_f ), size, required[n] );
             assert( ntk.level( ntk.get_node( new_f ) ) <= required[n] );
-            ntk.foreach_fanout( ntk.get_node( new_f ), [&]( const auto& p ) {
-              update_node_level( p );
-            } );
+            update_levels( ntk.get_node( new_f ) );
           }
         }
 
@@ -531,9 +529,7 @@ private:
           {
             propagate_required_rec( ntk.node_to_index( n ), ntk.get_node( new_f ), size, required[n] );
             assert( ntk.level( ntk.get_node( new_f ) ) <= required[n] );
-            ntk.foreach_fanout( ntk.get_node( new_f ), [&]( const auto& p ) {
-              update_node_level( p );
-            } );
+            update_levels( ntk.get_node( new_f ) );
           }
         }
 
@@ -796,28 +792,142 @@ private:
   }
 
 private:
-  void update_node_level( node<Ntk> const& n )
+  bool update_level( node<Ntk> const& n )
   {
     if constexpr ( has_level_v<Ntk> )
     {
-      uint32_t curr_level = ntk.level( n );
-
-      uint32_t max_level = 0;
+      uint32_t level = 0;
       ntk.foreach_fanin( n, [&]( const auto& f ) {
         auto const p = ntk.get_node( f );
         auto const fanin_level = ntk.level( p );
-        if ( fanin_level > max_level )
+        if ( fanin_level > level )
         {
-          max_level = fanin_level;
+          level = fanin_level;
         }
       } );
-      ++max_level;
-
-      if ( curr_level != max_level )
+      if ( ntk.level( n ) != level + 1 )
       {
-        ntk.set_level( n, max_level );
-        ntk.foreach_fanout( n, [&]( const auto& p ) {
-          update_node_level( p );
+        ntk.set_level( n, level + 1 );
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void update_levels_fast( node<Ntk> const& n, uint32_t mark, std::vector<node<Ntk>>& deferred )
+  {
+    if ( ntk.visited( n ) == mark )
+    {
+      deferred.push_back( n );
+      return;
+    }
+
+    ntk.set_visited( n, mark );
+
+    if ( update_level( n ) )
+    {
+      ntk.foreach_fanout( n, [&]( auto const& fo ) {
+        update_levels_fast( fo, mark, deferred );
+      } );
+    }
+    // (we may permit second visit ignored if it does not cause update)
+  }
+
+  void mark_tfo( node<Ntk> const& n, uint32_t mark, std::vector<node<Ntk>>& sinks )
+  {
+    if ( ntk.visited( n ) == mark )
+      return;
+
+    ntk.set_visited( n, mark );
+
+    bool f = false;
+    ntk.foreach_fanout( n, [&]( auto const& fo ) {
+      mark_tfo( fo, mark, sinks );
+      f = true;
+    } );
+
+    if ( !f )
+      sinks.push_back( n );
+  }
+
+  void collect_marked_tfi_topo( node<Ntk> const& n, uint32_t mark, uint32_t visited, std::vector<node<Ntk>>& tfi_topo )
+  {
+    if ( ntk.visited( n ) == visited )
+      return;
+
+    if ( ntk.visited( n ) != mark )
+      return;
+
+    ntk.set_visited( n, visited );
+
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      auto const p = ntk.get_node( f );
+      collect_marked_tfi_topo( p, mark, visited, tfi_topo );
+    } );
+
+    tfi_topo.push_back( n );
+  }
+
+  void update_levels_naive( node<Ntk> const& n )
+  {
+    if ( update_level( n ) )
+    {
+      ntk.foreach_fanout( n, [&]( auto const& fo ) {
+        update_levels_naive( fo );
+      } );
+    }
+  }
+
+  void update_levels( node<Ntk> const& n )
+  {
+    /*
+    ntk.foreach_fanout( n, [&]( const auto& p ) {
+      update_levels_naive( p );
+    } );
+    return;
+    */
+
+    ntk.incr_trav_id();
+    auto const mark = ntk.trav_id();
+    std::vector<node<Ntk>> deferred;
+
+    ntk.foreach_fanout( n, [&]( const auto& p ) {
+      update_levels_fast( p, mark, deferred );
+    } );
+
+    if ( deferred.empty() )
+      return;
+
+    ntk.incr_trav_id();
+    auto const mark2 = ntk.trav_id();
+    std::vector<node<Ntk>> sinks;
+
+    for ( auto const& p : deferred )
+      mark_tfo( p, mark2, sinks );
+
+    ntk.incr_trav_id();
+    auto const mark3 = ntk.trav_id();
+    std::vector<node<Ntk>> tfi_topo;
+
+    for ( auto const& p : sinks )
+      collect_marked_tfi_topo( p, mark2, mark3, tfi_topo );
+
+    sinks.clear();
+
+    ntk.incr_trav_id();
+    auto const mark4 = ntk.trav_id();
+    for ( auto const& p : deferred )
+      ntk.set_visited( p, mark4 );
+
+    for ( auto const& p : tfi_topo )
+    {
+      if ( ntk.visited( p ) != mark4 )
+        continue;
+
+      if ( update_level( p ) )
+      {
+        ntk.foreach_fanout( p, [&]( const auto& q ) {
+          ntk.set_visited( q, mark4 );
         } );
       }
     }
