@@ -792,7 +792,7 @@ private:
   }
 
 private:
-  bool update_level( node<Ntk> const& n )
+  uint32_t compute_level( node<Ntk> const& n )
   {
     if constexpr ( has_level_v<Ntk> )
     {
@@ -805,9 +805,19 @@ private:
           level = fanin_level;
         }
       } );
-      if ( ntk.level( n ) != level + 1 )
+      return level + 1;
+    }
+    return 0;
+  }
+
+  bool update_level( node<Ntk> const& n )
+  {
+    if constexpr ( has_level_v<Ntk> )
+    {
+      uint32_t level = compute_level( n );
+      if ( ntk.level( n ) != level )
       {
-        ntk.set_level( n, level + 1 );
+        ntk.set_level( n, level );
         return true;
       }
     }
@@ -818,7 +828,8 @@ private:
   {
     if ( ntk.visited( n ) == mark )
     {
-      deferred.push_back( n );
+      if ( ntk.level( n ) != compute_level( n ) )
+        deferred.push_back( n );
       return;
     }
 
@@ -830,7 +841,6 @@ private:
         update_levels_fast( fo, mark, deferred );
       } );
     }
-    // (we may permit second visit ignored if it does not cause update)
   }
 
   void mark_tfo( node<Ntk> const& n, uint32_t mark, std::vector<node<Ntk>>& sinks )
