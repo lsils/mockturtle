@@ -296,6 +296,9 @@ TEST_CASE( "Rewrite updates larger reconvergent fanout levels with don't cares",
   const auto x9 = aig.create_pi();
   const auto x10 = aig.create_pi();
   const auto x11 = aig.create_pi();
+  const auto x12 = aig.create_pi();
+  const auto x13 = aig.create_pi();
+  const auto x14 = aig.create_pi();
 
   const auto n0 = aig.create_and( x2, x3 );
   const auto n1 = aig.create_and( x1, n0 );
@@ -312,14 +315,16 @@ TEST_CASE( "Rewrite updates larger reconvergent fanout levels with don't cares",
   const auto n9 = aig.create_and( x8, x9 );
   const auto n10 = aig.create_and( n9, x10 );
   const auto n11 = aig.create_and( n10, x11 );
+  const auto n12 = aig.create_and( n11, x12 );
+  const auto n13 = aig.create_and( n12, x13 );
+  const auto n14 = aig.create_and( n13, x14 );
 
-  const auto n12 = aig.create_and( n11, x6 );
-  const auto n13 = aig.create_and( n5, n12 );
-  const auto n14 = aig.create_and( n13, x7 );
-  const auto n15 = aig.create_and( n14, x8 );
-  const auto n16 = aig.create_and( n8, n15 );
+  const auto n15 = aig.create_and( n5, n14 );
+  const auto n16 = aig.create_and( n15, x6 );
+  const auto n17 = aig.create_and( n16, x7 );
+  const auto n18 = aig.create_and( n8, n17 );
 
-  aig.create_po( n16 );
+  aig.create_po( n18 );
 
   auto const depth_before = depth_view{ aig }.depth();
 
