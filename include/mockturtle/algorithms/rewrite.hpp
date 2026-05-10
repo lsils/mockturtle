@@ -797,87 +797,6 @@ private:
   }
 
 private:
-  bool update_level( node<Ntk> const& n )
-  {
-    if constexpr ( has_level_v<Ntk> )
-    {
-      uint32_t level = ntk.compute_level( n );
-      if ( ntk.level( n ) != level )
-      {
-        ntk.set_level( n, level );
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void update_levels_fast( node<Ntk> const& n, uint32_t mark, std::vector<node<Ntk>>& deferred )
-  {
-    if ( ntk.visited( n ) == mark )
-    {
-      if constexpr ( has_level_v<Ntk> )
-      {
-        if ( ntk.level( n ) != ntk.compute_level( n ) )
-          deferred.push_back( n );
-      }
-      return;
-    }
-
-    ntk.set_visited( n, mark );
-
-    if ( update_level( n ) )
-    {
-      ntk.foreach_fanout( n, [&]( auto const& fo ) {
-        update_levels_fast( fo, mark, deferred );
-      } );
-    }
-  }
-
-  void mark_tfo( node<Ntk> const& n, uint32_t mark, std::vector<node<Ntk>>& sinks )
-  {
-    if ( ntk.visited( n ) == mark )
-      return;
-
-    ntk.set_visited( n, mark );
-
-    bool f = false;
-    ntk.foreach_fanout( n, [&]( auto const& fo ) {
-      mark_tfo( fo, mark, sinks );
-      f = true;
-    } );
-
-    if ( !f )
-      sinks.push_back( n );
-  }
-
-  void collect_marked_tfi_topo( node<Ntk> const& n, uint32_t mark, uint32_t visited, std::vector<node<Ntk>>& tfi_topo )
-  {
-    if ( ntk.visited( n ) == visited )
-      return;
-
-    if ( ntk.visited( n ) != mark )
-      return;
-
-    ntk.set_visited( n, visited );
-
-    ntk.foreach_fanin( n, [&]( auto const& f ) {
-      auto const p = ntk.get_node( f );
-      collect_marked_tfi_topo( p, mark, visited, tfi_topo );
-    } );
-
-    tfi_topo.push_back( n );
-  }
-
-  void update_levels_naive( node<Ntk> const& n )
-  {
-    if ( update_level( n ) )
-    {
-      ntk.foreach_fanout( n, [&]( auto const& fo ) {
-        update_levels_naive( fo );
-      } );
-    }
-  }
-
   void update_levels( node<Ntk> const& n )
   {
     /*
@@ -931,6 +850,89 @@ private:
         } );
       }
     }
+  }
+
+  /*
+  void update_levels_naive( node<Ntk> const& n )
+  {
+    if ( update_level( n ) )
+    {
+      ntk.foreach_fanout( n, [&]( auto const& fo ) {
+        update_levels_naive( fo );
+      } );
+    }
+  }
+  */
+
+  void update_levels_fast( node<Ntk> const& n, uint32_t mark, std::vector<node<Ntk>>& deferred )
+  {
+    if ( ntk.visited( n ) == mark )
+    {
+      if constexpr ( has_level_v<Ntk> )
+      {
+        if ( ntk.level( n ) != ntk.compute_level( n ) )
+          deferred.push_back( n );
+      }
+      return;
+    }
+
+    ntk.set_visited( n, mark );
+
+    if ( update_level( n ) )
+    {
+      ntk.foreach_fanout( n, [&]( auto const& fo ) {
+        update_levels_fast( fo, mark, deferred );
+      } );
+    }
+  }
+
+  bool update_level( node<Ntk> const& n )
+  {
+    if constexpr ( has_level_v<Ntk> )
+    {
+      uint32_t level = ntk.compute_level( n );
+      if ( ntk.level( n ) != level )
+      {
+        ntk.set_level( n, level );
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void mark_tfo( node<Ntk> const& n, uint32_t mark, std::vector<node<Ntk>>& sinks )
+  {
+    if ( ntk.visited( n ) == mark )
+      return;
+
+    ntk.set_visited( n, mark );
+
+    bool f = false;
+    ntk.foreach_fanout( n, [&]( auto const& fo ) {
+      mark_tfo( fo, mark, sinks );
+      f = true;
+    } );
+
+    if ( !f )
+      sinks.push_back( n );
+  }
+
+  void collect_marked_tfi_topo( node<Ntk> const& n, uint32_t mark, uint32_t visited, std::vector<node<Ntk>>& tfi_topo )
+  {
+    if ( ntk.visited( n ) == visited )
+      return;
+
+    if ( ntk.visited( n ) != mark )
+      return;
+
+    ntk.set_visited( n, visited );
+
+    ntk.foreach_fanin( n, [&]( auto const& f ) {
+      auto const p = ntk.get_node( f );
+      collect_marked_tfi_topo( p, mark, visited, tfi_topo );
+    } );
+
+    tfi_topo.push_back( n );
   }
 
 private:
