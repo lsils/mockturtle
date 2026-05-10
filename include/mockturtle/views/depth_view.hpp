@@ -93,7 +93,7 @@ struct depth_view_params
       std::cout << "Depth: " << aig_depth.depth() << "\n";
    \endverbatim
  */
-template<class Ntk, class NodeCostFn = unit_cost<Ntk>, bool has_depth_interface = has_depth_v<Ntk>&& has_level_v<Ntk>&& has_update_levels_v<Ntk>>
+template<class Ntk, class NodeCostFn = unit_cost<Ntk>, bool has_depth_interface = has_depth_v<Ntk> && has_level_v<Ntk> && has_update_levels_v<Ntk>>
 class depth_view
 {
 };
@@ -201,6 +201,20 @@ public:
     return _crit_path[n];
   }
 
+  uint32_t compute_level( node const& n ) const
+  {
+    uint32_t level{ 0 };
+    this->foreach_fanin( n, [&]( auto const& f ) {
+      auto clevel = _levels[f];
+      if ( _ps.count_complements && this->is_complemented( f ) )
+      {
+        clevel++;
+      }
+      level = std::max( level, clevel );
+    } );
+    return level + _cost_fn( *this, n );
+  }
+
   void set_level( node const& n, uint32_t level )
   {
     _levels[n] = level;
@@ -250,17 +264,11 @@ private:
       return _levels[n] = _ps.pi_cost ? _cost_fn( *this, n ) - 1 : 0;
     }
 
-    uint32_t level{ 0 };
     this->foreach_fanin( n, [&]( auto const& f ) {
-      auto clevel = compute_levels( this->get_node( f ) );
-      if ( _ps.count_complements && this->is_complemented( f ) )
-      {
-        clevel++;
-      }
-      level = std::max( level, clevel );
+      compute_levels( this->get_node( f ) );
     } );
 
-    return _levels[n] = level + _cost_fn( *this, n );
+    return _levels[n] = compute_level( n );
   }
 
   void compute_levels()
@@ -331,23 +339,12 @@ private:
   void on_add( node const& n )
   {
     _levels.resize();
-
-    uint32_t level{ 0 };
-    this->foreach_fanin( n, [&]( auto const& f ) {
-      auto clevel = _levels[f];
-      if ( _ps.count_complements && this->is_complemented( f ) )
-      {
-        clevel++;
-      }
-      level = std::max( level, clevel );
-    } );
-
-    _levels[n] = level + _cost_fn( *this, n );
+    _levels[n] = compute_level( n );
   }
 
   depth_view_params _ps;
   node_map<uint32_t, Ntk> _levels;
-  node_map<uint32_t, Ntk> _crit_path;
+  node_map<bool, Ntk> _crit_path;
   uint32_t _depth{};
   NodeCostFn _cost_fn;
 
