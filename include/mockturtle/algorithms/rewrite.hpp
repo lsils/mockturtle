@@ -792,29 +792,11 @@ private:
   }
 
 private:
-  uint32_t compute_level( node<Ntk> const& n )
-  {
-    if constexpr ( has_level_v<Ntk> )
-    {
-      uint32_t level = 0;
-      ntk.foreach_fanin( n, [&]( const auto& f ) {
-        auto const p = ntk.get_node( f );
-        auto const fanin_level = ntk.level( p );
-        if ( fanin_level > level )
-        {
-          level = fanin_level;
-        }
-      } );
-      return level + 1;
-    }
-    return 0;
-  }
-
   bool update_level( node<Ntk> const& n )
   {
     if constexpr ( has_level_v<Ntk> )
     {
-      uint32_t level = compute_level( n );
+      uint32_t level = ntk.compute_level( n );
       if ( ntk.level( n ) != level )
       {
         ntk.set_level( n, level );
@@ -830,7 +812,7 @@ private:
     {
       if constexpr ( has_level_v<Ntk> )
       {
-        if ( ntk.level( n ) != compute_level( n ) )
+        if ( ntk.level( n ) != ntk.compute_level( n ) )
           deferred.push_back( n );
       }
       return;
