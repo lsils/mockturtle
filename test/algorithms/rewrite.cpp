@@ -320,11 +320,21 @@ TEST_CASE( "Rewrite updates larger reconvergent fanout levels with don't cares",
   const auto n14 = aig.create_and( n13, x14 );
 
   const auto n15 = aig.create_and( n5, n14 );
-  const auto n16 = aig.create_and( n15, x6 );
-  const auto n17 = aig.create_and( n16, x7 );
-  const auto n18 = aig.create_and( n8, n17 );
+  const auto n16 = aig.create_and( n3, n14 );
+  const auto n17 = aig.create_and( n4, n14 );
+  const auto n18 = aig.create_and( n8, n14 );
 
-  aig.create_po( n18 );
+  const auto n19 = aig.create_and( n15, x6 );
+  const auto n20 = aig.create_and( n16, x7 );
+  const auto n21 = aig.create_and( n17, x8 );
+  const auto n22 = aig.create_and( n18, x9 );
+
+  const auto n23 = aig.create_and( n19, n20 );
+  const auto n24 = aig.create_and( n21, n22 );
+  const auto n25 = aig.create_and( n8, n23 );
+  const auto n26 = aig.create_and( n24, n25 );
+
+  aig.create_po( n26 );
 
   auto const depth_before = depth_view{ aig }.depth();
 
