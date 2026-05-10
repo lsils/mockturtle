@@ -250,7 +250,7 @@ TEST_CASE( "Rewrite AIG with zero-gain substitutions preserves depth", "[rewrite
   CHECK( depth_view{ aig }.depth() <= depth_before );
 }
 
-TEST_CASE( "Rewrite updates reconvergent fanout levels and don't cares", "[rewrite]" )
+TEST_CASE( "Rewrite updates reconvergent fanout levels", "[rewrite]" )
 {
   aig_network aig;
   const auto x0 = aig.create_pi();
@@ -267,6 +267,46 @@ TEST_CASE( "Rewrite updates reconvergent fanout levels and don't cares", "[rewri
   const auto n4 = aig.create_and( n2, x5 );
   const auto n5 = aig.create_and( n3, n4 );
   aig.create_po( n5 );
+
+  auto const depth_before = depth_view{ aig }.depth();
+
+  xag_npn_resynthesis<aig_network> resyn;
+  exact_library<aig_network> exact_lib( resyn );
+
+  rewrite_params ps;
+  ps.preserve_depth = true;
+  ps.allow_zero_gain = true;
+  rewrite( aig, exact_lib, ps );
+
+  CHECK( depth_view{ aig }.depth() <= depth_before );
+}
+
+TEST_CASE( "Rewrite updates larger reconvergent fanout levels with don't cares", "[rewrite]" )
+{
+  aig_network aig;
+  const auto x0 = aig.create_pi();
+  const auto x1 = aig.create_pi();
+  const auto x2 = aig.create_pi();
+  const auto x3 = aig.create_pi();
+  const auto x4 = aig.create_pi();
+  const auto x5 = aig.create_pi();
+  const auto x6 = aig.create_pi();
+  const auto x7 = aig.create_pi();
+
+  const auto n0 = aig.create_and( x2, x3 );
+  const auto n1 = aig.create_and( x1, n0 );
+  const auto n2 = aig.create_and( x0, n1 );
+  const auto n3 = aig.create_and( n2, x4 );
+  const auto n4 = aig.create_and( n2, x5 );
+  const auto n5 = aig.create_and( n3, n4 );
+  const auto n6 = aig.create_and( n5, x6 );
+  const auto n7 = aig.create_and( n5, x7 );
+  const auto n8 = aig.create_and( n6, n7 );
+  const auto n9 = aig.create_and( n3, n8 );
+  const auto n10 = aig.create_and( n4, n8 );
+  const auto n11 = aig.create_and( n9, n10 );
+
+  aig.create_po( n11 );
 
   auto const depth_before = depth_view{ aig }.depth();
 
