@@ -39,6 +39,7 @@
 #include "../views/color_view.hpp"
 #include "../views/depth_view.hpp"
 #include "../views/fanout_view.hpp"
+#include "../views/topo_view.hpp"
 #include "../views/window_view.hpp"
 #include "cleanup.hpp"
 #include "cut_enumeration.hpp"
@@ -305,7 +306,7 @@ private:
           /* propagate new required to leaves */
           if ( ps.preserve_depth )
           {
-            propagate_required_rec( ntk.node_to_index( n ), ntk.get_node( new_f ), size, required[n] );
+            propagate_required( ntk.get_node( new_f ), required[n] );
             assert( ntk.level( ntk.get_node( new_f ) ) <= required[n] );
             update_levels( ntk.get_node( new_f ) );
           }
@@ -527,7 +528,7 @@ private:
           /* propagate new required to leaves */
           if ( ps.preserve_depth )
           {
-            propagate_required_rec( ntk.node_to_index( n ), ntk.get_node( new_f ), size, required[n] );
+            propagate_required( ntk.get_node( new_f ), required[n] );
             assert( ntk.level( ntk.get_node( new_f ) ) <= required[n] );
             update_levels( ntk.get_node( new_f ) );
           }
@@ -748,35 +749,39 @@ private:
         required[f] = ntk.depth();
       } );
 
-      for ( uint32_t index = ntk.size() - 1; index > ntk.num_pis(); index-- )
-      {
-        node<Ntk> n = ntk.index_to_node( index );
-        uint32_t req = required[n];
+      topo_view<Ntk, false> topo{ ntk };
+
+      topo.foreach_node_reverse( [&]( auto const& n ) {
+        if ( ntk.is_constant( n ) || ntk.is_pi( n ) || required[n] == UINT32_MAX )
+          return;
 
         ntk.foreach_fanin( n, [&]( auto const& f ) {
-          required[f] = std::min( required[f], req - 1 );
+          required[f] = std::min( required[f], ntk.compute_fanin_required( n, f, required[n] ) );
         } );
-      }
+      } );
     }
   }
 
-  void propagate_required_rec( uint32_t root, node<Ntk> const& n, uint32_t size, uint32_t req )
+  void propagate_required_rec( node<Ntk> const& n, uint32_t req )
   {
     if ( ntk.is_constant( n ) || ntk.is_pi( n ) )
       return;
 
-    /* recursively update required time */
+    if ( required[n] <= req )
+      return;
+
+    required[n] = req;
+
     ntk.foreach_fanin( n, [&]( auto const& f ) {
       auto const g = ntk.get_node( f );
-
-      /* recur if it is still a node to explore and to update */
-      if ( ntk.node_to_index( g ) > root && ( ntk.node_to_index( g ) >= size || required[g] >= req ) )
-        propagate_required_rec( root, g, size, req - 1 );
-
-      /* update the required time */
-      if ( ntk.node_to_index( g ) < size )
-        required[g] = std::min( required[g], req - 1 );
+      propagate_required_rec( g, ntk.compute_fanin_required( n, f, req ) );
     } );
+  }
+
+  void propagate_required( node<Ntk> const& n, uint32_t req )
+  {
+    required.resize( UINT32_MAX );
+    propagate_required_rec( n, req );
   }
 
   void clear_cuts_fanout_rec( network_cuts_t& cuts, cut_manager_t& cut_manager, node<Ntk> const& n )

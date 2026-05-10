@@ -215,6 +215,17 @@ public:
     return level + _cost_fn( *this, n );
   }
 
+  uint32_t compute_fanin_required( node const& n, signal const& f, uint32_t required ) const
+  {
+    auto cost = _cost_fn( *this, n );
+
+    if ( _ps.count_complements && this->is_complemented( f ) )
+      ++cost;
+
+    assert( required >= cost );
+    return required - cost;
+  }
+
   void set_level( node const& n, uint32_t level )
   {
     _levels[n] = level;
