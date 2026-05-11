@@ -738,7 +738,10 @@ private:
 
         /* annotate hashing info */
         db.set_value( n, val->data );
-        return { area + ( ntk.fanout_size( ntk.get_node( *val ) ) > 0 ? 0 : cost_fn( ntk, n ) ), level + 1 };
+        if constexpr ( has_level_v<Ntk> )
+          return { area + ( ntk.fanout_size( ntk.get_node( *val ) ) > 0 ? 0 : cost_fn( ntk, n ) ), level + 1 };
+
+        return { area + ( ntk.fanout_size( ntk.get_node( *val ) ) > 0 ? 0 : cost_fn( ntk, n ) ), 0 };
       }
     }
 
