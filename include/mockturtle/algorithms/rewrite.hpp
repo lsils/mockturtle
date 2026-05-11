@@ -308,8 +308,8 @@ private:
           {
             propagate_required( ntk.get_node( new_f ), required[n] );
             assert( ntk.level( ntk.get_node( new_f ) ) <= required[n] );
-            update_levels( ntk.get_node( new_f ) );
           }
+          update_levels( ntk.get_node( new_f ) );
         }
 
         clear_cuts_fanout_rec( cuts, cut_manager, ntk.get_node( new_f ) );
@@ -530,8 +530,8 @@ private:
           {
             propagate_required( ntk.get_node( new_f ), required[n] );
             assert( ntk.level( ntk.get_node( new_f ) ) <= required[n] );
-            update_levels( ntk.get_node( new_f ) );
           }
+          update_levels( ntk.get_node( new_f ) );
         }
 
         clear_cuts_fanout_rec( cuts, cut_manager, ntk.get_node( new_f ) );
@@ -729,7 +729,12 @@ private:
       {
         /* bad condition (current root is contained in the DAG): return a very high cost */
         if ( db.get_node( *val ) == current_root )
-          return { UINT32_MAX / 2, level + 1 };
+        {
+          if constexpr ( has_level_v<Ntk> )
+            return { UINT32_MAX / 2, level + 1 };
+
+          return { UINT32_MAX / 2, 0 };
+        }
 
         /* annotate hashing info */
         db.set_value( n, val->data );
@@ -738,7 +743,10 @@ private:
     }
 
     db.set_value( n, UINT32_MAX );
-    return { area + cost_fn( ntk, n ), level + 1 };
+    if constexpr ( has_level_v<Ntk> )
+      return { area + cost_fn( ntk, n ), level + 1 };
+
+    return { area + cost_fn( ntk, n ), 0 };
   }
 
   void compute_required()
