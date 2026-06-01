@@ -135,6 +135,23 @@ TEST_CASE( "MIG inverter propagation output", "[mig_inv_propagation]" )
   CHECK( st.node_increase == 0 );
 }
 
+TEST_CASE( "MIG inverter propagation complemented constant/PI", "[mig_inv_propagation]" )
+{
+  mig_network mig;
+  mig_inv_propagation_stats st;
+
+  const auto a = mig.create_pi();
+  mig.create_po( !a );
+  mig.create_po( mig.get_constant( true ) );
+
+  mig_inv_propagation( mig, &st );
+
+  CHECK( mig.num_gates() == 0u );
+  CHECK( inv_prop_test::number_of_inverted( mig ) == 2 );
+  CHECK( st.total_gain == 0 );
+  CHECK( st.node_increase == 0 );
+}
+
 TEST_CASE( "MIG inverter propagation complex", "[mig_inv_propagation]" )
 {
   mig_network mig;
