@@ -14,7 +14,7 @@ jobs:
     name: GNU GCC 11 and run codecov
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         submodules: true
     - name: Build mockturtle
@@ -34,7 +34,8 @@ jobs:
         lcov -e lcov.info "*mockturtle/include*" -o lcov_filtered.info
         lcov -l lcov_filtered.info
     - name: CodeCov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v6
       with:
+        token: ${{ secrets.CODECOV_TOKEN }}
         files: ./lcov_filtered.info
         disable_search: true
