@@ -86,7 +86,7 @@ struct window_rewriting_params
 
   uint64_t max_num_divs{ 100 };
 
-  bool filter_cyclic_substitutions{ false };
+  bool filter_cyclic_substitutions{ true };
 }; /* window_rewriting_params */
 
 struct window_rewriting_stats
