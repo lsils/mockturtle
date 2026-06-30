@@ -431,12 +431,9 @@ private:
       return simulate_nodes<TT, NtkWin>( win, *sim );
     } );
     std::optional<node_map<TT, NtkWin>> scratch_tts;
-    if constexpr ( std::is_same_v<TT, kitty::dynamic_truth_table> )
+    if ( ps.use_dont_cares )
     {
-      if ( ps.use_dont_cares )
-      {
-        scratch_tts.emplace( win );
-      }
+      scratch_tts.emplace( win );
     }
     auto win_add_event = win.events().register_add_event( [&]( auto const& n ) {
       call_with_stopwatch( st.time_simulate, [&]() {
@@ -526,13 +523,10 @@ private:
     } );
 
     TT care = call_with_stopwatch( st.time_dont_cares, [&]() {
-      if constexpr ( std::is_same_v<TT, kitty::dynamic_truth_table> )
+      if ( ps.use_dont_cares )
       {
-        if ( ps.use_dont_cares )
-        {
-          assert( scratch_tts );
-          return compute_observability_care( win, fanout_win, tts, *scratch_tts, root );
-        }
+        assert( scratch_tts );
+        return compute_observability_care( win, fanout_win, tts, *scratch_tts, root );
       }
       return ~tts[win.get_constant( false )];
     } );
@@ -620,7 +614,7 @@ private:
 
     scratch_tts[root] = ~tts[root];
     fanout_win.set_visited( root, fanout_win.trav_id() );
-    TT care( tts[root].num_vars() );
+    TT care = tts[root].construct();
     for ( auto const& [po, old_value] : po_values )
     {
       auto const po_value = recompute_node( win, fanout_win, tts, scratch_tts, win.get_node( po ) );
