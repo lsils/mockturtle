@@ -148,6 +148,14 @@ public:
       formula.erase( found, found + 5 );
     }
 
+    /* detect constant gates (e.g., Z=1, Z=0, O=CONST0, O=CONST1) and
+       discard spurious pin names produced by tokenization of "0"/"1" */
+    if ( formula == "0" || formula == "1" )
+    {
+      pp.clear();
+      pin_names.clear();
+    }
+
     uint32_t num_vars = pin_names.size();
 
     kitty::dynamic_truth_table tt{ num_vars };
