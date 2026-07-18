@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2022  EPFL
+ * Copyright (C) 2017-2025  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -75,7 +75,7 @@ struct ternary_truth_table
     \param care Care truth table.
   */
   ternary_truth_table( TT const& bits, TT const& care )
-      : _bits( bits ), _care( care )
+      : _care( care ), _bits( bits )
   {
   }
 

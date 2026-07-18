@@ -19,6 +19,7 @@ v0.4 (not yet released)
     - Adding a new network type to represent multi-output gates (`block_network`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
 * Algorithms:
     - AIG balancing (`aig_balance`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
+    - AIG resubstitution (`aig_resubstitution2`) `#658 <https://github.com/lsils/mockturtle/pull/658>`_
     - Cost-generic resubstitution (`cost_generic_resub`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Cost aware resynthesis solver (`cost_resyn`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
     - Resynthesis based on SOP factoring (`sop_factoring`) `#579 <https://github.com/lsils/mockturtle/pull/579>`_
@@ -38,6 +39,7 @@ v0.4 (not yet released)
     - Adding circuit extraction of half and full adders (`extract_adders`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - Adding don't care support in rewriting (`map`, `rewrite`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - XAG balancing (`xag_balance`) `#627 <https://github.com/lsils/mockturtle/pull/627>`_
+    - XAG resubstitution (`xag_resubstitution`) `#658 <https://github.com/lsils/mockturtle/pull/658>`_
 * I/O:
     - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:
@@ -57,6 +59,7 @@ v0.4 (not yet released)
     - Adding utils to perform pattern matching and derive patterns from standard cells (`struct_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - Adding Boolean matching for multi-output cells (`tech_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - Adding Boolean matching with don't cares for databases (`exact_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
+    - Adding Boolean evaluation for index lists (`list_simulator`) `#675 <https://github.com/lsils/mockturtle/pull/675>`_
 
 v0.3 (July 12, 2022)
 --------------------

@@ -35,7 +35,7 @@
 #include "../networks/events.hpp"
 #include "../networks/xag.hpp"
 #include "../utils/debugging_utils.hpp"
-#include "../utils/index_list.hpp"
+#include "../utils/index_list/index_list.hpp"
 #include "../utils/network_utils.hpp"
 #include "../utils/node_map.hpp"
 #include "../utils/stopwatch.hpp"
@@ -51,6 +51,7 @@
 
 #include <fmt/format.h>
 #include <kitty/kitty.hpp>
+#include <optional>
 #include <stack>
 
 #pragma once
@@ -86,7 +87,9 @@ struct window_rewriting_params
 
   uint64_t max_num_divs{ 100 };
 
-  bool filter_cyclic_substitutions{ false };
+  bool filter_cyclic_substitutions{ true };
+
+  bool use_dont_cares{ false };
 }; /* window_rewriting_params */
 
 struct window_rewriting_stats
@@ -124,6 +127,9 @@ struct window_rewriting_stats
   /*! \brief Time for adding divisor truth tables. */
   stopwatch<>::duration time_add_divisor{ 0 };
 
+  /*! \brief Time for computing don't cares. */
+  stopwatch<>::duration time_dont_cares{ 0 };
+
   /*! \brief Time for substitution within windows. */
   stopwatch<>::duration time_window_substitute{ 0 };
 
@@ -153,6 +159,7 @@ struct window_rewriting_stats
     time_simulate += other.time_simulate;
     time_mark += other.time_mark;
     time_add_divisor += other.time_add_divisor;
+    time_dont_cares += other.time_dont_cares;
     time_window_substitute += other.time_window_substitute;
     time_fanout_view += other.time_fanout_view;
     num_substitutions += other.num_substitutions;
@@ -179,6 +186,7 @@ struct window_rewriting_stats
     fmt::print( "[i] >> simulate =    {:7.2f} ({:5.2f}%)\n", to_seconds( time_simulate ), to_seconds( time_simulate ) / to_seconds( time_optimize ) * 100 );
     fmt::print( "[i] >> marking =     {:7.2f} ({:5.2f}%)\n", to_seconds( time_mark ), to_seconds( time_mark ) / to_seconds( time_optimize ) * 100 );
     fmt::print( "[i] >> add div. =    {:7.2f} ({:5.2f}%)\n", to_seconds( time_add_divisor ), to_seconds( time_add_divisor ) / to_seconds( time_optimize ) * 100 );
+    fmt::print( "[i] >> DCs =         {:7.2f} ({:5.2f}%)\n", to_seconds( time_dont_cares ), to_seconds( time_dont_cares ) / to_seconds( time_optimize ) * 100 );
     fmt::print( "[i] >> substitute =  {:7.2f} ({:5.2f}%)\n", to_seconds( time_window_substitute ), to_seconds( time_window_substitute ) / to_seconds( time_optimize ) * 100 );
     fmt::print( "[i] >> fanout_view = {:7.2f} ({:5.2f}%)\n", to_seconds( time_fanout_view ), to_seconds( time_fanout_view ) / to_seconds( time_optimize ) * 100 );
     fmt::print( "[i] Substitute = {:7.2f} ({:5.2f}%) (#hash upd. = {})\n",
@@ -315,6 +323,7 @@ public:
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
 
+        bool fSuccess = true;
         std::list<std::pair<node, signal>> substitutions;
         insert_ntk( ntk, std::begin( signals ), std::end( signals ), win,
                     [&]( signal const& _new ) {
@@ -327,25 +336,27 @@ public:
 
                       /* ensure that _old is not in the TFI of _new */
                       // assert( !is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ) );
-                      if ( ps.filter_cyclic_substitutions &&
+                      if ( fSuccess && ps.filter_cyclic_substitutions &&
                            call_with_stopwatch( st.time_window, [&]() { return is_contained_in_tfi( ntk, ntk.get_node( _new ), ntk.get_node( _old ) ); } ) )
                       {
-                        std::cout << "undo resubstitution " << ntk.get_node( _old ) << std::endl;
-                        substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
-                        for ( auto it = std::rbegin( substitutions ); it != std::rend( substitutions ); ++it )
-                        {
-                          if ( ntk.fanout_size( ntk.get_node( it->second ) ) == 0u )
-                          {
-                            ntk.take_out_node( ntk.get_node( it->second ) );
-                          }
-                        }
-                        substitutions.clear();
-                        return false;
+                        fSuccess = false;
                       }
 
                       substitutions.emplace_back( std::make_pair( ntk.get_node( _old ), ntk.is_complemented( _old ) ? !_new : _new ) );
                       return true;
                     } );
+
+        if ( !fSuccess )
+        {
+          for ( auto it = std::rbegin( substitutions ); it != std::rend( substitutions ); ++it )
+          {
+            if ( ntk.fanout_size( ntk.get_node( it->second ) ) == 0u )
+            {
+              ntk.take_out_node( ntk.get_node( it->second ) );
+            }
+          }
+          substitutions.clear();
+        }
 
         /* ensure that no dead nodes are reachable */
         assert( count_reachable_dead_nodes( ntk ) == 0u );
@@ -419,9 +430,18 @@ private:
     node_map<TT, NtkWin> tts = call_with_stopwatch( st.time_simulate, [&]() {
       return simulate_nodes<TT, NtkWin>( win, *sim );
     } );
+    std::optional<node_map<TT, NtkWin>> scratch_tts;
+    if ( ps.use_dont_cares )
+    {
+      scratch_tts.emplace( win );
+    }
     auto win_add_event = win.events().register_add_event( [&]( auto const& n ) {
       call_with_stopwatch( st.time_simulate, [&]() {
         tts.resize();
+        if ( scratch_tts )
+        {
+          scratch_tts->resize();
+        }
         std::vector<TT> fanin_values( win.fanin_size( n ) );
         win.foreach_fanin( n, [&]( auto const& f, auto i ) {
           fanin_values[i] = tts[f];
@@ -437,7 +457,7 @@ private:
       if ( win.value( root ) != 1 )
       {
         win.set_value( root, 1 );
-        changed |= optimize_node( win, fanout_win, tts, root );
+        changed |= optimize_node( win, fanout_win, tts, scratch_tts, root );
       }
     } );
 
@@ -453,7 +473,7 @@ private:
           }
         } );
         if ( !all_fanin_is_pi )
-          changed |= optimize_node( win, fanout_win, tts, root );
+          changed |= optimize_node( win, fanout_win, tts, scratch_tts, root );
       }
     } );
 
@@ -461,7 +481,7 @@ private:
     return changed;
   }
 
-  bool optimize_node( NtkWin& win, fanout_view<NtkWin>& fanout_win, node_map<TT, NtkWin>& tts, typename NtkWin::node const& root )
+  bool optimize_node( NtkWin& win, fanout_view<NtkWin>& fanout_win, node_map<TT, NtkWin>& tts, std::optional<node_map<TT, NtkWin>>& scratch_tts, typename NtkWin::node const& root )
   {
     st.num_resyn_invokes++;
 
@@ -502,9 +522,18 @@ private:
       } );
     } );
 
+    TT care = call_with_stopwatch( st.time_dont_cares, [&]() {
+      if ( ps.use_dont_cares )
+      {
+        assert( scratch_tts );
+        return compute_observability_care( win, fanout_win, tts, *scratch_tts, root );
+      }
+      return ~tts[win.get_constant( false )];
+    } );
+
     /* run resynthesis */
     auto const il = call_with_stopwatch( st.time_resyn, [&]() {
-      return engine( tts[root], ~tts[win.get_constant( false )], divs.begin(), divs.end(), tts, mffc_size - 1 );
+      return engine( tts[root], care, divs.begin(), divs.end(), tts, mffc_size - 1 );
     } );
     if ( il )
     {
@@ -528,6 +557,71 @@ private:
         mark_tfo( fanout_win, fo );
       }
     } );
+  }
+
+  TT recompute_node( NtkWin const& win, fanout_view<NtkWin>& fanout_win, node_map<TT, NtkWin> const& tts, node_map<TT, NtkWin>& scratch_tts, typename NtkWin::node const& n )
+  {
+    if ( fanout_win.visited( n ) == fanout_win.trav_id() )
+    {
+      return scratch_tts[n];
+    }
+
+    if ( win.is_constant( n ) || win.is_pi( n ) )
+    {
+      return tts[n];
+    }
+
+    if ( fanout_win.visited( n ) != fanout_win.trav_id() - 1 )
+    {
+      return tts[n];
+    }
+
+    std::vector<TT> fanin_values( win.fanin_size( n ) );
+    win.foreach_fanin( n, [&]( auto const& f, auto i ) {
+      fanin_values[i] = recompute_node( win, fanout_win, tts, scratch_tts, win.get_node( f ) );
+    } );
+    scratch_tts[n] = win.compute( n, fanin_values.begin(), fanin_values.end() );
+    fanout_win.set_visited( n, fanout_win.trav_id() );
+    return scratch_tts[n];
+  }
+
+  TT compute_observability_care( NtkWin& win, fanout_view<NtkWin>& fanout_win, node_map<TT, NtkWin> const& tts, node_map<TT, NtkWin>& scratch_tts, typename NtkWin::node const& root )
+  {
+    auto const tfo_id = fanout_win.trav_id();
+
+    bool root_is_po{ false };
+    std::vector<std::pair<typename NtkWin::signal, TT>> po_values;
+    win.foreach_po( [&]( auto const& f ) {
+      if ( fanout_win.visited( win.get_node( f ) ) == tfo_id )
+      {
+        if ( win.get_node( f ) == root )
+        {
+          root_is_po = true;
+          return false;
+        }
+        auto const value = tts[win.get_node( f )];
+        po_values.emplace_back( f, win.is_complemented( f ) ? ~value : value );
+      }
+      return true;
+    } );
+
+    if ( root_is_po )
+    {
+      return ~tts[win.get_constant( false )];
+    }
+
+    fanout_win.incr_trav_id();
+
+    scratch_tts[root] = ~tts[root];
+    fanout_win.set_visited( root, fanout_win.trav_id() );
+    TT care = tts[root].construct();
+    for ( auto const& [po, old_value] : po_values )
+    {
+      auto const po_value = recompute_node( win, fanout_win, tts, scratch_tts, win.get_node( po ) );
+      care |= old_value ^ ( win.is_complemented( po ) ? ~po_value : po_value );
+    }
+
+    return care;
   }
 
 private:

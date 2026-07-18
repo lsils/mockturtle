@@ -34,7 +34,7 @@
 #pragma once
 
 #include "../networks/events.hpp"
-#include "../utils/index_list.hpp"
+#include "../utils/index_list/index_list.hpp"
 #include "../utils/node_map.hpp"
 #include "cnf.hpp"
 

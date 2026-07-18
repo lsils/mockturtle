@@ -5,7 +5,7 @@
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/xag.hpp>
-#include <mockturtle/utils/index_list.hpp>
+#include <mockturtle/utils/index_list/index_list.hpp>
 #include <mockturtle/views/fanout_view.hpp>
 
 using namespace mockturtle;

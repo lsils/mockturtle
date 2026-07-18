@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2022  EPFL
+ * Copyright (C) 2017-2025  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -36,4 +36,5 @@
 #ifdef _MSC_VER
 #include <intrin.h>
 #define __builtin_popcount __popcnt
+#define __builtin_popcountll __popcnt64
 #endif

@@ -1,5 +1,5 @@
 /* mockturtle: C++ logic network library
- * Copyright (C) 2018-2022  EPFL
+ * Copyright (C) 2018-2024  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -23,58 +23,55 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <string>
-#include <vector>
-
-#include <fmt/format.h>
 #include <lorina/aiger.hpp>
-#include <mockturtle/algorithms/aig_resub.hpp>
 #include <mockturtle/algorithms/cleanup.hpp>
-#include <mockturtle/algorithms/resubstitution.hpp>
+#include <mockturtle/algorithms/xag_resub.hpp>
 #include <mockturtle/io/aiger_reader.hpp>
-#include <mockturtle/networks/aig.hpp>
+#include <mockturtle/networks/xag.hpp>
 #include <mockturtle/views/depth_view.hpp>
 #include <mockturtle/views/fanout_view.hpp>
 
 #include <experiments.hpp>
+#include <fmt/format.h>
+#include <string>
 
 int main()
 {
   using namespace experiments;
   using namespace mockturtle;
 
-  experiment<std::string, uint32_t, uint32_t, float, bool> exp( "aig_resubstitution", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
+  experiment<std::string, uint32_t, uint32_t, float, bool>
+      exp( "xag_resubstitution", "benchmark", "size_before", "size_after", "runtime", "equivalent" );
 
   for ( auto const& benchmark : epfl_benchmarks() )
   {
     fmt::print( "[i] processing {}\n", benchmark );
-    aig_network aig;
-    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( aig ) ) != lorina::return_code::success )
+
+    xag_network xag;
+    if ( lorina::read_aiger( benchmark_path( benchmark ), aiger_reader( xag ) ) != lorina::return_code::success )
     {
       continue;
     }
 
     resubstitution_params ps;
     resubstitution_stats st;
-
     ps.max_pis = 8u;
-    ps.max_inserts = 2u;
+    ps.max_inserts = 1u;
     ps.progress = false;
 
-    const uint32_t size_before = aig.num_gates();
-    depth_view depth_aig{ aig };
-    fanout_view fanout_aig{ depth_aig };
-    aig_resubstitution2( fanout_aig, ps, &st );
+    depth_view depth_xag{ xag };
+    fanout_view fanout_xag{ depth_xag };
 
-    aig = cleanup_dangling( aig );
+    uint32_t const size_before = fanout_xag.num_gates();
+    xag_resubstitution( fanout_xag, ps, &st );
+    xag = cleanup_dangling( xag );
 
-    const auto cec = benchmark == "hyp" ? true : abc_cec( aig, benchmark );
-
-    exp( benchmark, size_before, aig.num_gates(), to_seconds( st.time_total ), cec );
+    bool const cec = benchmark == "hyp" ? true : abc_cec( fanout_xag, benchmark );
+    exp( benchmark, size_before, xag.num_gates(), to_seconds( st.time_total ), cec );
   }
 
   exp.save();
-  exp.compare();
+  exp.table();
 
   return 0;
 }

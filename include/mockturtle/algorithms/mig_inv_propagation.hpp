@@ -92,10 +92,16 @@ private:
   {
     // starting from primary outputs, propagate the inversions
     ntk.foreach_po( [this]( auto const& f ) {
+      auto const old_node = ntk.get_node( f );
+      // skip if it is a constant, PI
+      if ( ntk.is_constant( old_node ) || ntk.is_pi( old_node ) )
+      {
+        return;
+      }
+
       if ( ntk.is_complemented( f ) )
       {
         // if it is complemented, invert the node
-        auto const old_node = ntk.get_node( f );
         auto const new_node = invert_node( old_node );
 
         // replace the po with the inverted node
@@ -113,7 +119,7 @@ private:
       else
       {
         // propagate the inversions to the inputs
-        propagate_helper( ntk.get_node( f ) );
+        propagate_helper( old_node );
       }
     } );
   }
@@ -176,6 +182,7 @@ private:
   signal<Ntk> invert_node( const node<Ntk> n )
   {
     signal<Ntk> a, b, c;
+    assert( ntk.fanin_size( n ) == 3 );
 
     ntk.foreach_fanin( n, [&a, &b, &c]( auto const& f, auto idx ) {
       if ( idx == 0 )

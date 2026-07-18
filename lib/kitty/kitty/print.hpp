@@ -1,5 +1,5 @@
 /* kitty: C++ truth table library
- * Copyright (C) 2017-2022  EPFL
+ * Copyright (C) 2017-2025  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -28,6 +28,7 @@
   \brief Implements functions to print truth tables
 
   \author Mathias Soeken
+  \author Rassul Bairamkulov
 */
 
 #pragma once
@@ -45,6 +46,7 @@
 #include "karnaugh_map.hpp"
 #include "operations.hpp"
 #include "constructors.hpp"
+#include "isop.hpp"
 
 namespace kitty
 {
@@ -186,7 +188,7 @@ void print_binary( const ternary_truth_table<TT>& tt, std::ostream& os = std::co
 {
   auto const chunk_size = std::min<uint64_t>( tt.num_bits(), 64 );
   std::string tt_string = "";
-  for_each_block_reversed( tt._bits, [&os, &tt_string, chunk_size]( auto word )
+  for_each_block_reversed( tt._bits, [&tt_string, chunk_size]( auto word )
                            {
     std::string chunk( chunk_size, '0' );
     auto it = chunk.rbegin();
@@ -200,7 +202,7 @@ void print_binary( const ternary_truth_table<TT>& tt, std::ostream& os = std::co
       word >>= 1;
     }
     tt_string += chunk; } );
-  for ( auto i = 0; i < tt.num_bits(); i++ )
+  for ( auto i = 0u; i < tt.num_bits(); i++ )
   {
     if ( is_dont_care( tt, tt.num_bits() - 1 - i ) )
     {
@@ -215,7 +217,7 @@ void print_binary( const quaternary_truth_table<TT>& tt, std::ostream& os = std:
 {
   auto const chunk_size = std::min<uint64_t>( tt.num_bits(), 64 );
   std::string tt_string = "";
-  for_each_block_reversed( tt._onset, [&os, &tt_string, chunk_size]( auto word )
+  for_each_block_reversed( tt._onset, [&tt_string, chunk_size]( auto word )
                            {
     std::string chunk( chunk_size, '0' );
     auto it = chunk.rbegin();
@@ -229,7 +231,7 @@ void print_binary( const quaternary_truth_table<TT>& tt, std::ostream& os = std:
       word >>= 1;
     }
     tt_string += chunk; } );
-  for ( auto i = 0; i < tt.num_bits(); i++ )
+  for ( auto i = 0u; i < tt.num_bits(); i++ )
   {
     if ( is_dont_care( tt, tt.num_bits() - 1 - i ) )
       tt_string[i] = '-';
@@ -476,6 +478,93 @@ template<typename TT, typename = std::enable_if_t<!std::is_same<TT, partial_trut
 std::string anf_to_expression( const ternary_truth_table<TT>& anf )
 {
   return anf_to_expression( anf._bits );
+}
+
+/*! \brief Creates an expression in the sum of products format.
+
+  Does not perform any optimizations. Useful when constructing GENLIB-compatible expressions
+
+  \param tt Truth table
+  \param os Output stream
+ */
+template<typename TT, typename = std::enable_if_t<is_completely_specified_truth_table<TT>::value>>
+void print_sop_expression( TT tt, std::ostream& os = std::cout )
+{
+  /* compare to constants */
+  if ( is_const0( tt ) )
+  {
+    os << "CONST0";
+    return;
+  }
+  else if ( is_const0( ~tt ) )
+  {
+    os << "CONST1";
+    return;
+  }
+
+  /* extract product terms */
+  auto cubes = kitty::isop( tt );
+
+  bool first_cube = true; // Controls insertion of '|'. It's false for the first cube to avoid leading '|'.
+
+  /* write product terms */
+  for ( auto cube : cubes )
+  {
+    auto bits = cube._bits;
+    auto mask = cube._mask;
+
+    bool brackets = __builtin_popcount( mask ) > 1;
+
+    if ( !first_cube )
+    {
+      os << '|';
+    }
+
+    if ( brackets )
+    {
+      os << '(';
+    }
+
+    bool first_literal = true;
+    for ( auto i = 0u; i < tt.num_vars(); ++i )
+    {
+      if ( mask & 1 )
+      {
+        if ( !first_literal )
+        {
+          os << '&';
+        }
+        if ( !( bits & 1 ) )
+        {
+          os << '!';
+        }
+        os << static_cast<char>( 'a' + i );
+        first_literal = false;
+      }
+      bits >>= 1;
+      mask >>= 1;
+    }
+
+    if ( brackets )
+    {
+      os << ')';
+    }
+    first_cube = false;
+  }
+}
+
+/*! \brief Creates an expression in the sum of products format.
+
+  Does not perform any optimizations. Useful when constructing GENLIB-compatible expressions
+
+  \param tt Truth table
+ */
+template<typename TT, typename = std::enable_if_t<is_completely_specified_truth_table<TT>::value>>
+std::string to_sop_expression( TT tt )
+{
+  std::stringstream os;
+  print_sop_expression( tt, os ); // Use the function to write into the stringstream
+  return os.str();                // Convert the stringstream to string and return it
 }
 
 } /* namespace kitty */

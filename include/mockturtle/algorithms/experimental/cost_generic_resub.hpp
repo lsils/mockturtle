@@ -35,7 +35,7 @@
 #include "../../networks/aig.hpp"
 #include "../../networks/xag.hpp"
 #include "../../traits.hpp"
-#include "../../utils/index_list.hpp"
+#include "../../utils/index_list/index_list.hpp"
 #include "../../utils/stopwatch.hpp"
 #include "../../views/cost_view.hpp"
 #include "../../views/depth_view.hpp"

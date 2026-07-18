@@ -35,7 +35,7 @@
 #include "../../networks/aig.hpp"
 #include "../../networks/xag.hpp"
 #include "../../traits.hpp"
-#include "../../utils/index_list.hpp"
+#include "../../utils/index_list/index_list.hpp"
 #include "../../utils/null_utils.hpp"
 #include "../../views/depth_view.hpp"
 #include "../../views/fanout_view.hpp"

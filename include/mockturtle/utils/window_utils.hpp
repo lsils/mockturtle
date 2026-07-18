@@ -725,10 +725,10 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
 
   for ( uint32_t index = 0u; index < used.size(); ++index )
   {
-    std::vector<node>& level = levels.at( used[index] );
-    for ( auto j = 0u; j < level.size(); ++j )
+    int current_index = used[index];
+    for ( auto j = 0u; j < levels[current_index].size(); ++j )
     {
-      ntk.foreach_fanout( level[j], [&]( node const& fo, uint64_t index ) {
+      ntk.foreach_fanout( levels[current_index][j], [&]( node const& fo, uint64_t index ) {
         /* avoid getting stuck on nodes with many fanouts */
         if ( index == MAX_FANOUTS )
         {
@@ -768,7 +768,7 @@ void levelized_expand_towards_tfo( Ntk const& ntk, std::vector<typename Ntk::nod
         return true;
       } );
     }
-    level.clear();
+    levels[current_index].clear();
   }
 }
 

@@ -166,10 +166,6 @@ public:
         return true;
       }
 
-      ntk.foreach_node( [&]( auto n ){
-        ntk.set_value( n, ntk.fanout_size( n ) );
-      });
-
       const auto mffc = make_with_stopwatch<mffc_view<Ntk>>( st.time_mffc, ntk, n );
 
       pbar( i, i, _candidates, _estimated_gain );

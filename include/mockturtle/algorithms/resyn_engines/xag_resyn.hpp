@@ -33,7 +33,7 @@
 
 #pragma once
 
-#include "../../utils/index_list.hpp"
+#include "../../utils/index_list/index_list.hpp"
 #include "../../utils/node_map.hpp"
 #include "../../utils/stopwatch.hpp"
 
@@ -100,10 +100,25 @@ struct aig_resyn_static_params_default : public xag_resyn_static_params_default<
 };
 
 template<class Ntk>
+struct xag_resyn_static_params_for_win_resub : public xag_resyn_static_params
+{
+  using truth_table_storage_type = unordered_node_map<kitty::dynamic_truth_table, Ntk>;
+  using node_type = typename Ntk::node;
+};
+
+template<class Ntk>
 struct xag_resyn_static_params_for_sim_resub : public xag_resyn_static_params
 {
   using truth_table_storage_type = incomplete_node_map<kitty::partial_truth_table, Ntk>;
   using node_type = typename Ntk::node;
+};
+
+template<class Ntk>
+struct aig_resyn_static_params_for_win_resub : public xag_resyn_static_params
+{
+  using truth_table_storage_type = unordered_node_map<kitty::dynamic_truth_table, Ntk>;
+  using node_type = typename Ntk::node;
+  static constexpr bool use_xor = false;
 };
 
 template<class Ntk>

@@ -7,7 +7,7 @@ Several resubstitution algorithms are implemented and can be called directly, in
 
 - ``default_resubstitution`` does functional reduction within a window.
 
-- ``aig_resubstitution``, ``mig_resubstitution`` and ``xmg_resubstitution`` do window-based resubstitution in the corresponding network types.
+- ``aig_resubstitution``, ``aig_resubstitution2``, ``xag_resubstitution``, ``mig_resubstitution``, ``mig_resubstitution2``, and ``xmg_resubstitution`` do window-based resubstitution in the corresponding network types.
 
 - ``resubstitution_minmc_withDC`` minimizes multiplicative complexity in XAGs with window-based resubstitution.
 

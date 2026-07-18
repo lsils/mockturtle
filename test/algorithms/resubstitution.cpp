@@ -14,6 +14,7 @@
 #include <mockturtle/algorithms/aig_resub.hpp>
 #include <mockturtle/algorithms/mig_resub.hpp>
 #include <mockturtle/algorithms/sim_resub.hpp>
+#include <mockturtle/algorithms/xag_resub.hpp>
 #include <mockturtle/algorithms/xag_resub_withDC.hpp>
 #include <mockturtle/algorithms/xmg_resub.hpp>
 
@@ -285,6 +286,83 @@ TEST_CASE( "Substitute AND-2OR in AIG", "[resubstitution]" )
   CHECK( aig.num_gates() == 6u );
 }
 
+TEST_CASE( "Substitute AND-2OR in AIG version 2", "[resubstitution]" )
+{
+  aig_network aig;
+  auto x0 = aig.create_pi();
+  auto x1 = aig.create_pi();
+  auto x2 = aig.create_pi();
+  auto x3 = aig.create_pi();
+  auto n0 = aig.create_and( !x2, x3 );
+  auto n1 = aig.create_and( !x2, n0 );
+  auto n2 = aig.create_and( x3, !n1 );
+  auto n3 = aig.create_and( x0, !x1 );
+  auto n4 = aig.create_and( !n2, n3 );
+  auto n5 = aig.create_and( x1, !n2 );
+  auto n6 = aig.create_and( !n4, !n5 );
+  auto n7 = aig.create_and( n1, n3 );
+  aig.create_po( n6 );
+  aig.create_po( n7 );
+
+  const auto tt = simulate<kitty::static_truth_table<4u>>( aig );
+  CHECK( tt[0]._bits == 0xf111 );
+  CHECK( tt[1]._bits == 0x200 );
+  CHECK( aig.num_gates() == 8u );
+
+  using view_t = depth_view<fanout_view<aig_network>>;
+  fanout_view<aig_network> fanout_view{ aig };
+  view_t resub_view{ fanout_view };
+
+  resubstitution_params ps;
+  ps.max_inserts = 3;
+  aig_resubstitution2( resub_view, ps );
+  aig = cleanup_dangling( aig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<4u>>( aig );
+  CHECK( tt_opt[0]._bits == tt[0]._bits );
+  CHECK( tt_opt[1]._bits == tt[1]._bits );
+  CHECK( aig.num_gates() == 6u );
+}
+
+TEST_CASE( "Resubstitution of XAG", "[resubstitution]" )
+{
+  xag_network xag;
+
+  const auto a = xag.create_pi();
+  const auto b = xag.create_pi();
+  const auto c = xag.create_pi();
+
+  const auto f = xag.create_and( xag.create_or( xag.create_and( b, xag.create_not( a ) ), xag.create_and( xag.create_not( b ), a ) ), c );
+  xag.create_po( f );
+
+  CHECK( xag.size() == 8 );
+  CHECK( xag.num_pis() == 3 );
+  CHECK( xag.num_pos() == 1 );
+  CHECK( xag.num_gates() == 4 );
+
+  const auto tt = simulate<kitty::static_truth_table<3u>>( xag )[0];
+
+  resubstitution_params ps;
+
+  using view_t = depth_view<fanout_view<xag_network>>;
+  fanout_view<xag_network> fanout_view{ xag };
+  view_t resub_view{ fanout_view };
+
+  xag_resubstitution( resub_view, ps );
+
+  xag = cleanup_dangling( xag );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<3u>>( xag )[0];
+  CHECK( tt_opt._bits == tt._bits );
+
+  CHECK( xag.size() == 6 );
+  CHECK( xag.num_pis() == 3 );
+  CHECK( xag.num_pos() == 1 );
+  CHECK( xag.num_gates() == 2 );
+}
+
 TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
 {
   mig_network mig;
@@ -309,6 +387,43 @@ TEST_CASE( "Resubstitution of MIG", "[resubstitution]" )
   view_t resub_view{ fanout_view };
 
   mig_resubstitution( resub_view );
+
+  mig = cleanup_dangling( mig );
+
+  /* check equivalence */
+  const auto tt_opt = simulate<kitty::static_truth_table<3u>>( mig )[0];
+  CHECK( tt_opt._bits == tt._bits );
+
+  CHECK( mig.size() == 5 );
+  CHECK( mig.num_pis() == 3 );
+  CHECK( mig.num_pos() == 1 );
+  CHECK( mig.num_gates() == 1 );
+}
+
+TEST_CASE( "Resubstitution of MIG version 2", "[resubstitution]" )
+{
+  mig_network mig;
+
+  const auto a = mig.create_pi();
+  const auto b = mig.create_pi();
+  const auto c = mig.create_pi();
+
+  const auto f = mig.create_maj( a, mig.create_maj( a, b, c ), c );
+  mig.create_po( f );
+
+  CHECK( mig.size() == 6 );
+  CHECK( mig.num_pis() == 3 );
+  CHECK( mig.num_pos() == 1 );
+  CHECK( mig.num_gates() == 2 );
+
+  const auto tt = simulate<kitty::static_truth_table<3u>>( mig )[0];
+  CHECK( tt._bits == 0xe8 );
+
+  using view_t = depth_view<fanout_view<mig_network>>;
+  fanout_view<mig_network> fanout_view{ mig };
+  view_t resub_view{ fanout_view };
+
+  mig_resubstitution2( resub_view );
 
   mig = cleanup_dangling( mig );
 
