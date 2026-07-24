@@ -574,7 +574,7 @@ static std::regex fairness( R"(^f(\d+) (.*)$)" );
   {
     detail::getline( in, line );
     const auto lit = std::atol( line.c_str() );
-    if ( !check_index_validity( lit, 2, 2 * _m + 1 ) )
+    if ( !check_index_validity( lit, 0, 2 * _m + 1 ) )
     {
       return return_code::parse_error;
     }
