@@ -39,10 +39,11 @@
 
 #include "../traits.hpp"
 
+#include <cassert>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <iostream>
-#include <cstring>
 
 namespace mockturtle
 {
@@ -65,10 +66,22 @@ inline void encode( std::vector<unsigned char>& buffer, uint32_t lit )
 
 } // namespace detail
 
-/*! \brief Writes a combinational AIG network in binary AIGER format into a file
+/*! \brief Writes an AIG network in binary AIGER format into a file
  *
  * This function should be only called on "clean" aig_networks, e.g.,
  * immediately after `cleanup_dangling`.
+ *
+ * Sequential networks (e.g., `sequential<aig_network>`) are supported: their
+ * registers are emitted as AIGER latches.  For a network type that does not
+ * implement `foreach_ri`/`num_registers`, a latch count of 0 is written and the
+ * network is asserted to be combinational.
+ *
+ * The binary AIGER format encodes the primary inputs and the register outputs
+ * implicitly, by requiring that variables `1..I` are the primary inputs and
+ * variables `I+1..I+L` are the register outputs.  Networks must therefore be
+ * built by creating all primary inputs first, then all register outputs, before
+ * any gate.  This matches the order in which `aiger_reader` constructs a network
+ * and is checked by an assertion.
  *
  * **Required network functions:**
  * - `num_cis`
@@ -80,7 +93,12 @@ inline void encode( std::vector<unsigned char>& buffer, uint32_t lit )
  * - `is_complemented`
  * - `node_to_index`
  *
- * \param aig Combinational AIG network
+ * **Optional network functions (enable sequential support):**
+ * - `num_registers`
+ * - `foreach_ri`
+ * - `register_at`
+ *
+ * \param aig AIG network
  * \param os Output stream
  */
 template<typename Ntk>
@@ -95,17 +113,68 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
   static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_is_complemented_v<Ntk>, "Ntk does not implement the is_complemented method" );
 
-  assert( aig.is_combinational() && "Network has to be combinational" );
+  /* a network type is treated as sequential if it can report and iterate registers */
+  constexpr bool is_sequential = has_num_registers_v<Ntk> && has_foreach_ri_v<Ntk> && has_foreach_ro_v<Ntk>;
 
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
+
+  uint32_t num_latches = 0u;
+  if constexpr ( is_sequential )
+  {
+    num_latches = aig.num_registers();
+  }
+  else
+  {
+    assert( aig.is_combinational() && "Network has to be combinational" );
+  }
+
+#ifndef NDEBUG
+  /* the binary format encodes CIs implicitly: PIs must be variables 1..I and
+     register outputs must be variables I+1..I+L */
+  aig.foreach_pi( [&]( node const& n, uint32_t index ) {
+    assert( aig.node_to_index( n ) == index + 1u &&
+            "primary inputs must be the first nodes created in the network" );
+  } );
+  if constexpr ( is_sequential )
+  {
+    aig.foreach_ro( [&]( node const& n, uint32_t index ) {
+      assert( aig.node_to_index( n ) == aig.num_pis() + index + 1u &&
+              "register outputs must be created after all primary inputs and before any gate" );
+    } );
+  }
+#endif
 
   uint32_t const M = aig.num_cis() + aig.num_gates();
 
   /* HEADER */
   char string_buffer[1024];
-  sprintf( string_buffer, "aig %u %u %u %u %u\n", M, aig.num_pis(), /*latches*/ 0, aig.num_pos(), aig.num_gates() );
+  snprintf( string_buffer, sizeof( string_buffer ), "aig %u %u %u %u %u\n", M, aig.num_pis(), num_latches, aig.num_pos(), aig.num_gates() );
   os.write( &string_buffer[0], sizeof( unsigned char ) * std::strlen( string_buffer ) );
+
+  /* LATCHES */
+  if constexpr ( is_sequential )
+  {
+    aig.foreach_ri( [&]( signal const& f, uint32_t index ) {
+      uint32_t const next = 2 * aig.node_to_index( aig.get_node( f ) ) + aig.is_complemented( f );
+
+      /* `aiger_reader` maps the AIGER reset value onto `register_t::init` as
+         0 (ZERO), 1 (ONE), or -1 (NONDETERMINISTIC) narrowed to uint8_t.
+
+         The reset value is always written explicitly.  An omitted reset value
+         means 0 in the AIGER format, so leaving it out would silently turn an
+         uninitialized register into a zero-initialized one.  A register whose
+         reset is undefined is instead encoded the way the format prescribes:
+         by repeating the latch's own current-state literal. */
+      auto const init = aig.register_at( index ).init;
+      uint32_t const reset = init == 0u   ? 0u
+                             : init == 1u ? 1u
+                                          : 2 * ( aig.num_pis() + index + 1u );
+
+      snprintf( string_buffer, sizeof( string_buffer ), "%u %u\n", next, reset );
+      os.write( &string_buffer[0], sizeof( unsigned char ) * std::strlen( string_buffer ) );
+    } );
+  }
 
   /* POs */
   aig.foreach_po( [&]( signal const& f ) {
@@ -152,6 +221,20 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
                aig.get_name( aig.make_signal( i ) ).c_str() );
       os.write( &string_buffer[0], sizeof( unsigned char ) * std::strlen( string_buffer ) );
     } );
+
+    /* register outputs carry the latch names, mirroring `on_latch_name` */
+    if constexpr ( is_sequential )
+    {
+      aig.foreach_ro( [&]( node const& i, uint32_t index ) {
+        if ( !aig.has_name( aig.make_signal( i ) ) )
+          return;
+
+        snprintf( string_buffer, sizeof( string_buffer ), "l%u %s\n",
+                  uint32_t( index ),
+                  aig.get_name( aig.make_signal( i ) ).c_str() );
+        os.write( &string_buffer[0], sizeof( unsigned char ) * std::strlen( string_buffer ) );
+      } );
+    }
   }
   if constexpr ( has_has_output_name_v<Ntk> && has_get_output_name_v<Ntk> )
   {
@@ -170,10 +253,14 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
   os.put( 'c' );
 }
 
-/*! \brief Writes a combinational AIG network in binary AIGER format into a file
+/*! \brief Writes an AIG network in binary AIGER format into a file
  *
  * This function should be only called on "clean" aig_networks, e.g.,
  * immediately after `cleanup_dangling`.
+ *
+ * Sequential networks (e.g., `sequential<aig_network>`) are supported: their
+ * registers are emitted as AIGER latches.  See the `std::ostream` overload for
+ * the requirements this places on the order in which the network was built.
  *
  * **Required network functions:**
  * - `num_cis`
@@ -185,7 +272,12 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
  * - `is_complemented`
  * - `node_to_index`
  *
- * \param aig Combinational AIG network
+ * **Optional network functions (enable sequential support):**
+ * - `num_registers`
+ * - `foreach_ri`
+ * - `register_at`
+ *
+ * \param aig AIG network
  * \param filename Filename
  */
 template<typename Ntk>
