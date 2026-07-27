@@ -14,23 +14,25 @@ concurrency:
 jobs:
   build_and_test:
     strategy:
+      # report every job, so a single failure does not mask the state of the rest
+      fail-fast: false
       matrix:
-        os: [ windows-2019, windows-2022, windows-2025 ]
-        toolset: [ v142, v143, ClangCL ]
+        # windows-2019 was retired as a GitHub-hosted image, and windows-2025
+        # ships Visual Studio 2026 since June 2026 -- Visual Studio 2022 is only
+        # available on windows-2022. The v142 toolset went away with windows-2019.
         include:
-          - os: windows-2019
-            env: "Visual Studio 16 2019"
           - os: windows-2022
             env: "Visual Studio 17 2022"
-          - os: windows-2025
-            env: "Visual Studio 17 2022"
-        exclude:
-          - os: windows-2019
             toolset: v143
           - os: windows-2022
-            toolset: v142
+            env: "Visual Studio 17 2022"
+            toolset: ClangCL
           - os: windows-2025
-            toolset: v142
+            env: "Visual Studio 18 2026"
+            toolset: v143
+          - os: windows-2025
+            env: "Visual Studio 18 2026"
+            toolset: ClangCL
 
     name: ${{matrix.os}} with ${{matrix.env}} and ${{matrix.toolset}} toolset
     runs-on: ${{matrix.os}}
@@ -58,9 +60,9 @@ jobs:
           cmake ${{github.workspace}}
           -G "${{matrix.env}}"
           -A x64 -T ${{matrix.toolset}}
-          -DMOCKTURTLE_EXAMPLES=ON
-          -DMOCKTURTLE_EXPERIMENTS=ON
-          -DMOCKTURTLE_TEST=ON
+          -DMOCKTURTLE_BUILD_EXAMPLES=ON
+          -DMOCKTURTLE_BUILD_EXPERIMENTS=ON
+          -DMOCKTURTLE_BUILD_TESTS=ON
 
       - name: Build
         working-directory: ${{github.workspace}}\build

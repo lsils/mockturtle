@@ -18,6 +18,8 @@ defaults:
 jobs:
   build_and_test:
     strategy:
+      # report every job, so a single failure does not mask the state of the rest
+      fail-fast: false
       matrix:
         os: [ macos-14, macos-15 ]
         compiler: [ clang++ ]
@@ -50,9 +52,9 @@ jobs:
         run: >
           cmake ${{github.workspace}}
           -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
-          -DMOCKTURTLE_EXAMPLES=ON
-          -DMOCKTURTLE_EXPERIMENTS=ON
-          -DMOCKTURTLE_TEST=ON
+          -DMOCKTURTLE_BUILD_EXAMPLES=ON
+          -DMOCKTURTLE_BUILD_EXPERIMENTS=ON
+          -DMOCKTURTLE_BUILD_TESTS=ON
 
       - name: Build
         working-directory: ${{github.workspace}}/build
