@@ -162,8 +162,10 @@ TEST_CASE( "clone a block network", "[block_net]" )
   CHECK( ntk1.num_gates() == 3 );
   CHECK( ntk1.num_pos() == 4 );
 
-  CHECK( ntk3.size() == 7 );
-  CHECK( ntk3.num_gates() == 3 );
+  /* ntk3 is a deep copy taken before ntk2 (and thus ntk1) was extended, so it
+     still holds exactly what ntk1 held at the time of the clone */
+  CHECK( ntk3.size() == 6 );
+  CHECK( ntk3.num_gates() == 2 );
   CHECK( ntk3.num_pos() == 3 );
 }
 
