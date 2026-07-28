@@ -208,7 +208,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
                 topo_ntk.get_output_name( index ) 
               : latch_name;
             std::string const ro_name = topo_ntk.has_name( ro_signal ) ? topo_ntk.get_name( ro_signal ) : fmt::format( "new_n{}", topo_ntk.get_node( ro_signal ) );
-            os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, latch_info.type, latch_info.control, latch_info.init );
+            os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, latch_info.type, latch_info.control, register_init::sanitize( latch_info.init ) );
             defined_names.insert( ro_name ); /* we should not have collision here */
           }
           else
@@ -217,7 +217,7 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
                 fmt::format( "new_n{}", topo_ntk.get_node( topo_ntk.ri_at( latch_idx ) ) )
               : fmt::format( "li{}", latch_idx );
             std::string const ro_name = fmt::format( "new_n{}", topo_ntk.get_node( ro_signal ) );
-            os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, latch_info.type, latch_info.control, latch_info.init );
+            os << fmt::format( "{} {} {} {} {}\n", ri_name, ro_name, latch_info.type, latch_info.control, register_init::sanitize( latch_info.init ) );
             defined_names.insert( ro_name ); /* we should not have collision here */
           }
           latch_idx++;
