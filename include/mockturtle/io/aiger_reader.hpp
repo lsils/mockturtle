@@ -97,9 +97,10 @@ public:
       {
         if ( !std::get<1>( out ).empty() )
         {
-          _ntk.set_output_name( output_id++, std::get<1>( out ) );
+          _ntk.set_output_name( output_id, std::get<1>( out ) );
         }
       }
+      ++output_id;
       _ntk.create_po( signal );
     }
 
@@ -218,13 +219,33 @@ public:
   {
     (void)index;
     assert( index == outputs.size() );
+    ++_num_outputs;
     outputs.emplace_back( lit, "" );
+  }
+
+  void on_bad_state( uint32_t index, uint32_t lit ) const override
+  {
+    /* A bad-state property is a signal that must never become 1. Logic networks
+       have no notion of properties, so it is kept as a primary output; dropping
+       it would silently discard logic. Writers that emit the AIGER 1.9 extended
+       header move the primary outputs into this section -- ABC does so for any
+       design with a non-zero latch initialization -- so reading them back as
+       primary outputs restores the original network. */
+    (void)index;
+    outputs.emplace_back( lit, "" );
+  }
+
+  void on_bad_state_name( uint32_t pos, const std::string& name ) const override
+  {
+    /* bad states are appended behind the primary outputs, see `on_bad_state` */
+    std::get<1>( outputs[_num_outputs + pos] ) = name;
   }
 
 private:
   Ntk& _ntk;
 
   mutable uint32_t _num_inputs{ 0 };
+  mutable uint32_t _num_outputs{ 0 };
   mutable std::vector<std::tuple<unsigned, std::string>> outputs;
   mutable std::vector<typename Ntk::signal> signals;
   mutable std::vector<std::tuple<unsigned, int8_t, std::string>> latches;

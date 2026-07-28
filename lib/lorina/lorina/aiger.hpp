@@ -553,16 +553,24 @@ static std::regex fairness( R"(^f(\d+) (.*)$)" );
       return return_code::parse_error;
     }
 
-    aiger_reader::latch_init_value init_value = aiger_reader::latch_init_value::NONDETERMINISTIC;
+    /* An omitted reset value means 0: the original AIGER format initialized every
+       latch to zero, and the reset field added in AIGER 1.9 is optional. A reset
+       value that is neither 0 nor 1 -- by convention the latch's own literal --
+       denotes an undefined initial value. */
+    aiger_reader::latch_init_value init_value = aiger_reader::latch_init_value::ZERO;
     if ( tokens.size() == 3u )
     {
       if ( tokens[2u] == "0" )
       {
         init_value = aiger_reader::latch_init_value::ZERO;
       }
-      else if ( tokens[1u] == "1" )
+      else if ( tokens[2u] == "1" )
       {
         init_value = aiger_reader::latch_init_value::ONE;
+      }
+      else
+      {
+        init_value = aiger_reader::latch_init_value::NONDETERMINISTIC;
       }
     }
 
@@ -791,7 +799,9 @@ static std::regex fairness( R"(^f(\d+) (.*)$)" );
     detail::getline( in, line );
     const auto tokens = detail::split( line, " " );
     const auto next = std::atoi( tokens[0u].c_str() );
-    aiger_reader::latch_init_value init_value = aiger_reader::latch_init_value::NONDETERMINISTIC;
+    /* See the ASCII reader above: an omitted reset value means 0, and a value that
+       is neither 0 nor 1 denotes an undefined initial value. */
+    aiger_reader::latch_init_value init_value = aiger_reader::latch_init_value::ZERO;
     if ( tokens.size() == 2u )
     {
       if ( tokens[1u] == "0" )
@@ -801,6 +811,10 @@ static std::regex fairness( R"(^f(\d+) (.*)$)" );
       else if ( tokens[1u] == "1" )
       {
         init_value = aiger_reader::latch_init_value::ONE;
+      }
+      else
+      {
+        init_value = aiger_reader::latch_init_value::NONDETERMINISTIC;
       }
     }
 
