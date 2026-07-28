@@ -37,6 +37,7 @@
 
 #pragma once
 
+#include "../networks/sequential.hpp"
 #include "../traits.hpp"
 
 #include <cassert>
@@ -167,9 +168,9 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
          reset is undefined is instead encoded the way the format prescribes:
          by repeating the latch's own current-state literal. */
       auto const init = aig.register_at( index ).init;
-      uint32_t const reset = init == 0u   ? 0u
-                             : init == 1u ? 1u
-                                          : 2 * ( aig.num_pis() + index + 1u );
+      uint32_t const reset = init == register_init::zero  ? 0u
+                             : init == register_init::one ? 1u
+                                                          : 2 * ( aig.num_pis() + index + 1u );
 
       snprintf( string_buffer, sizeof( string_buffer ), "%u %u\n", next, reset );
       os.write( &string_buffer[0], sizeof( unsigned char ) * std::strlen( string_buffer ) );

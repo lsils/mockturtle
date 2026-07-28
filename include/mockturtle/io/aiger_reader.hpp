@@ -210,7 +210,11 @@ public:
     if constexpr ( has_create_ri_v<Ntk> && has_create_ro_v<Ntk> )
     {
       (void)index;
-      int8_t r = reset == latch_init_value::NONDETERMINISTIC ? -1 : ( reset == latch_init_value::ONE ? 1 : 0 );
+      /* AIGER cannot express `unknown`: a latch either has a defined reset value
+         or is explicitly nondeterministic. */
+      uint8_t const r = reset == latch_init_value::NONDETERMINISTIC ? register_init::dont_care
+                        : reset == latch_init_value::ONE            ? register_init::one
+                                                                    : register_init::zero;
       latches.push_back( std::make_tuple( next, r, "" ) );
     }
   }
@@ -248,7 +252,7 @@ private:
   mutable uint32_t _num_outputs{ 0 };
   mutable std::vector<std::tuple<unsigned, std::string>> outputs;
   mutable std::vector<typename Ntk::signal> signals;
-  mutable std::vector<std::tuple<unsigned, int8_t, std::string>> latches;
+  mutable std::vector<std::tuple<unsigned, uint8_t, std::string>> latches;
 };
 
 } /* namespace mockturtle */
