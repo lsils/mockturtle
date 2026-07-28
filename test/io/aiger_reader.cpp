@@ -9,6 +9,8 @@
 
 #include <sstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 using namespace mockturtle;
 
@@ -115,4 +117,107 @@ TEST_CASE( "read a sequential ASCII Aiger file into an AIG network", "[aiger_rea
   CHECK( named_aig.get_name( aig.ri_at( 0 ) ) == "barfoo_next" );
   CHECK( named_aig.get_output_name( 0 ) == "foobar" );
   CHECK( named_aig.get_output_name( 1 ) == "barbar" );
+}
+
+TEST_CASE( "read latches with omitted reset values", "[aiger_reader]" )
+{
+  /* An omitted reset value means 0. The original AIGER format initialized every
+     latch to zero and the reset field added in 1.9 is optional, so a writer that
+     leaves it out -- ABC does -- must not be read as an undefined value. */
+  sequential<aig_network> aig;
+
+  std::string file{ "aag 3 1 1 1 1\n"
+                    "2\n"
+                    "4 6\n"
+                    "6\n"
+                    "6 2 4\n" };
+
+  std::istringstream in( file );
+  CHECK( lorina::read_ascii_aiger( in, aiger_reader( aig ) ) == lorina::return_code::success );
+
+  CHECK( aig.num_registers() == 1u );
+  CHECK( aig.register_at( 0 ).init == 0u );
+}
+
+TEST_CASE( "read latches with explicit reset values", "[aiger_reader]" )
+{
+  for ( auto const& [token, expected] : std::vector<std::pair<std::string, uint8_t>>{ { "0", 0u }, { "1", 1u } } )
+  {
+    sequential<aig_network> aig;
+
+    std::string file{ "aag 3 1 1 1 1\n"
+                      "2\n"
+                      "4 6 " +
+                      token + "\n"
+                              "6\n"
+                              "6 2 4\n" };
+
+    std::istringstream in( file );
+    CHECK( lorina::read_ascii_aiger( in, aiger_reader( aig ) ) == lorina::return_code::success );
+
+    CHECK( aig.num_registers() == 1u );
+    CHECK( aig.register_at( 0 ).init == expected );
+  }
+}
+
+TEST_CASE( "read a latch with an undefined reset value", "[aiger_reader]" )
+{
+  /* a reset value that is neither 0 nor 1 -- by convention the latch's own
+     literal -- denotes an undefined initial value */
+  sequential<aig_network> aig;
+
+  std::string file{ "aag 3 1 1 1 1\n"
+                    "2\n"
+                    "4 6 4\n"
+                    "6\n"
+                    "6 2 4\n" };
+
+  std::istringstream in( file );
+  CHECK( lorina::read_ascii_aiger( in, aiger_reader( aig ) ) == lorina::return_code::success );
+
+  CHECK( aig.num_registers() == 1u );
+  CHECK( aig.register_at( 0 ).init != 0u );
+  CHECK( aig.register_at( 0 ).init != 1u );
+}
+
+TEST_CASE( "read bad state properties as primary outputs", "[aiger_reader]" )
+{
+  /* Writers emitting the AIGER 1.9 extended header move the primary outputs into
+     the bad-state section; ABC does so for any design with a non-zero latch
+     initialization. Dropping them would silently discard logic. */
+  sequential<aig_network> aig;
+
+  std::string file{ "aag 3 1 1 0 1 1\n"
+                    "2\n"
+                    "4 6 1\n"
+                    "6\n"
+                    "6 2 4\n" };
+
+  std::istringstream in( file );
+  CHECK( lorina::read_ascii_aiger( in, aiger_reader( aig ) ) == lorina::return_code::success );
+
+  CHECK( aig.num_pis() == 1u );
+  CHECK( aig.num_registers() == 1u );
+  CHECK( aig.num_pos() == 1u );
+  CHECK( aig.register_at( 0 ).init == 1u );
+}
+
+TEST_CASE( "read output names when only some outputs are named", "[aiger_reader]" )
+{
+  /* the symbol table is sparse, so a name must land on the output it belongs to */
+  names_view<aig_network> aig;
+
+  std::string file{ "aag 3 2 0 2 1\n"
+                    "2\n"
+                    "4\n"
+                    "2\n"
+                    "6\n"
+                    "6 2 4\n"
+                    "o1 second\n" };
+
+  std::istringstream in( file );
+  CHECK( lorina::read_ascii_aiger( in, aiger_reader( aig ) ) == lorina::return_code::success );
+
+  CHECK( aig.num_pos() == 2u );
+  CHECK( aig.get_output_name( 1 ) == "second" );
 }
