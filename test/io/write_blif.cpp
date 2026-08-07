@@ -548,3 +548,42 @@ TEST_CASE( "write a sequential k-LUT with name view and rename ris", "[write_bli
   ps.rename_ri_using_node = false;
   blif_read_after_write_test( klut, ps );
 }
+TEST_CASE( "write a k-LUT with non-contiguous CI node ids into BLIF file", "[write_blif]" )
+{
+  /* Creating a primary input after a gate leaves gaps in the CI node ids, which is also
+     what `lut_map` produces on larger networks. The names the writer declares in `.inputs`
+     must be the same ones it references in the `.names` bodies. */
+  klut_network klut;
+
+  auto const a = klut.create_pi();
+  auto const b = klut.create_pi();
+  auto const f = klut.create_and( a, b );
+  auto const c = klut.create_pi();
+  auto const g = klut.create_and( f, c );
+  klut.create_po( g );
+
+  std::vector<klut_network::node> cis;
+  klut.foreach_ci( [&]( auto const& n ) { cis.push_back( n ); } );
+  REQUIRE( cis.size() == 3u );
+  CHECK( cis[2] != cis[1] + 1 ); /* the gap this test is about */
+
+  std::ostringstream out;
+  write_blif( klut, out );
+
+  CHECK( out.str() == ".model top\n"
+                      ".inputs pi2 pi3 pi5 \n"
+                      ".outputs po0 \n"
+                      ".names new_n0\n"
+                      "0\n"
+                      ".names new_n1\n"
+                      "1\n"
+                      ".names pi2 pi3 new_n4\n"
+                      "11 1\n"
+                      ".names new_n4 pi5 new_n6\n"
+                      "11 1\n"
+                      ".names new_n6 po0\n"
+                      "1 1\n"
+                      ".end\n" );
+
+  blif_read_after_write_test( klut );
+}
