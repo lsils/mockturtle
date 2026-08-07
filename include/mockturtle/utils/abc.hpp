@@ -31,7 +31,7 @@
 */
 
 #pragma once
-#ifdef ENABLE_ABC
+#ifdef MOCKTURTLE_ENABLE_ABC
 
 #include "../networks/aig.hpp"
 #include "../networks/gia.hpp"

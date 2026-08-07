@@ -23,7 +23,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifdef ENABLE_ABC
+#ifdef MOCKTURTLE_ENABLE_ABC
 
 #include <lorina/aiger.hpp>
 #include <mockturtle/algorithms/explorer.hpp>

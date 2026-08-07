@@ -1,5 +1,5 @@
 #pragma once
-#ifdef ENABLE_ABC
+#ifdef MOCKTURTLE_ENABLE_ABC
 
 #include "detail/foreach.hpp"
 #include <kitty/dynamic_truth_table.hpp>
