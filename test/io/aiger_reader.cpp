@@ -221,3 +221,28 @@ TEST_CASE( "read output names when only some outputs are named", "[aiger_reader]
   CHECK( aig.num_pos() == 2u );
   CHECK( aig.get_output_name( 1 ) == "second" );
 }
+
+TEST_CASE( "register initialization stays valid across formats", "[aiger_reader]" )
+{
+  /* `write_blif` emits the initialization verbatim, and the BLIF `.latch`
+     statement accepts only the four values of `register_init`. A reader that
+     produced anything else would silently write a malformed BLIF file. */
+  for ( auto const& [latch_line, expected] :
+        std::vector<std::pair<std::string, uint8_t>>{
+            { "4 6", register_init::zero }, /* omitted reset means 0 */
+            { "4 6 0", register_init::zero },
+            { "4 6 1", register_init::one },
+            { "4 6 4", register_init::dont_care } /* self-literal: undefined */ } )
+  {
+    sequential<aig_network> aig;
+
+    std::string const file = "aag 3 1 1 1 1\n2\n" + latch_line + "\n6\n6 2 4\n";
+    std::istringstream in( file );
+    CHECK( lorina::read_ascii_aiger( in, aiger_reader( aig ) ) == lorina::return_code::success );
+
+    REQUIRE( aig.num_registers() == 1u );
+    CHECK( aig.register_at( 0 ).init == expected );
+    CHECK( aig.register_at( 0 ).init <= register_init::unknown );
+    CHECK( register_init::is_defined( aig.register_at( 0 ).init ) == ( expected <= register_init::one ) );
+  }
+}

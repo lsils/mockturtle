@@ -79,13 +79,50 @@ inline constexpr bool is_aig_like_v = is_aig_like<Ntk>::value;
 
 } // namespace detail
 
+/*! \brief Initial (reset) values a register can take
+ *
+ * The encoding follows the initialization field of the BLIF `.latch` statement,
+ * which is the most expressive of the supported file formats. Formats that
+ * cannot express every state map onto the closest one: AIGER, for instance, has
+ * no counterpart for `unknown` and encodes a latch without a defined reset as
+ * `dont_care`.
+ *
+ * Only `zero` and `one` denote a defined reset value. Code reacting to a
+ * register's initialization should therefore test for those two explicitly
+ * rather than comparing against `dont_care` or `unknown`, so that it stays
+ * correct if a format introduces further undefined states.
+ */
+struct register_init
+{
+  /*! \brief The register is reset to 0 */
+  static constexpr uint8_t zero = 0u;
+  /*! \brief The register is reset to 1 */
+  static constexpr uint8_t one = 1u;
+  /*! \brief Any initial value is acceptable */
+  static constexpr uint8_t dont_care = 2u;
+  /*! \brief No initial value is specified */
+  static constexpr uint8_t unknown = 3u;
+
+  /*! \brief Returns whether `value` denotes a defined reset value */
+  static constexpr bool is_defined( uint8_t value )
+  {
+    return value == zero || value == one;
+  }
+
+  /*! \brief Returns `value` if it is a valid initialization, `unknown` otherwise */
+  static constexpr uint8_t sanitize( uint8_t value )
+  {
+    return value <= unknown ? value : unknown;
+  }
+};
+
 /*! \brief Register information */
 struct register_t
 {
   /*! \brief Control (clocking or enabling) signal */
   std::string control = "";
-  /*! \brief Initial (reset) value */
-  uint8_t init = 3;
+  /*! \brief Initial (reset) value, see `register_init` */
+  uint8_t init = register_init::unknown;
   /*! \brief Type of register or latch (active high/low, rising/falling edge) */
   std::string type = "";
 };

@@ -174,24 +174,24 @@ public:
         }
       }
 
-      uint32_t r = 3;
+      uint8_t r = register_init::unknown;
       if ( reset )
       {
         switch ( *reset )
         {
         case latch_init_value::NONDETERMINISTIC:
         {
-          r = 2;
+          r = register_init::dont_care;
         }
         break;
         case latch_init_value::ONE:
         {
-          r = 1;
+          r = register_init::one;
         }
         break;
         case latch_init_value::ZERO:
         {
-          r = 0;
+          r = register_init::zero;
         }
         break;
         default:
