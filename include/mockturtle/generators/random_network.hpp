@@ -299,7 +299,7 @@ private:
   uint32_t _num_gates;
 }; /* random_network_generator<Ntk, random_network_generator_params_size> */
 
-#ifdef ENABLE_NAUTY
+#ifdef MOCKTURTLE_ENABLE_NAUTY
 template<typename Ntk>
 class random_network_generator<Ntk, random_network_generator_params_topology>
 {

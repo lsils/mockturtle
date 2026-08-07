@@ -6,8 +6,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
 target_link_libraries(mockturtle INTERFACE stdc++fs)
 endif()
 
-if(ENABLE_ABC)
+if(MOCKTURTLE_ENABLE_ABC)
 target_link_libraries(mockturtle INTERFACE ${PROJECT_SOURCE_DIR}/lib/abc_static/libabc.a)
 target_link_libraries(mockturtle INTERFACE dl)
-target_compile_definitions(mockturtle INTERFACE ENABLE_ABC)
+target_compile_definitions(mockturtle INTERFACE MOCKTURTLE_ENABLE_ABC)
 endif()
