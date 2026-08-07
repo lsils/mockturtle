@@ -362,7 +362,7 @@ mig_network explore_mig( mig_network const& ntk, explorer_params const ps = {} )
   return expl.run( ntk );
 }
 
-#ifdef ENABLE_ABC
+#ifdef MOCKTURTLE_ENABLE_ABC
 mig_network deepsyn_mig_v1( mig_network const& ntk, explorer_params const ps = {} )
 {
   using Ntk = mig_network;
