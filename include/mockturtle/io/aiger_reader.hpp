@@ -55,6 +55,14 @@ namespace mockturtle
  * - `create_ri`
  * - `create_ro`
  *
+ * A network type that implements neither cannot hold registers.  Reading a
+ * latched AIGER file into one flattens a single timeframe of the design: each
+ * latch output becomes a primary input, appended behind the file's own primary
+ * inputs, and each latch next-state function becomes a primary output, appended
+ * behind the file's own primary outputs.  No logic is lost, but the sequential
+ * behaviour is: the registers become free inputs.  Use a `sequential<Ntk>` to
+ * read the design as the sequential network it is.
+ *
    \verbatim embed:rst
 
    Example
@@ -82,6 +90,9 @@ public:
     static_assert( has_create_and_v<Ntk>, "Ntk does not implement the create_and function" );
   }
 
+  /*! \brief Whether the network type can hold registers. */
+  static constexpr bool has_registers = has_create_ri_v<Ntk> && has_create_ro_v<Ntk>;
+
   ~aiger_reader()
   {
     uint32_t output_id{ 0 };
@@ -104,41 +115,42 @@ public:
       _ntk.create_po( signal );
     }
 
-    if constexpr ( has_create_ri_v<Ntk> )
+    for ( auto i = 0u; i < latches.size(); ++i )
     {
-      for ( auto i = 0u; i < latches.size(); ++i )
+      auto& latch = latches[i];
+      auto const lit = std::get<0>( latch );
+
+      auto signal = signals[lit >> 1];
+      if ( lit & 1 )
       {
-        auto& latch = latches[i];
-        auto const lit = std::get<0>( latch );
-        auto const reset = std::get<1>( latch );
+        signal = _ntk.create_not( signal );
+      }
 
-        auto signal = signals[lit >> 1];
-        if ( lit & 1 )
-        {
-          signal = _ntk.create_not( signal );
-        }
+      if constexpr ( has_set_name_v<Ntk> )
+      {
+        _ntk.set_name( signal, std::get<2>( latch ) + "_next" );
+      }
 
-        if constexpr ( has_set_name_v<Ntk> )
-        {
-          _ntk.set_name( signal, std::get<2>( latch ) + "_next" );
-        }
-
+      if constexpr ( has_registers )
+      {
         _ntk.create_ri( signal );
         register_t reg;
-        reg.init = reset;
+        reg.init = std::get<1>( latch );
         _ntk.set_register( i, reg );
+      }
+      else
+      {
+        /* The network cannot hold registers.  `on_header` materialized the latch
+           outputs as primary inputs, so keep their next-state functions by
+           appending them as primary outputs; dropping them would silently
+           discard every gate that only feeds a register. */
+        _ntk.create_po( signal );
       }
     }
   }
 
   void on_header( uint64_t, uint64_t num_inputs, uint64_t num_latches, uint64_t, uint64_t ) const override
   {
-    (void)num_latches;
-    if constexpr ( !has_create_ri_v<Ntk> || !has_create_ro_v<Ntk> )
-    {
-      assert( num_latches == 0 && "network type does not support the creation of latches" );
-    }
-
     _num_inputs = static_cast<uint32_t>( num_inputs );
 
     /* constant */
@@ -150,12 +162,20 @@ public:
       signals.push_back( _ntk.create_pi() );
     }
 
-    if constexpr ( has_create_ro_v<Ntk> )
+    /* create latch outputs (ro), or primary inputs standing in for them.  Every
+       AIGER literal above `1 + num_inputs` refers to one of these, so a signal
+       must be pushed for each of them whether the network can hold registers or
+       not: skipping them leaves `signals` short and `on_and` reads past its
+       end. */
+    for ( auto i = 0u; i < num_latches; ++i )
     {
-      /* create latch outputs (ro) */
-      for ( auto i = 0u; i < num_latches; ++i )
+      if constexpr ( has_registers )
       {
         signals.push_back( _ntk.create_ro() );
+      }
+      else
+      {
+        signals.push_back( _ntk.create_pi() );
       }
     }
   }
@@ -175,14 +195,11 @@ public:
 
   void on_latch_name( unsigned index, const std::string& name ) const override
   {
-    if constexpr ( has_create_ri_v<Ntk> && has_create_ro_v<Ntk> )
+    if constexpr ( has_set_name_v<Ntk> )
     {
-      if constexpr ( has_set_name_v<Ntk> )
-      {
-        _ntk.set_name( signals[1 + _num_inputs + index], name );
-      }
-      std::get<2>( latches[index] ) = name;
+      _ntk.set_name( signals[1 + _num_inputs + index], name );
     }
+    std::get<2>( latches[index] ) = name;
   }
 
   void on_and( unsigned index, unsigned left_lit, unsigned right_lit ) const override
@@ -207,16 +224,13 @@ public:
 
   void on_latch( unsigned index, unsigned next, latch_init_value reset ) const override
   {
-    if constexpr ( has_create_ri_v<Ntk> && has_create_ro_v<Ntk> )
-    {
-      (void)index;
-      /* AIGER cannot express `unknown`: a latch either has a defined reset value
-         or is explicitly nondeterministic. */
-      uint8_t const r = reset == latch_init_value::NONDETERMINISTIC ? register_init::dont_care
-                        : reset == latch_init_value::ONE            ? register_init::one
-                                                                    : register_init::zero;
-      latches.push_back( std::make_tuple( next, r, "" ) );
-    }
+    (void)index;
+    /* AIGER cannot express `unknown`: a latch either has a defined reset value
+       or is explicitly nondeterministic. */
+    uint8_t const r = reset == latch_init_value::NONDETERMINISTIC ? register_init::dont_care
+                      : reset == latch_init_value::ONE            ? register_init::one
+                                                                  : register_init::zero;
+    latches.push_back( std::make_tuple( next, r, "" ) );
   }
 
   void on_output( unsigned index, unsigned lit ) const override
