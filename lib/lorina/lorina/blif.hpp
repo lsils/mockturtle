@@ -258,10 +258,10 @@ public:
 
 namespace blif_regex
 {
-static std::regex model( R"(.model\s+(.*))" );
-static std::regex names( R"(.names\s+(.*))" );
-static std::regex line_of_truthtable( R"(([01\-]*)\s*([01\-]))" );
-static std::regex end( R"(.end)" );
+inline const std::regex model( R"(.model\s+(.*))" );
+inline const std::regex names( R"(.names\s+(.*))" );
+inline const std::regex line_of_truthtable( R"(([01\-]*)\s*([01\-]))" );
+inline const std::regex end( R"(.end)" );
 } // namespace blif_regex
 
 /*! \brief Reader function for the BLIF format.
