@@ -38,6 +38,7 @@
 #include "../networks/sequential.hpp"
 #include "../traits.hpp"
 #include <lorina/aiger.hpp>
+#include <iostream>
 
 namespace mockturtle
 {
@@ -151,6 +152,14 @@ public:
 
   void on_header( uint64_t, uint64_t num_inputs, uint64_t num_latches, uint64_t, uint64_t ) const override
   {
+    if constexpr ( !has_registers )
+    {
+      if ( num_latches != 0u )
+      {
+        std::cerr << "[w] network type does not support latches, applying comb: ROs become PIs, RIs become POs\n";
+      }
+    }
+
     _num_inputs = static_cast<uint32_t>( num_inputs );
 
     /* constant */

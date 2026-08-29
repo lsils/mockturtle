@@ -7,6 +7,7 @@
 
 #include <lorina/aiger.hpp>
 
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -268,8 +269,13 @@ TEST_CASE( "read a latched Aiger file into a combinational network", "[aiger_rea
                           "12 9 11\n"
                           "14 4 12\n" };
 
+  std::stringstream err;
+  auto* old_err = std::cerr.rdbuf( err.rdbuf() );
+
   std::istringstream in( file );
   CHECK( lorina::read_ascii_aiger( in, aiger_reader( combinational ) ) == lorina::return_code::success );
+
+  std::cerr.rdbuf( old_err );
 
   std::istringstream seq_in( file );
   CHECK( lorina::read_ascii_aiger( seq_in, aiger_reader( seq ) ) == lorina::return_code::success );
@@ -283,6 +289,7 @@ TEST_CASE( "read a latched Aiger file into a combinational network", "[aiger_rea
   CHECK( combinational.size() == seq.size() );
   CHECK( combinational.num_cis() == seq.num_cis() );
   CHECK( combinational.num_cos() == seq.num_cos() );
+  CHECK( err.str().find( "applying comb: ROs become PIs, RIs become POs" ) != std::string::npos );
 }
 
 TEST_CASE( "read a latched Aiger file with no primary inputs", "[aiger_reader]" )
@@ -298,12 +305,18 @@ TEST_CASE( "read a latched Aiger file with no primary inputs", "[aiger_reader]" 
                           "6\n"
                           "6 2 4\n" };
 
+  std::stringstream err;
+  auto* old_err = std::cerr.rdbuf( err.rdbuf() );
+
   std::istringstream in( file );
   CHECK( lorina::read_ascii_aiger( in, aiger_reader( combinational ) ) == lorina::return_code::success );
+
+  std::cerr.rdbuf( old_err );
 
   CHECK( combinational.num_pis() == 2 );
   CHECK( combinational.num_pos() == 3 );
   CHECK( combinational.num_gates() == 1 );
+  CHECK( err.str().find( "applying comb: ROs become PIs, RIs become POs" ) != std::string::npos );
 }
 
 TEST_CASE( "name a flattened latch output", "[aiger_reader]" )
@@ -325,9 +338,15 @@ TEST_CASE( "name a flattened latch output", "[aiger_reader]" )
                           "i0 x0\n"
                           "l0 s0\n" };
 
+  std::stringstream err;
+  auto* old_err = std::cerr.rdbuf( err.rdbuf() );
+
   std::istringstream in( file );
   CHECK( lorina::read_ascii_aiger( in, aiger_reader( aig ) ) == lorina::return_code::success );
 
+  std::cerr.rdbuf( old_err );
+
   CHECK( aig.get_name( aig.make_signal( aig.pi_at( 0 ) ) ) == "x0" );
   CHECK( aig.get_name( aig.make_signal( aig.pi_at( 2 ) ) ) == "s0" );
+  CHECK( err.str().find( "applying comb: ROs become PIs, RIs become POs" ) != std::string::npos );
 }
