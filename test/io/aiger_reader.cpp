@@ -7,6 +7,7 @@
 
 #include <lorina/aiger.hpp>
 
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -245,4 +246,107 @@ TEST_CASE( "register initialization stays valid across formats", "[aiger_reader]
     CHECK( aig.register_at( 0 ).init <= register_init::unknown );
     CHECK( register_init::is_defined( aig.register_at( 0 ).init ) == ( expected <= register_init::one ) );
   }
+}
+
+TEST_CASE( "read a latched Aiger file into a combinational network", "[aiger_reader]" )
+{
+  /* a network that cannot hold registers flattens one timeframe of the design:
+     the latch outputs become primary inputs and their next-state functions
+     become primary outputs.  The latch outputs used to be skipped entirely,
+     which left the reader's signal vector short of every literal above the
+     primary inputs and made `on_and` read past its end. */
+  aig_network combinational;
+  sequential<aig_network> seq;
+
+  std::string const file{ "aag 7 2 1 2 4\n"
+                          "2\n"
+                          "4\n"
+                          "6 8\n"
+                          "6\n"
+                          "7\n"
+                          "8 2 6\n"
+                          "10 3 7\n"
+                          "12 9 11\n"
+                          "14 4 12\n" };
+
+  std::stringstream err;
+  auto* old_err = std::cerr.rdbuf( err.rdbuf() );
+
+  std::istringstream in( file );
+  CHECK( lorina::read_ascii_aiger( in, aiger_reader( combinational ) ) == lorina::return_code::success );
+
+  std::cerr.rdbuf( old_err );
+
+  std::istringstream seq_in( file );
+  CHECK( lorina::read_ascii_aiger( seq_in, aiger_reader( seq ) ) == lorina::return_code::success );
+
+  /* the latch output is an input and its next-state function an output */
+  CHECK( combinational.num_pis() == 3 );
+  CHECK( combinational.num_pos() == 3 );
+
+  /* no logic is gained or lost by flattening */
+  CHECK( combinational.num_gates() == seq.num_gates() );
+  CHECK( combinational.size() == seq.size() );
+  CHECK( combinational.num_cis() == seq.num_cis() );
+  CHECK( combinational.num_cos() == seq.num_cos() );
+  CHECK( err.str().find( "applying comb: ROs become PIs, RIs become POs" ) != std::string::npos );
+}
+
+TEST_CASE( "read a latched Aiger file with no primary inputs", "[aiger_reader]" )
+{
+  /* a design driven only by its registers -- an LFSR, say -- reaches every one
+     of its literals through a latch output, so it flattens into a network whose
+     inputs are all former latch outputs */
+  aig_network combinational;
+
+  std::string const file{ "aag 3 0 2 1 1\n"
+                          "2 6\n"
+                          "4 2\n"
+                          "6\n"
+                          "6 2 4\n" };
+
+  std::stringstream err;
+  auto* old_err = std::cerr.rdbuf( err.rdbuf() );
+
+  std::istringstream in( file );
+  CHECK( lorina::read_ascii_aiger( in, aiger_reader( combinational ) ) == lorina::return_code::success );
+
+  std::cerr.rdbuf( old_err );
+
+  CHECK( combinational.num_pis() == 2 );
+  CHECK( combinational.num_pos() == 3 );
+  CHECK( combinational.num_gates() == 1 );
+  CHECK( err.str().find( "applying comb: ROs become PIs, RIs become POs" ) != std::string::npos );
+}
+
+TEST_CASE( "name a flattened latch output", "[aiger_reader]" )
+{
+  /* the symbol table still applies: a latch name belongs to the input that
+     stands in for it, and its next-state function keeps the `_next` suffix */
+  names_view<aig_network> aig;
+
+  std::string const file{ "aag 7 2 1 2 4\n"
+                          "2\n"
+                          "4\n"
+                          "6 8\n"
+                          "6\n"
+                          "7\n"
+                          "8 2 6\n"
+                          "10 3 7\n"
+                          "12 9 11\n"
+                          "14 4 12\n"
+                          "i0 x0\n"
+                          "l0 s0\n" };
+
+  std::stringstream err;
+  auto* old_err = std::cerr.rdbuf( err.rdbuf() );
+
+  std::istringstream in( file );
+  CHECK( lorina::read_ascii_aiger( in, aiger_reader( aig ) ) == lorina::return_code::success );
+
+  std::cerr.rdbuf( old_err );
+
+  CHECK( aig.get_name( aig.make_signal( aig.pi_at( 0 ) ) ) == "x0" );
+  CHECK( aig.get_name( aig.make_signal( aig.pi_at( 2 ) ) ) == "s0" );
+  CHECK( err.str().find( "applying comb: ROs become PIs, RIs become POs" ) != std::string::npos );
 }
