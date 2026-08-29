@@ -143,16 +143,24 @@ void write_blif( Ntk const& ntk, std::ostream& os, write_blif_params const& ps =
     topo_ntk.foreach_ci( [&]( auto const& n, auto index ) {
       if ( ( ( index + 1 ) <= topo_ntk.num_cis() - num_latches ) )
       {
+        /* NOTE: the default name MUST be derived from the node itself, not from
+         * `node_to_index`. `topo_view` reimplements `node_to_index` as the position in the
+         * topological order, whereas every other place in this writer (fanin references,
+         * PO bridges) names a node `pi<node>` / `new_n<node>` using the raw node id. When
+         * the network's CI node ids are not contiguous -- which happens for a `klut_network`
+         * produced by `lut_map` -- the two disagree, and the resulting BLIF declares inputs
+         * that nothing reads while referencing inputs that were never declared. ABC ties
+         * those to constant 0 and the netlist is silently wrong. */
         if constexpr ( has_has_name_v<Ntk> && has_get_name_v<Ntk> )
         {
-          signal<Ntk> const s = topo_ntk.make_signal( topo_ntk.node_to_index( n ) );
+          signal<Ntk> const s = topo_ntk.make_signal( n );
           std::string const input_name = topo_ntk.has_name( s ) ? topo_ntk.get_name( s ) : fmt::format( "pi{}", topo_ntk.get_node( s ) );
           os << input_name << ' ';
           defined_names.insert( input_name ); /* we should not have collision here */
         }
         else
         {
-          std::string const input_name = fmt::format( "pi{}", topo_ntk.node_to_index( n ) );
+          std::string const input_name = fmt::format( "pi{}", n );
           os << input_name << ' ';
           defined_names.insert( input_name ); /* we should not have collision here */
         }
