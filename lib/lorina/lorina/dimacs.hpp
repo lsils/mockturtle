@@ -98,8 +98,8 @@ public:
 
 namespace dimacs_regex
 {
-static std::regex problem_spec( R"(^p\s+([cd]nf)\s+([0-9]+)\s+([0-9]+)$)" );
-static std::regex clause( R"(((-?[1-9][0-9]*)+ +)+0)" );
+inline const std::regex problem_spec( R"(^p\s+([cd]nf)\s+([0-9]+)\s+([0-9]+)$)" );
+inline const std::regex clause( R"(((-?[1-9][0-9]*)+ +)+0)" );
 
 } // namespace dimacs_regex
 
