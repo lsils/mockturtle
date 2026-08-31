@@ -203,7 +203,7 @@ private:
     if ( diag )
     {
       diag->report( diag_id::ERR_FILE_OPEN ).add_argument( filename );
-    }    
+    }
     return return_code::parse_error;
   }
   else

@@ -159,7 +159,10 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
     aig.foreach_ri( [&]( signal const& f, uint32_t index ) {
       uint32_t const next = 2 * aig.node_to_index( aig.get_node( f ) ) + aig.is_complemented( f );
 
-      /* The reset value is always written explicitly.  An omitted reset value
+      /* `aiger_reader` maps the AIGER reset value onto `register_t::init` as
+         0 (ZERO), 1 (ONE), or -1 (NONDETERMINISTIC) narrowed to uint8_t.
+
+         The reset value is always written explicitly.  An omitted reset value
          means 0 in the AIGER format, so leaving it out would silently turn an
          uninitialized register into a zero-initialized one.  A register whose
          reset is undefined is instead encoded the way the format prescribes:

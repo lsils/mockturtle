@@ -3,189 +3,93 @@ name: Linux CI
 on:
   push:
     branches:
-    - master
+      - master
   pull_request:
-    branches:
-    - master
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
+  build_and_test:
+    strategy:
+      # report every job, so a single failure does not mask the state of the rest
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm ]
+        compiler: [ g++-11, g++-12, g++-13, clang++-14, clang++-15, clang++-16 ]
+        exclude:
+          - os: ubuntu-22.04
+            compiler: g++-13
+          - os: ubuntu-22.04
+            compiler: clang++-16
+          - os: ubuntu-24.04
+            compiler: clang++-14
+          - os: ubuntu-24.04-arm
+            compiler: g++-11
+          - os: ubuntu-24.04-arm
+            compiler: g++-12
+          - os: ubuntu-24.04-arm
+            compiler: g++-13
+          - os: ubuntu-24.04-arm
+            compiler: clang++-14
+        include:
+          - os: ubuntu-22.04
+            compiler: g++-10
+          - os: ubuntu-24.04
+            compiler: g++-14
+          - os: ubuntu-24.04
+            compiler: clang++-17
+          - os: ubuntu-24.04
+            compiler: clang++-18
+          - os: ubuntu-24.04-arm
+            compiler: clang++-17
+          - os: ubuntu-24.04-arm
+            compiler: clang++-18
 
-  build-gcc9:
-    runs-on: ubuntu-latest
-    name: GNU GCC 9
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Install GCC 9
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y g++-9
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-9 -DMOCKTURTLE_BUILD_TESTS=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests
-  
-  build-gcc10:
-    runs-on: ubuntu-latest
-    name: GNU GCC 10
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Install GCC 10
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y g++-10
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_BUILD_TESTS=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests
-  
-  build-gcc10-cpp20:
-    runs-on: ubuntu-latest
-    name: GNU GCC 10 (c++20)
+    name: ${{matrix.os}} with ${{matrix.compiler}}
+    runs-on: ${{matrix.os}}
 
     steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Install GCC 10 (c++20)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-10 g++-10
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DMOCKTURTLE_CXX_STANDARD=20 -DCMAKE_CXX_COMPILER=g++-10 -DMOCKTURTLE_BUILD_TESTS=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests
-  
-  build-gcc12:
-    runs-on: ubuntu-latest
-    name: GNU GCC 12
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Install GCC 12
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y g++-12
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-12 -DMOCKTURTLE_BUILD_TESTS=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests
-  
-  build-clang11:
-    runs-on: ubuntu-22.04
-    name: Clang 11
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Install Clang 11
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-11
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-11 -DMOCKTURTLE_BUILD_TESTS=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests
-  
-  build-clang13:
-    runs-on: ubuntu-22.04
-    name: Clang 13
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Install Clang 13
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-13
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-13 -DMOCKTURTLE_BUILD_TESTS=ON ..
-        make run_tests
-    - name: Run tests
-      run: |
-        cd build
-        ./test/run_tests
-  
-  build-clang13-asan:
-    runs-on: ubuntu-22.04
-    name: Clang 13 + ASAN
+      - name: Install libraries and the respective compiler
+        run: sudo apt-get update && sudo apt-get install -yq ${{matrix.compiler}}
 
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Install Clang 13
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-13
-    - name: Build mockturtle with ASAN
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=clang++-13 -DMOCKTURTLE_ENABLE_ASAN=ON -DMOCKTURTLE_BUILD_TESTS=ON ..
-        make run_tests
-    - name: Run tests with ASAN
-      run: |
-        cd build
-        ./test/run_tests
-  
-  compile-gcc9:
-    runs-on: ubuntu-latest
-    name: Compile everything (GCC 9)
-    
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        submodules: true
-    - name: Install GCC 9
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y g++-9
-    - name: Build mockturtle
-      run: |
-        mkdir build
-        cd build
-        cmake -DCMAKE_CXX_COMPILER=g++-9 -DMOCKTURTLE_BUILD_EXAMPLES=ON -DMOCKTURTLE_BUILD_EXPERIMENTS=ON -DMOCKTURTLE_BUILD_TESTS=ON ..
-        make
+      - name: Clone Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup ccache
+        # ccache is not supported on ARM yet
+        if: matrix.os != 'ubuntu-24.04-arm'
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: "${{matrix.os}}-${{matrix.compiler}}"
+          variant: ccache
+          save: true
+          max-size: 10G
+
+      - name: Setup mold
+        uses: rui314/setup-mold@v1
+
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Configure CMake
+        working-directory: ${{github.workspace}}/build
+        run: >
+          cmake ${{github.workspace}}
+          -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
+          -DMOCKTURTLE_BUILD_EXAMPLES=ON
+          -DMOCKTURTLE_BUILD_EXPERIMENTS=ON
+          -DMOCKTURTLE_BUILD_TESTS=ON
+
+      - name: Build
+        working-directory: ${{github.workspace}}/build
+        run: cmake --build . -j4
+
+      - name: Run tests
+        working-directory: ${{github.workspace}}/build/test
+        run: |
+          ./run_tests "~[quality]"

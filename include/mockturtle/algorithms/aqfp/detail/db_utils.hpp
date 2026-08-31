@@ -73,7 +73,7 @@ inline void generate_aqfp_dags( const mockturtle::dag_generator_params& params, 
       auto t1 = std::chrono::high_resolution_clock::now();
       auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 );
 
-      std::cerr << fmt::format( "Number of DAGs generated {:10d}\nTime so far in seconds {:9.3f}\n", count, d1.count() / 1000.0 );
+      std::cerr << fmt::format( "Number of DAGs generated {:10d}\nTime so far in seconds {:9.3f}\n", count.load(), d1.count() / 1000.0 );
     } } );
 
   for ( auto& file : os )
@@ -83,9 +83,9 @@ inline void generate_aqfp_dags( const mockturtle::dag_generator_params& params, 
 
   auto t2 = std::chrono::high_resolution_clock::now();
   auto d2 = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t0 );
-  std::cerr << fmt::format( "Number of DAGs generated {:10d}\nTime elapsed in seconds {:9.3f}\n", count, d2.count() / 1000.0 );
+  std::cerr << fmt::format( "Number of DAGs generated {:10d}\nTime elapsed in seconds {:9.3f}\n", count.load(), d2.count() / 1000.0 );
 
-  std::cerr << fmt::format( "Number of DAGs of different input counts: [3 -> {},  4 -> {}, 5 -> {}]\n", counts_inp[3u], counts_inp[4u], counts_inp[5u] );
+  std::cerr << fmt::format( "Number of DAGs of different input counts: [3 -> {},  4 -> {}, 5 -> {}]\n", counts_inp[3u].load(), counts_inp[4u].load(), counts_inp[5u].load() );
 }
 
 inline void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters,
@@ -127,7 +127,7 @@ inline void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& 
                 auto t1 = std::chrono::high_resolution_clock::now();
                 auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 );
 
-                std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime so far in seconds {:9.3f}\n", count, d1.count() / 1000.0 );
+                std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime so far in seconds {:9.3f}\n", count.load(), d1.count() / 1000.0 );
               }
             }
           }
@@ -145,7 +145,7 @@ inline void compute_aqfp_dag_costs( const std::unordered_map<uint32_t, double>& 
 
   auto t2 = std::chrono::high_resolution_clock::now();
   auto d2 = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t0 );
-  std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime elapsed in seconds {:9.3f}\n", count, d2.count() / 1000.0 );
+  std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime elapsed in seconds {:9.3f}\n", count.load(), d2.count() / 1000.0 );
 }
 
 inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_costs, const std::unordered_map<uint32_t, double>& splitters,
@@ -198,7 +198,7 @@ inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_c
               auto t1 = std::chrono::high_resolution_clock::now();
               auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 );
 
-              std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime so far in seconds {:9.3f}\n", count, d1.count() / 1000.0 );
+              std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime so far in seconds {:9.3f}\n", count.load(), d1.count() / 1000.0 );
             }
 
             if ( ( ++local_count ) % 10000 == 0u )
@@ -250,7 +250,7 @@ inline void generate_aqfp_db( const std::unordered_map<uint32_t, double>& gate_c
 
   auto t2 = std::chrono::high_resolution_clock::now();
   auto d2 = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t0 );
-  std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime elapsed in seconds {:9.3f}\n", count, d2.count() / 1000.0 );
+  std::cerr << fmt::format( "Number of DAGs processed {:10d}\nTime elapsed in seconds {:9.3f}\n", count.load(), d2.count() / 1000.0 );
 }
 
 inline void generate_aqfp_db(

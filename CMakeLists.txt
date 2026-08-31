@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.16...3.29)
 project(mockturtle LANGUAGES CXX)
 
 set(MOCKTURTLE_CXX_STANDARD "17" CACHE STRING "C++ standard")
 set(CMAKE_CXX_STANDARD ${MOCKTURTLE_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Options
 option(MOCKTURTLE_BUILD_EXAMPLES "Build mockturtle examples" ON)
@@ -36,7 +37,7 @@ if(UNIX)
   endif()
 endif()
 if(MSVC)
-  add_compile_options(/EHsc /bigobj)
+  add_compile_options(/EHsc /bigobj /utf-8)
 endif()
 if (WIN32)
   set(MOCKTURTLE_ENABLE_NAUTY OFF)
