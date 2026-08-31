@@ -98,8 +98,8 @@ public:
 
 namespace dimacs_regex
 {
-static std::regex problem_spec( R"(^p\s+([cd]nf)\s+([0-9]+)\s+([0-9]+)$)" );
-static std::regex clause( R"(((-?[1-9]+)+ +)+0)" );
+inline const std::regex problem_spec( R"(^p\s+([cd]nf)\s+([0-9]+)\s+([0-9]+)$)" );
+inline const std::regex clause( R"(((-?[1-9][0-9]*)+ +)+0)" );
 
 } // namespace dimacs_regex
 
@@ -136,7 +136,7 @@ static std::regex clause( R"(((-?[1-9]+)+ +)+0)" );
       return true;
     }
 
-    if ( found_spec == false ) 
+    if ( found_spec == false )
     {
       if ( diag )
       {
@@ -159,7 +159,7 @@ static std::regex clause( R"(((-?[1-9]+)+ +)+0)" );
       return false;
     }
 
-    for ( std::sregex_iterator i = clauses_begin; i != clauses_end; ++i ) 
+    for ( std::sregex_iterator i = clauses_begin; i != clauses_end; ++i )
     {
       std::smatch match = *i;
       std::stringstream ss( match[0].str() );
@@ -174,7 +174,7 @@ static std::regex clause( R"(((-?[1-9]+)+ +)+0)" );
         }
       }
       reader.on_clause( clause );
-    } 
+    }
     return true;
   } );
 

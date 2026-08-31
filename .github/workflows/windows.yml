@@ -5,36 +5,70 @@ on:
     branches:
       - master
   pull_request:
-    branches:
-      - master
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  build_and_test:
     strategy:
+      # report every job, so a single failure does not mask the state of the rest
+      fail-fast: false
       matrix:
-        os: [ windows-2022 ]
-        toolset: [ v142, ClangCL ]
+        # windows-2019 was retired as a GitHub-hosted image, and windows-2025
+        # ships Visual Studio 2026 since June 2026 -- Visual Studio 2022 is only
+        # available on windows-2022. The v142 toolset went away with windows-2019.
         include:
           - os: windows-2022
             env: "Visual Studio 17 2022"
+            toolset: v143
+          - os: windows-2022
+            env: "Visual Studio 17 2022"
+            toolset: ClangCL
+          - os: windows-2025
+            env: "Visual Studio 18 2026"
+            toolset: v143
+          - os: windows-2025
+            env: "Visual Studio 18 2026"
+            toolset: ClangCL
 
     name: ${{matrix.os}} with ${{matrix.env}} and ${{matrix.toolset}} toolset
     runs-on: ${{matrix.os}}
 
     steps:
-      - uses: actions/checkout@v1
+      - name: Clone Repository
+        uses: actions/checkout@v4
         with:
-          submodules: true
-      - name: Create build directory
+          submodules: recursive
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: "${{matrix.os}}-${{matrix.toolset}}"
+          variant: ccache
+          save: true
+          max-size: 10G
+
+      - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}\build
-      - name: Run CMake
-        run: cmake ${{github.workspace}} -G "${{matrix.env}}" -A x64 -T ${{matrix.toolset}} -DMOCKTURTLE_BUILD_TESTS=ON
+
+      - name: Configure CMake
         working-directory: ${{github.workspace}}\build
-      - name: Build mockturtle
-        run: cmake --build . -j2
+        run: >
+          cmake ${{github.workspace}}
+          -G "${{matrix.env}}"
+          -A x64 -T ${{matrix.toolset}}
+          -DMOCKTURTLE_BUILD_EXAMPLES=ON
+          -DMOCKTURTLE_BUILD_EXPERIMENTS=ON
+          -DMOCKTURTLE_BUILD_TESTS=ON
+
+      - name: Build
         working-directory: ${{github.workspace}}\build
-        shell: cmd
+        run: cmake --build . -j4
+
       - name: Run tests
+        shell: cmd
         run: |
-          cd build
-          .\test\Debug\run_tests
+          ${{github.workspace}}\build\test\Debug\run_tests "~[quality]"

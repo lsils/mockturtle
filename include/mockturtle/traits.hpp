@@ -1780,7 +1780,7 @@ struct has_ri_to_ro : std::false_type
 };
 
 template<class Ntk>
-struct has_ri_to_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().ri_to_ro( std::declval<node<Ntk>>() ) )>> : std::true_type
+struct has_ri_to_ro<Ntk, std::void_t<decltype( std::declval<Ntk>().ri_to_ro( std::declval<signal<Ntk>>() ) )>> : std::true_type
 {
 };
 

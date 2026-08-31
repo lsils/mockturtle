@@ -140,12 +140,12 @@ protected:
     kitty::create_from_words( tt_or, &_or, &_or + 1 );
     _storage->data.cache.insert( tt_or );
 
-    static uint64_t _lt = 0x4;
+    static uint64_t _lt = 0x2;
     kitty::dynamic_truth_table tt_lt( 2 );
     kitty::create_from_words( tt_lt, &_lt, &_lt + 1 );
     _storage->data.cache.insert( tt_lt );
 
-    static uint64_t _le = 0xd;
+    static uint64_t _le = 0xb;
     kitty::dynamic_truth_table tt_le( 2 );
     kitty::create_from_words( tt_le, &_le, &_le + 1 );
     _storage->data.cache.insert( tt_le );

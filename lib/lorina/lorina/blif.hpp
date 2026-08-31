@@ -54,7 +54,7 @@ public:
   using output_cover_t = std::vector<std::pair<std::string, std::string>>;
 
   /*! Latch input values */
-  enum latch_init_value
+  enum latch_init_value : uint8_t
   {
     ZERO = 0 /*!< Initialized with 0 */
   , ONE /*!< Initialized with 1 */
@@ -62,7 +62,7 @@ public:
   , UNKNOWN
   };
 
-  enum latch_type
+  enum latch_type : uint8_t
   {
     FALLING = 0
   , RISING
@@ -189,7 +189,24 @@ public:
     (void)comment;
   }
 }; /* blif_reader */
-
+/*!
+ * \brief Format a latch_init_value as string.
+ *
+ * {fmt} support for latch_init_value.
+ *
+ * @param liv Latch init value.
+ * @return Underlying value of latch_init_value.
+ */
+inline auto format_as( blif_reader::latch_init_value liv ) { return fmt::underlying( liv ); }
+/*!
+ * \brief Format a latch_type as string.
+ *
+ * {fmt} support for latch_type.
+ *
+ * @param lt Latch type.
+ * @return Underlying value of latch_type.
+ */
+inline auto format_as( blif_reader::latch_type lt ) { return fmt::underlying( lt ); }
 /*! \brief A BLIF reader for prettyprinting BLIF.
  *
  * Callbacks for prettyprinting of BLIF.
@@ -258,10 +275,10 @@ public:
 
 namespace blif_regex
 {
-static std::regex model( R"(.model\s+(.*))" );
-static std::regex names( R"(.names\s+(.*))" );
-static std::regex line_of_truthtable( R"(([01\-]*)\s*([01\-]))" );
-static std::regex end( R"(.end)" );
+inline const std::regex model( R"(.model\s+(.*))" );
+inline const std::regex names( R"(.names\s+(.*))" );
+inline const std::regex line_of_truthtable( R"(([01\-]*)\s*([01\-]))" );
+inline const std::regex end( R"(.end)" );
 } // namespace blif_regex
 
 /*! \brief Reader function for the BLIF format.

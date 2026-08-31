@@ -60,41 +60,41 @@ public:
 public:
   bool operator()( phmap::BinaryOutputArchive& os, uint64_t const& data ) const
   {
-    return os.dump( (char*)&data, sizeof( uint64_t ) );
+    return os.saveBinary( (char*)&data, sizeof( uint64_t ) );
   }
 
   bool operator()( phmap::BinaryInputArchive& ar_input, uint64_t* data ) const
   {
-    return ar_input.load( (char*)data, sizeof( uint64_t ) );
+    return ar_input.loadBinary( (char*)data, sizeof( uint64_t ) );
   }
 
   template<int PointerFieldSize>
   bool operator()( phmap::BinaryOutputArchive& os, node_pointer<PointerFieldSize> const& ptr ) const
   {
-    return os.dump( (char*)&ptr.data, sizeof( ptr.data ) );
+    return os.saveBinary( (char*)&ptr.data, sizeof( ptr.data ) );
   }
 
   template<int PointerFieldSize>
   bool operator()( phmap::BinaryInputArchive& ar_input, node_pointer<PointerFieldSize>* ptr ) const
   {
-    return ar_input.load( (char*)&ptr->data, sizeof( ptr->data ) );
+    return ar_input.loadBinary( (char*)&ptr->data, sizeof( ptr->data ) );
   }
 
   bool operator()( phmap::BinaryOutputArchive& os, cauint64_t const& data ) const
   {
-    return os.dump( (char*)&data.n, sizeof( data.n ) );
+    return os.saveBinary( (char*)&data.n, sizeof( data.n ) );
   }
 
   bool operator()( phmap::BinaryInputArchive& ar_input, cauint64_t* data ) const
   {
-    return ar_input.load( (char*)&data->n, sizeof( data->n ) );
+    return ar_input.loadBinary( (char*)&data->n, sizeof( data->n ) );
   }
 
   template<int Fanin, int Size, int PointerFieldSize>
   bool operator()( phmap::BinaryOutputArchive& os, regular_node<Fanin, Size, PointerFieldSize> const& n ) const
   {
     uint64_t size = n.children.size();
-    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    if ( !os.saveBinary( (char*)&size, sizeof( uint64_t ) ) )
     {
       return false;
     }
@@ -109,7 +109,7 @@ public:
     }
 
     size = n.data.size();
-    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    if ( !os.saveBinary( (char*)&size, sizeof( uint64_t ) ) )
     {
       return false;
     }
@@ -129,7 +129,7 @@ public:
   bool operator()( phmap::BinaryInputArchive& ar_input, const regular_node<Fanin, Size, PointerFieldSize>* n ) const
   {
     uint64_t size;
-    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    if ( !ar_input.loadBinary( (char*)&size, sizeof( uint64_t ) ) )
     {
       return false;
     }
@@ -145,7 +145,7 @@ public:
       const_cast<regular_node<Fanin, Size, PointerFieldSize>*>( n )->children[i] = ptr;
     }
 
-    ar_input.load( (char*)&size, sizeof( uint64_t ) );
+    ar_input.loadBinary( (char*)&size, sizeof( uint64_t ) );
     for ( uint64_t i = 0; i < size; ++i )
     {
       cauint64_t data;
@@ -174,7 +174,7 @@ public:
   {
     /* nodes */
     uint64_t size = storage.nodes.size();
-    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    if ( !os.saveBinary( (char*)&size, sizeof( uint64_t ) ) )
     {
       return false;
     }
@@ -188,7 +188,7 @@ public:
 
     /* inputs */
     size = storage.inputs.size();
-    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    if ( !os.saveBinary( (char*)&size, sizeof( uint64_t ) ) )
     {
       return false;
     }
@@ -202,7 +202,7 @@ public:
 
     /* outputs */
     size = storage.outputs.size();
-    if ( !os.dump( (char*)&size, sizeof( uint64_t ) ) )
+    if ( !os.saveBinary( (char*)&size, sizeof( uint64_t ) ) )
     {
       return false;
     }
@@ -215,12 +215,12 @@ public:
     }
 
     /* hash */
-    if ( !const_cast<aig_storage&>( storage ).hash.dump( os ) )
+    if ( !const_cast<aig_storage&>( storage ).hash.phmap_dump( os ) )
     {
       return false;
     }
 
-    if ( !os.dump( (char*)&storage.trav_id, sizeof( uint32_t ) ) )
+    if ( !os.saveBinary( (char*)&storage.trav_id, sizeof( uint32_t ) ) )
     {
       return false;
     }
@@ -232,7 +232,7 @@ public:
   {
     /* nodes */
     uint64_t size;
-    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    if ( !ar_input.loadBinary( (char*)&size, sizeof( uint64_t ) ) )
     {
       return false;
     }
@@ -247,14 +247,14 @@ public:
     }
 
     /* inputs */
-    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    if ( !ar_input.loadBinary( (char*)&size, sizeof( uint64_t ) ) )
     {
       return false;
     }
     for ( uint64_t i = 0; i < size; ++i )
     {
       uint64_t value;
-      if ( !ar_input.load( (char*)&value, sizeof( uint64_t ) ) )
+      if ( !ar_input.loadBinary( (char*)&value, sizeof( uint64_t ) ) )
       {
         return false;
       }
@@ -262,7 +262,7 @@ public:
     }
 
     /* outputs */
-    if ( !ar_input.load( (char*)&size, sizeof( uint64_t ) ) )
+    if ( !ar_input.loadBinary( (char*)&size, sizeof( uint64_t ) ) )
     {
       return false;
     }
@@ -277,12 +277,12 @@ public:
     }
 
     /* hash */
-    if ( !storage->hash.load( ar_input ) )
+    if ( !storage->hash.phmap_load( ar_input ) )
     {
       return false;
     }
 
-    if ( !ar_input.load( (char*)&storage->trav_id, sizeof( uint32_t ) ) )
+    if ( !ar_input.loadBinary( (char*)&storage->trav_id, sizeof( uint32_t ) ) )
     {
       return false;
     }

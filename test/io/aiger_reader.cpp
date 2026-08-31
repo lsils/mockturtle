@@ -48,6 +48,36 @@ TEST_CASE( "read and write names", "[aiger_reader]" )
   CHECK( named_aig.get_output_name( 1 ) == "y1" );
 }
 
+TEST_CASE( "out-of-bounds index", "[aiger_reader]" )
+{
+  aig_network aig;
+
+  std::string file{ "aag 3 2 0 1 1\n"
+                    "2\n"
+                    "33\n"
+                    "7\n"
+                    "6 3 5\n" };
+
+  std::istringstream in( file );
+  auto const result = lorina::read_ascii_aiger( in, aiger_reader( aig ) );
+  CHECK( result == lorina::return_code::parse_error );
+}
+
+TEST_CASE( "negative index", "[aiger_reader]" )
+{
+  aig_network aig;
+
+  std::string file{ "aag 3 2 0 1 1\n"
+                    "-1\n"
+                    "3\n"
+                    "7\n"
+                    "6 3 5\n" };
+
+  std::istringstream in( file );
+  auto const result = lorina::read_ascii_aiger( in, aiger_reader( aig ) );
+  CHECK( result == lorina::return_code::parse_error );
+}
+
 TEST_CASE( "read an ASCII Aiger file into an AIG network and store input-output names", "[aiger_reader]" )
 {
   aig_network aig;

@@ -866,7 +866,7 @@ struct fmt::formatter<mockturtle::abstract_xag_network::signal>
   template<typename FormatContext>
   auto format( const mockturtle::abstract_xag_network::signal& f, FormatContext& ctx )
   {
-    return format_to( ctx.out(), "{}{}", f.complement ? "~" : "", f.index );
+    return format_to( ctx.out(), runtime("{}{}"), f.complement ? "~" : "", f.index );
   }
 };
 

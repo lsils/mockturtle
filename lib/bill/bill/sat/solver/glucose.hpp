@@ -38,6 +38,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #endif
 
 #include <limits.h>
+#include <chrono>
 
 #ifndef PRIu64
 #define PRIu64 "lu"
@@ -1574,11 +1575,13 @@ static inline double Glucose::cpuTime(void) {
 #endif
 
 #ifndef _WIN32
-// Laurent: I know that this will not compile directly under Windows... sorry for that
-static inline double Glucose::realTime() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (double)tv.tv_sec + (double) tv.tv_usec / 1000000; }
+// Using std::chrono to avoid compilation errors with Apple Clang 15.0.7
+static inline double Glucose::realTime()
+{
+  const auto duration = std::chrono::system_clock::now().time_since_epoch();
+  const auto microsec = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+  return static_cast<double>(microsec) / 1e6;
+}
 #endif
 #endif
 /***************************************************************************************[SolverTypes.h]

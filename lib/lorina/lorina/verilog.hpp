@@ -1,5 +1,5 @@
 /* lorina: C++ parsing library
- * Copyright (C) 2018-2021  EPFL
+ * Copyright (C) 2018-2022  EPFL
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -39,8 +39,15 @@
 #include "detail/utils.hpp"
 #include "diagnostics.hpp"
 #include "verilog_regex.hpp"
+
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+
 #include <iostream>
 #include <queue>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace lorina
 {

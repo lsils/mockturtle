@@ -18,16 +18,19 @@
 #include <unordered_set>
 #include <vector>
 
+#include <fmt/format.h>
+#include <fmt/ranges.h>
+
 namespace bill {
 
 /*! \brief A zero-suppressed decision diagram (ZDD).
  *
  *  NOTE: This is a simple implementation. I would advise against its use when high-performance
  *        is a requirement.
- * 
+ *
  *  Limitations:
- *  	- The number of variables `N` must be known at instantiation time. 
- * 
+ *  	- The number of variables `N` must be known at instantiation time.
+ *
  * Variables are numbered from `0` to `N - 1`.
  */
 
@@ -74,7 +77,7 @@ public:
 	using node_index = uint32_t;
 
 	/* \!brief Creates a new ZDD base.
-	 * 
+	 *
 	 * \param num_vars Number of variables
 	 * \param log_num_objs Log number of nodes to pre-allocate (default: 16)
 	 */
@@ -114,13 +117,13 @@ private:
 	/* \!brief Returns an unique node for the tuple (var, lo, hi)
 	 *
 	 * Given a variable `var` and node indexes lo and hi, we want to see if the ZDD base
-	 * contains a node (var, lo, hi). If no such node exists, we create it. This function 
+	 * contains a node (var, lo, hi). If no such node exists, we create it. This function
 	 * returns a index to this _unique_ node. One crucial technicality should be noted:
-	 * 
+	 *
 	 * /!\ This operation can potentially invalidate pointers, iterators and references /!\
-	 * 
+	 *
 	 * Indexes are not invalidated.
-	 */ 
+	 */
 	node_index unique(uint32_t var, node_index lo, node_index hi)
 	{
 		assert(var < num_variables());
@@ -164,7 +167,7 @@ private:
 			}
 			new_node_index = nodes_.size();
 			nodes_.emplace_back(var, lo, hi);
-		} 
+		}
 		unique_tables_.at(var)[{lo, hi}] = new_node_index;
 		return new_node_index;
 	}
@@ -173,7 +176,7 @@ private:
 	 *
 	 * When we discover that a node exists, but it is dead, i.e. all links to it have gone
 	 * away, but we haven’t recycled it yet. We bring it back to life!
-	 * 
+	 *
 	 * It increases the reference counts of the node's children, and resuscitates them if they
 	 * were dead.
 	 */
@@ -196,7 +199,7 @@ private:
 		ref(node.hi);
 	}
 
-	/* \!brief Recursively kills a node 
+	/* \!brief Recursively kills a node
 	 *
 	 * When the reference count of a node reeaches -1, we kill it. It decreases the reference
 	 * counts of the node's children, and kill them too(!) if necessary, i.e. their reference
@@ -395,7 +398,7 @@ public:
 			return ref(bottom());
 		}
 		node_type& node_f = nodes_.at(index_f);
-	
+
 	restart:
 		if (index_f == index_g) {
 			return ref(bottom());
@@ -407,7 +410,7 @@ public:
 		if (node_g.var < node_f.var) {
 			index_g = node_g.lo;
 			goto restart;
-		} 
+		}
 
 		// Cache lookup
 		++num_cache_lookups_;
@@ -440,10 +443,10 @@ public:
 	{
 		constexpr operations op = operations::zdd_intersection;
 		if (index_f == tautology()) {
-			return ref(index_g); 
+			return ref(index_g);
 		}
 		if (index_g == tautology()) {
-			return ref(index_f); 
+			return ref(index_f);
 		}
 	restart:
 		if (index_f > index_g) {
@@ -466,10 +469,10 @@ public:
 			goto restart;
 		}
 		if (index_f == tautology(node_f.var)) {
-			return ref(index_g); 
+			return ref(index_g);
 		}
 		if (index_g == tautology(node_g.var)) {
-			return ref(index_f); 
+			return ref(index_f);
 		}
 		assert(node_f.var == node_g.var);
 
@@ -612,7 +615,7 @@ public:
 			r_hi = meet(r_lo, index_f);
 			deref(r_lo);
 			return r_hi;
-		} else { 
+		} else {
 			// In this case node_f.var == node_g.var
 			r_hi = union_(node_f.lo, node_f.hi);
 			node_index r_hl = meet(r_hi, node_g.lo);
@@ -773,13 +776,13 @@ public:
 		uint32_t var = node_f.var;
 		if (node_f.var < node_g.var) {
 			if (index_f == tautology(node_f.var)) {
-				return ref(index_f); 
+				return ref(index_f);
 			}
 			r_lo = union_(node_f.lo, index_g);
 			r_hi = ref(node_f.hi);
 		} else if (node_f.var > node_g.var) {
 			if (index_g == tautology(node_g.var)) {
-				return ref(index_g); 
+				return ref(index_g);
 			}
 			r_lo = union_(index_f, node_g.lo);
 			r_hi = ref(node_g.hi);
@@ -787,7 +790,7 @@ public:
 		} else {
 			// In this case node_f.var == node_g.var
 			if (index_g == tautology(node_g.var)) {
-				return ref(index_g); 
+				return ref(index_g);
 			}
 			r_lo = union_(node_f.lo, node_g.lo);
 			r_hi = union_(node_f.hi, node_g.hi);
