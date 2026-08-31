@@ -5,6 +5,7 @@ Network information extraction
    :maxdepth: 1
 
    simulation
+   simulation_sequential
    pattern_generation
    dont_cares
    cut_enumeration
