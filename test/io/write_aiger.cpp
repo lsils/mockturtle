@@ -8,8 +8,12 @@
 
 #include <lorina/aiger.hpp>
 
+#include <cstdio>
+#include <fstream>
+#include <iterator>
 #include <sstream>
 #include <string>
+#include <vector>
 
 template<
     typename T,
@@ -66,6 +70,41 @@ TEST_CASE( "write single-gate AIG into AIGER file", "[write_aiger]" )
              0x31, 0x0a,             // A=1
              0x37, 0x0a,             // 1 PO
              0x01, 0x02,             // 1 AND gate
+             0x63                    // comment
+         } );
+}
+
+TEST_CASE( "write binary AIGER into a file", "[write_aiger]" )
+{
+  aig_network aig;
+
+  std::vector<aig_network::signal> pis;
+  for ( auto i = 0u; i < 6u; ++i )
+  {
+    pis.push_back( aig.create_pi() );
+  }
+
+  aig.create_po( aig.create_and( pis[0], pis[1] ) );
+
+  std::string const filename = "write_aiger_binary.aig";
+  write_aiger( aig, filename );
+
+  std::ifstream in( filename, std::ifstream::in | std::ifstream::binary );
+  REQUIRE( in.is_open() );
+  std::vector<char> const data{ std::istreambuf_iterator<char>{ in }, std::istreambuf_iterator<char>{} };
+  in.close();
+  CHECK( std::remove( filename.c_str() ) == 0 );
+
+  CHECK( data ==
+         std::vector<char>{
+             0x61, 0x69, 0x67, 0x20, // aig
+             0x37, 0x20,             // M=7 (I+L+A)
+             0x36, 0x20,             // I=6
+             0x30, 0x20,             // L=0
+             0x31, 0x20,             // O=1
+             0x31, 0x0a,             // A=1
+             0x31, 0x34, 0x0a,       // 1 PO
+             0x0a, 0x02,             // 1 AND gate
              0x63                    // comment
          } );
 }

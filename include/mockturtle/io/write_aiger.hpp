@@ -281,7 +281,7 @@ inline void write_aiger( Ntk const& aig, std::ostream& os )
 template<typename Ntk>
 inline void write_aiger( Ntk const& aig, std::string const& filename )
 {
-  std::ofstream os( filename.c_str(), std::ofstream::out );
+  std::ofstream os( filename.c_str(), std::ofstream::out | std::ofstream::binary );
   write_aiger( aig, os );
   os.close();
 }
