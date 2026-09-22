@@ -155,12 +155,12 @@ public:
 
 namespace bench_regex
 {
-static std::regex input( R"(INPUT\((.*)\))" );
-static std::regex output( R"(OUTPUT\((.*)\))" );
-static std::regex gate( R"((.*)\s+=\s+(.*)\((.*)\))" );
-static std::regex dff( R"((.*)\s+=\s+DFF\((.+)\))" );
-static std::regex lut( R"((.*)\s+=\s+LUT\s+(.*)\((.*)\))" );
-static std::regex gate_asgn( R"((.*)\s+=\s+(.*))" );
+inline const std::regex input( R"(INPUT\((.*)\))" );
+inline const std::regex output( R"(OUTPUT\((.*)\))" );
+inline const std::regex gate( R"((.*)\s+=\s+(.*)\((.*)\))" );
+inline const std::regex dff( R"((.*)\s+=\s+DFF\((.+)\))" );
+inline const std::regex lut( R"((.*)\s+=\s+LUT\s+(.*)\((.*)\))" );
+inline const std::regex gate_asgn( R"((.*)\s+=\s+(.*))" );
 } // namespace bench_regex
 
 /*! \brief Reader function for the BENCH format.

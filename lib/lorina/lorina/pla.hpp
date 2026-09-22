@@ -236,8 +236,8 @@ public:
 
 namespace pla_regex
 {
-static std::regex keyword( R"(^\.([^\s]*)(?:\s+(.+))?$)" );
-static std::regex term( R"(^([01\-]+)\s+([01\-]+)$)" );
+inline const std::regex keyword( R"(^\.([^\s]*)(?:\s+(.+))?$)" );
+inline const std::regex term( R"(^([01\-]+)\s+([01\-]+)$)" );
 
 } // namespace pla_regex
 

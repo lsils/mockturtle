@@ -427,15 +427,15 @@ public:
 
 namespace aig_regex
 {
-static std::regex header( R"(^aig (\d+) (\d+) (\d+) (\d+) (\d+)( \d+)?( \d+)?( \d+)?( \d+)?$)" );
-static std::regex ascii_header( R"(^aag (\d+) (\d+) (\d+) (\d+) (\d+)( \d+)?( \d+)?( \d+)?( \d+)?$)" );
-static std::regex input( R"(^i(\d+) (.*)$)" );
-static std::regex latch( R"(^l(\d+) (.*)$)" );
-static std::regex output( R"(^o(\d+) (.*)$)" );
-static std::regex bad_state( R"(^b(\d+) (.*)$)" );
-static std::regex constraint( R"(^c(\d+) (.*)$)" );
-static std::regex justice( R"(^j(\d+) (.*)$)" );
-static std::regex fairness( R"(^f(\d+) (.*)$)" );
+inline const std::regex header( R"(^aig (\d+) (\d+) (\d+) (\d+) (\d+)( \d+)?( \d+)?( \d+)?( \d+)?$)" );
+inline const std::regex ascii_header( R"(^aag (\d+) (\d+) (\d+) (\d+) (\d+)( \d+)?( \d+)?( \d+)?( \d+)?$)" );
+inline const std::regex input( R"(^i(\d+) (.*)$)" );
+inline const std::regex latch( R"(^l(\d+) (.*)$)" );
+inline const std::regex output( R"(^o(\d+) (.*)$)" );
+inline const std::regex bad_state( R"(^b(\d+) (.*)$)" );
+inline const std::regex constraint( R"(^c(\d+) (.*)$)" );
+inline const std::regex justice( R"(^j(\d+) (.*)$)" );
+inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
 } // namespace aig_regex
 
 /*! \brief Reader function for ASCII AIGER format.
