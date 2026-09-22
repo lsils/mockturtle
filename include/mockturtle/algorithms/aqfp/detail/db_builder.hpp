@@ -40,6 +40,8 @@
 
 #include <kitty/kitty.hpp>
 
+#include <fmt/ranges.h>
+
 #include "../aqfp_db.hpp"
 #include "dag.hpp"
 #include "dag_cost.hpp"

@@ -37,6 +37,7 @@
 #include <vector>
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <lorina/bristol.hpp>
 
 #include "../traits.hpp"

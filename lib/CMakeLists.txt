@@ -4,9 +4,9 @@ if (NOT TARGET parallel_hashmap)
 endif()
 
 if (NOT TARGET fmt)
-  add_library(fmt INTERFACE) # v6.3.0
+  add_library(fmt INTERFACE) # v12.1.0
   target_include_directories(fmt SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/fmt)
-  target_compile_definitions(fmt INTERFACE FMT_HEADER_ONLY)
+  target_compile_definitions(fmt INTERFACE FMT_HEADER_ONLY=1)
 endif()
 
 if (NOT TARGET kitty)

@@ -49,6 +49,8 @@
 #include <string>
 #include <vector>
 
+#include <fmt/ranges.h>
+
 namespace mockturtle
 {
 

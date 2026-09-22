@@ -49,6 +49,7 @@
 #include "../views/cnf_view.hpp"
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 namespace mockturtle
 {

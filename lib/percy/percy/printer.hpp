@@ -76,22 +76,22 @@ public:
     switch ( c.get_fanin() )
     {
     case 2u:
-      return fmt::format( mask,
+      return fmt::format( fmt::runtime( mask ),
                           step_to_expression( step.at( 0 ) ),
                           step_to_expression( step.at( 1 ) ) );
     case 3u:
-      return fmt::format( mask,
+      return fmt::format( fmt::runtime( mask ),
                           step_to_expression( step.at( 0 ) ),
                           step_to_expression( step.at( 1 ) ),
                           step_to_expression( step.at( 2 ) ) );
     case 4u:
-      return fmt::format( mask,
+      return fmt::format( fmt::runtime( mask ),
                           step_to_expression( step.at( 0 ) ),
                           step_to_expression( step.at( 1 ) ),
                           step_to_expression( step.at( 2 ) ),
                           step_to_expression( step.at( 3 ) ) );
     case 5u:
-      return fmt::format( mask,
+      return fmt::format( fmt::runtime( mask ),
                           step_to_expression( step.at( 0 ) ),
                           step_to_expression( step.at( 1 ) ),
                           step_to_expression( step.at( 2 ) ),

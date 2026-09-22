@@ -38,6 +38,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <fmt/ranges.h>
+
 #include "../utils/hash_functions.hpp"
 #include "../views/fanout_view.hpp"
 

@@ -42,6 +42,8 @@
 #include <iostream>
 #include <queue>
 
+#include <fmt/ranges.h>
+
 namespace lorina
 {
 
