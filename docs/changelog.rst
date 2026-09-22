@@ -40,6 +40,7 @@ v0.4 (not yet released)
     - Adding don't care support in rewriting (`map`, `rewrite`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - XAG balancing (`xag_balance`) `#627 <https://github.com/lsils/mockturtle/pull/627>`_
     - XAG resubstitution (`xag_resubstitution`) `#658 <https://github.com/lsils/mockturtle/pull/658>`_
+    - Cycle-accurate simulation of sequential networks (`simulate_sequential`) `#708 <https://github.com/lsils/mockturtle/pull/708>`_
 * I/O:
     - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:
