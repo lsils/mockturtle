@@ -7,6 +7,9 @@ if (NOT TARGET fmt)
   add_library(fmt INTERFACE) # v12.1.0
   target_include_directories(fmt SYSTEM INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/fmt)
   target_compile_definitions(fmt INTERFACE FMT_HEADER_ONLY=1)
+  if(MSVC)
+    target_compile_options(fmt INTERFACE /utf-8)
+  endif()
 endif()
 
 if (NOT TARGET kitty)
