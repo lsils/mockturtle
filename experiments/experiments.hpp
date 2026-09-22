@@ -231,7 +231,7 @@ public:
     {
       auto const& data = dataset( version, data_.back() );
       fmt::print( "[i] dataset " );
-      fmt::print( fg( fmt::terminal_color::blue ), "{}\n", data["version"] );
+      fmt::print( fg( fmt::terminal_color::blue ), "{}\n", data["version"].template get<std::string>() );
 
       json_table( data["entries"], column_names_ ).print( os );
     }
@@ -264,9 +264,9 @@ public:
       auto const& entries_cur = data_cur["entries"];
 
       fmt::print( "[i] compare " );
-      fmt::print( fg( fmt::terminal_color::blue ), "{}", data_old["version"] );
+      fmt::print( fg( fmt::terminal_color::blue ), "{}", data_old["version"].template get<std::string>() );
       fmt::print( " to " );
-      fmt::print( fg( fmt::terminal_color::blue ), "{}\n", data_cur["version"] );
+      fmt::print( fg( fmt::terminal_color::blue ), "{}\n", data_cur["version"].template get<std::string>() );
 
       /* collect keys */
       using first_t = first_type_t<ColumnTypes...>;
