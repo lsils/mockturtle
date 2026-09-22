@@ -513,18 +513,18 @@ struct exact_linear_synthesis_problem_network
   {
     for ( auto i = 0u; i < k_; ++i )
     {
-      fmt::print( i == 0 ? "B =" : "   " );
+      fmt::print( "{}", i == 0 ? "B =" : "   " );
       for ( auto j = 0u; j < n_; ++j )
       {
         fmt::print( " {}", (int)pntk_.model_value( b( i, j ) ) );
       }
-      fmt::print( i == 0 ? " C =" : "    " );
+      fmt::print( "{}", i == 0 ? " C =" : "    " );
       for ( auto p = 0u; p < i; ++p )
       {
         fmt::print( " {}", (int)pntk_.model_value( c( i, p ) ) );
       }
-      fmt::print( std::string( 2 * ( k_ - i ), ' ' ) );
-      fmt::print( i == 0u ? " F =" : "    " );
+      fmt::print( "{}", std::string( 2 * ( k_ - i ), ' ' ) );
+      fmt::print( "{}", i == 0u ? " F =" : "    " );
       for ( auto l = 0u; l < m_; ++l )
       {
         fmt::print( " {}", (int)pntk_.model_value( f( l, i ) ) );
