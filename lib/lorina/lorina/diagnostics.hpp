@@ -35,6 +35,8 @@
 #include <cassert>
 #include <iostream>
 #include <map>
+#include <string>
+#include <vector>
 #include <fmt/format.h>
 #include <fmt/color.h>
 
