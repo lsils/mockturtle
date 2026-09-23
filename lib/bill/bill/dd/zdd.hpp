@@ -11,6 +11,7 @@
 #include <cassert>
 #include <cstdint>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <iostream>
 #include <sstream>
 #include <stack>

@@ -6,6 +6,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 namespace cudd {
 

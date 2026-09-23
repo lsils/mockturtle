@@ -153,7 +153,7 @@ private:
       return;
 
     int spidx = static_cast<int>( ( 6.0 * pos ) / _size );
-    _os << "\u001B[G" << fmt::format( _fmt, spinner.substr( spidx * 5, 5 ), args... ) << std::flush;
+    _os << "\u001B[G" << fmt::format( fmt::runtime( _fmt ), spinner.substr( spidx * 5, 5 ), args... ) << std::flush;
   }
 
   template<typename... Args>
@@ -162,7 +162,7 @@ private:
     if ( !_enable )
       return;
 
-    _os << "\u001B[G" << fmt::format( _fmt, args... ) << std::flush;
+    _os << "\u001B[G" << fmt::format( fmt::runtime( _fmt ), args... ) << std::flush;
   }
 
 private:

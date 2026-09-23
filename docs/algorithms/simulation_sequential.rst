@@ -28,6 +28,8 @@ The state trace answers what the registers were doing while that happened, and w
 
 .. code-block:: c++
 
+   #include <fmt/ranges.h>
+
    for ( auto const& state : result.states )
    {
      std::cout << fmt::format( "{}\n", fmt::join( state, "" ) );
