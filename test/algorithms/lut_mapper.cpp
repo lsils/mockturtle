@@ -334,3 +334,36 @@ TEST_CASE( "LUT map remapping LUT network", "[lut_mapper]" )
   CHECK( mapped_ntk.num_cells() == 1 );
   CHECK( *equivalence_checking( miter_ntk ) == true );
 }
+
+TEST_CASE( "LUT map of an AIG with nodes unreachable from the outputs", "[lut_mapper]" )
+{
+  /* `compute_share_mapping_init` calls `best()` on every node index, including
+     nodes the cut enumerator never visited because no output depends on them.
+     Their cut set is empty and `best()` hands out a default-constructed cut, so
+     that cut has to be a well-defined empty one. */
+  aig_network aig;
+
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const c = aig.create_pi();
+
+  auto const f1 = aig.create_and( a, b );
+  auto const f2 = aig.create_and( f1, c );
+  aig.create_po( f2 );
+
+  /* dangling: driven by primary inputs, driving no output */
+  auto const d1 = aig.create_and( a, !b );
+  auto const d2 = aig.create_and( d1, !c );
+  auto const d3 = aig.create_and( d2, a );
+  aig.create_and( d3, !b );
+
+  CHECK( aig.num_gates() == 6 );
+
+  lut_map_params ps;
+  ps.cut_enumeration_ps.cut_size = 4;
+  ps.area_oriented_mapping = true;
+
+  const klut_network klut = lut_map<aig_network, true>( aig, ps );
+
+  CHECK( klut.num_gates() == 1 );
+}

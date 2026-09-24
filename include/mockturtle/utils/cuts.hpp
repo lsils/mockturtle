@@ -87,8 +87,20 @@ class cut
 {
 public:
   /*! \brief Default constructor.
+   *
+   * Constructs an empty cut.  The end iterators must be initialized here:
+   * `cut_set` and its variants hold an array of default-constructed cuts and
+   * hand one of them out from `best()` even when the set is still empty, so a
+   * defaulted constructor leaves `end()` indeterminate for a reachable object.
    */
-  cut() = default;
+  cut()
+      : _length( 0 ),
+        _signature( 0 ),
+        _cend( _leaves.begin() ),
+        _end( _leaves.begin() ),
+        _data()
+  {
+  }
 
   /*! \brief Copy constructor.
    *
