@@ -339,8 +339,8 @@ TEST_CASE( "LUT map of an AIG with nodes unreachable from the outputs", "[lut_ma
 {
   /* `compute_share_mapping_init` calls `best()` on every node index, including
      nodes the cut enumerator never visited because no output depends on them.
-     Their cut set is empty and `best()` hands out a default-constructed cut, so
-     that cut has to be a well-defined empty one. */
+     Their cut set is empty, so `clear()` must initialize the first cut
+     exposed by `best()`. */
   aig_network aig;
 
   auto const a = aig.create_pi();
@@ -366,4 +366,34 @@ TEST_CASE( "LUT map of an AIG with nodes unreachable from the outputs", "[lut_ma
   const klut_network klut = lut_map<aig_network, true>( aig, ps );
 
   CHECK( klut.num_gates() == 1 );
+}
+
+TEST_CASE( "empty LUT cut set has an initialized best cut", "[lut_mapper]" )
+{
+  using cut_type = cut<16, cut_data<true, detail::cut_enumeration_lut_cut>>;
+  detail::lut_cut_set<cut_type, 32> set;
+
+  SECTION( "newly constructed" )
+  {
+  }
+
+  SECTION( "after clearing populated and reordered storage" )
+  {
+    std::vector<uint32_t> leaves{ 1, 2, 3 };
+    auto& first = set.add_cut( leaves.begin(), leaves.end() );
+    first->func_id = 42;
+    first->data.lut_area = 23;
+    set.add_cut( leaves.begin(), leaves.begin() + 1 );
+    set.update_best( 1 );
+    set.clear();
+  }
+
+  CHECK( set.size() == 0 );
+  CHECK( set.best().size() == 0 );
+  CHECK( set.best().signature() == 0 );
+  CHECK( set.best().begin() == set.best().end() );
+  auto const& best = set.best();
+  CHECK( best.begin() == best.end() );
+  CHECK( best->func_id == 0 );
+  CHECK( best->data.lut_area == 0 );
 }

@@ -87,20 +87,8 @@ class cut
 {
 public:
   /*! \brief Default constructor.
-   *
-   * Constructs an empty cut.  The end iterators must be initialized here:
-   * `cut_set` and its variants hold an array of default-constructed cuts and
-   * hand one of them out from `best()` even when the set is still empty, so a
-   * defaulted constructor leaves `end()` indeterminate for a reachable object.
    */
-  cut()
-      : _length( 0 ),
-        _signature( 0 ),
-        _cend( _leaves.begin() ),
-        _end( _leaves.begin() ),
-        _data()
-  {
-  }
+  cut() = default;
 
   /*! \brief Copy constructor.
    *
@@ -514,6 +502,9 @@ void cut_set<CutType, MaxCuts>::clear()
   {
     *pit++ = &c;
   }
+  /* best() exposes the first cut even when the set is empty. */
+  _cuts[0].set_leaves( _cuts[0].begin(), _cuts[0].begin() );
+  _cuts[0].data() = {};
 }
 
 template<typename CutType, int MaxCuts>
