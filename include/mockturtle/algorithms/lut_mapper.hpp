@@ -231,6 +231,9 @@ public:
     {
       *pit++ = &c;
     }
+    /* best() exposes the first cut even when the set is empty. */
+    _cuts[0].set_leaves( _cuts[0].begin(), _cuts[0].begin() );
+    _cuts[0].data() = {};
   }
 
   /*! \brief Adds a cut to the end of the set.

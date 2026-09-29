@@ -334,3 +334,66 @@ TEST_CASE( "LUT map remapping LUT network", "[lut_mapper]" )
   CHECK( mapped_ntk.num_cells() == 1 );
   CHECK( *equivalence_checking( miter_ntk ) == true );
 }
+
+TEST_CASE( "LUT map of an AIG with nodes unreachable from the outputs", "[lut_mapper]" )
+{
+  /* `compute_share_mapping_init` calls `best()` on every node index, including
+     nodes the cut enumerator never visited because no output depends on them.
+     Their cut set is empty, so `clear()` must initialize the first cut
+     exposed by `best()`. */
+  aig_network aig;
+
+  auto const a = aig.create_pi();
+  auto const b = aig.create_pi();
+  auto const c = aig.create_pi();
+
+  auto const f1 = aig.create_and( a, b );
+  auto const f2 = aig.create_and( f1, c );
+  aig.create_po( f2 );
+
+  /* dangling: driven by primary inputs, driving no output */
+  auto const d1 = aig.create_and( a, !b );
+  auto const d2 = aig.create_and( d1, !c );
+  auto const d3 = aig.create_and( d2, a );
+  aig.create_and( d3, !b );
+
+  CHECK( aig.num_gates() == 6 );
+
+  lut_map_params ps;
+  ps.cut_enumeration_ps.cut_size = 4;
+  ps.area_oriented_mapping = true;
+
+  const klut_network klut = lut_map<aig_network, true>( aig, ps );
+
+  CHECK( klut.num_gates() == 1 );
+}
+
+TEST_CASE( "empty LUT cut set has an initialized best cut", "[lut_mapper]" )
+{
+  using cut_type = cut<16, cut_data<true, detail::cut_enumeration_lut_cut>>;
+  detail::lut_cut_set<cut_type, 32> set;
+
+  SECTION( "newly constructed" )
+  {
+  }
+
+  SECTION( "after clearing populated and reordered storage" )
+  {
+    std::vector<uint32_t> leaves{ 1, 2, 3 };
+    auto& first = set.add_cut( leaves.begin(), leaves.end() );
+    first->func_id = 42;
+    first->data.lut_area = 23;
+    set.add_cut( leaves.begin(), leaves.begin() + 1 );
+    set.update_best( 1 );
+    set.clear();
+  }
+
+  CHECK( set.size() == 0 );
+  CHECK( set.best().size() == 0 );
+  CHECK( set.best().signature() == 0 );
+  CHECK( set.best().begin() == set.best().end() );
+  auto const& best = set.best();
+  CHECK( best.begin() == best.end() );
+  CHECK( best->func_id == 0 );
+  CHECK( best->data.lut_area == 0 );
+}

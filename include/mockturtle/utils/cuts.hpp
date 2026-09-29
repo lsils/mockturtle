@@ -502,6 +502,9 @@ void cut_set<CutType, MaxCuts>::clear()
   {
     *pit++ = &c;
   }
+  /* best() exposes the first cut even when the set is empty. */
+  _cuts[0].set_leaves( _cuts[0].begin(), _cuts[0].begin() );
+  _cuts[0].data() = {};
 }
 
 template<typename CutType, int MaxCuts>

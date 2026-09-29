@@ -188,3 +188,28 @@ TEST_CASE( "merge three cuts", "[cuts]" )
   ct.merge( c3, cr, 10 );
   CHECK( std::vector<uint32_t>( cr.begin(), cr.end() ) == std::vector{ 1u, 2u, 3u, 4u, 5u, 6u, 7u, 9u } );
 }
+
+TEST_CASE( "empty cut set has an initialized best cut", "[cuts]" )
+{
+  cut_set<cut<10, uint32_t>, 25> set;
+
+  SECTION( "newly constructed" )
+  {
+  }
+
+  SECTION( "after clearing populated and reordered storage" )
+  {
+    std::vector<uint32_t> leaves{ 1, 2, 3 };
+    set.add_cut( leaves.begin(), leaves.end() ).data() = 42;
+    set.add_cut( leaves.begin(), leaves.begin() + 1 ).data() = 23;
+    set.update_best( 1 );
+    set.clear();
+  }
+
+  CHECK( set.size() == 0 );
+  CHECK( set.best().size() == 0 );
+  CHECK( set.best().signature() == 0 );
+  CHECK( set.best().begin() == set.best().end() );
+  CHECK( ( *set.begin() )->begin() == ( *set.begin() )->end() );
+  CHECK( set.best().data() == 0 );
+}
