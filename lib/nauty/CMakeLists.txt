@@ -29,13 +29,25 @@ if (NAUTY_IGNORED_COMPILE_OPTIONS)
   message(WARNING "Ignoring nauty configure CFLAGS: ${NAUTY_IGNORED_COMPILE_OPTIONS}")
 endif()
 
-file(GLOB FILENAMES "${NAUTY_BUILD_SOURCE_DIR}/*.c")
-
-list(REMOVE_ITEM FILENAMES ${NAUTY_BUILD_SOURCE_DIR}/poptest.c)
-list(REMOVE_ITEM FILENAMES ${NAUTY_BUILD_SOURCE_DIR}/sorttemplates.c)
-list(REMOVE_ITEM FILENAMES ${NAUTY_BUILD_SOURCE_DIR}/testg.c)
-list(REMOVE_ITEM FILENAMES ${NAUTY_BUILD_SOURCE_DIR}/splay.c)
-list(REMOVE_ITEM FILENAMES ${NAUTY_BUILD_SOURCE_DIR}/sumlines.c)
+set(NAUTY_LIBRARY_SOURCES
+  gtools.c
+  gtnauty.c
+  gutil1.c
+  gutil2.c
+  naugraph.c
+  naugroup.c
+  naurng.c
+  nausparse.c
+  nautil.c
+  nautinv.c
+  naututil.c
+  nauty.c
+  schreier.c
+  traces.c
+)
+foreach(NAUTY_LIBRARY_SOURCE ${NAUTY_LIBRARY_SOURCES})
+  list(APPEND FILENAMES "${NAUTY_BUILD_SOURCE_DIR}/${NAUTY_LIBRARY_SOURCE}")
+endforeach()
 
 add_library(nauty ${FILENAMES})
 target_include_directories(nauty INTERFACE "${NAUTY_BUILD_SOURCE_DIR}")
