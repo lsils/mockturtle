@@ -64,6 +64,39 @@ TEST_CASE( "read a VERILOG file into MIG network", "[verilog_reader]" )
   } );
 }
 
+TEST_CASE( "read NOR and XNOR assignments from a VERILOG file", "[verilog_reader]" )
+{
+  mig_network mig;
+
+  std::string file{
+      "module top( a , b , y0 , y1 , y2 , y3 , y4 ) ;\n"
+      "  input a , b ;\n"
+      "  output y0 , y1 , y2 , y3 , y4 ;\n"
+      "  assign y0 = ~( a | b ) ;\n"
+      "  assign y1 = ~( a ^ b ) ;\n"
+      "  assign y2 = ~( a & b ) ;\n"
+      "  assign y3 = ~( ~a | b ) ;\n"
+      "  assign y4 = ~( ~a ^ b ) ;\n"
+      "endmodule\n" };
+
+  std::istringstream in( file );
+  auto const result = lorina::read_verilog( in, verilog_reader( mig ) );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+  CHECK( mig.num_pis() == 2 );
+  CHECK( mig.num_pos() == 5 );
+
+  /* functional checks */
+  default_simulator<kitty::dynamic_truth_table> sim( mig.num_pis() );
+  const auto tts = simulate<kitty::dynamic_truth_table>( mig, sim );
+  CHECK( kitty::to_hex( tts[0] ) == "1" ); // nor
+  CHECK( kitty::to_hex( tts[1] ) == "9" ); // xnor
+  CHECK( kitty::to_hex( tts[2] ) == "7" ); // nand
+  CHECK( kitty::to_hex( tts[3] ) == "2" ); // nor with complemented operand
+  CHECK( kitty::to_hex( tts[4] ) == "6" ); // xnor with complemented operand
+}
+
 TEST_CASE( "read a VERILOG file into XMG network", "[verilog_reader]" )
 {
   xmg_network xmg;
