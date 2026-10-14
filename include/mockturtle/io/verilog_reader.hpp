@@ -268,7 +268,10 @@ public:
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
-    signals_[lhs] = ntk_.create_nor( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    if constexpr ( has_create_nor_v<Ntk> )
+      signals_[lhs] = ntk_.create_nor( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    else
+      signals_[lhs] = ntk_.create_not( ntk_.create_or( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b ) );
   }
 
   void on_xor( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
@@ -308,7 +311,10 @@ public:
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
-    signals_[lhs] = ntk_.create_xnor( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    if constexpr ( has_create_xnor_v<Ntk> )
+      signals_[lhs] = ntk_.create_xnor( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    else
+      signals_[lhs] = ntk_.create_not( ntk_.create_xor( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b ) );
   }
 
   void on_xor3( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2, const std::pair<std::string, bool>& op3 ) const override
