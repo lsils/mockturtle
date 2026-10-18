@@ -195,7 +195,10 @@ public:
 
     auto a = signals_[op1.first];
     auto b = signals_[op2.first];
-    signals_[lhs] = ntk_.create_nand( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    if constexpr ( has_create_nand_v<Ntk> )
+      signals_[lhs] = ntk_.create_nand( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b );
+    else
+      signals_[lhs] = ntk_.create_not( ntk_.create_and( op1.second ? ntk_.create_not( a ) : a, op2.second ? ntk_.create_not( b ) : b ) );
   }
 
   void on_and( const std::string& lhs, const std::pair<std::string, bool>& op1, const std::pair<std::string, bool>& op2 ) const override
