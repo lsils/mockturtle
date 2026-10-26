@@ -25,7 +25,7 @@
 
 /*!
   \file xag_npn.hpp
-  \brief Replace with size-optimum XAGs and AIGs from NPN (from ABC rewrite)
+  \brief Replace with XAGs and AIGs from NPN: ABC's rewrite library by default, and size-optimum libraries with `xag_complete` and `aig_complete`
 
   \author Heinz Riener
   \author Mathias Soeken
