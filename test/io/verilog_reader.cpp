@@ -6,7 +6,9 @@
 #include <mockturtle/algorithms/cleanup.hpp>
 #include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/io/verilog_reader.hpp>
+#include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/buffered.hpp>
+#include <mockturtle/networks/klut.hpp>
 #include <mockturtle/networks/mig.hpp>
 #include <mockturtle/networks/muxig.hpp>
 #include <mockturtle/networks/xag.hpp>
@@ -16,6 +18,17 @@
 #include <lorina/verilog.hpp>
 
 using namespace mockturtle;
+
+namespace
+{
+/* Exercise the NAND fallback: the concrete networks all provide create_nand. */
+struct klut_network_without_nand : klut_network
+{
+  signal create_nand( signal, signal ) = delete;
+};
+
+static_assert( !has_create_nand_v<klut_network_without_nand> );
+} // namespace
 
 TEST_CASE( "read a VERILOG file into MIG network", "[verilog_reader]" )
 {
@@ -62,6 +75,43 @@ TEST_CASE( "read a VERILOG file into MIG network", "[verilog_reader]" )
       break;
     }
   } );
+}
+
+TEMPLATE_TEST_CASE( "read NAND, NOR and XNOR assignments from a VERILOG file", "[verilog_reader]", aig_network, xag_network, mig_network, klut_network, xmg_network, muxig_network, klut_network_without_nand )
+{
+  TestType ntk;
+
+  std::string file{
+      "module top( a , b , y0 , y1 , y2 , y3 , y4 , y5 , y6 ) ;\n"
+      "  input a , b ;\n"
+      "  output y0 , y1 , y2 , y3 , y4 , y5 , y6 ;\n"
+      "  assign y0 = ~( a | b ) ;\n"
+      "  assign y1 = ~( a ^ b ) ;\n"
+      "  assign y2 = ~( a & b ) ;\n"
+      "  assign y3 = ~( ~a | b ) ;\n"
+      "  assign y4 = ~( ~a ^ b ) ;\n"
+      "  assign y5 = ~( ~a & b ) ;\n"
+      "  assign y6 = ~( a & ~b ) ;\n"
+      "endmodule\n" };
+
+  std::istringstream in( file );
+  auto const result = lorina::read_verilog( in, verilog_reader( ntk ) );
+
+  /* structural checks */
+  CHECK( result == lorina::return_code::success );
+  CHECK( ntk.num_pis() == 2 );
+  CHECK( ntk.num_pos() == 7 );
+
+  /* functional checks */
+  default_simulator<kitty::dynamic_truth_table> sim( ntk.num_pis() );
+  const auto tts = simulate<kitty::dynamic_truth_table>( ntk, sim );
+  CHECK( kitty::to_hex( tts[0] ) == "1" ); // nor
+  CHECK( kitty::to_hex( tts[1] ) == "9" ); // xnor
+  CHECK( kitty::to_hex( tts[2] ) == "7" ); // nand
+  CHECK( kitty::to_hex( tts[3] ) == "2" ); // nor with complemented operand
+  CHECK( kitty::to_hex( tts[4] ) == "6" ); // xnor with complemented operand
+  CHECK( kitty::to_hex( tts[5] ) == "b" ); // nand with complemented first operand
+  CHECK( kitty::to_hex( tts[6] ) == "d" ); // nand with complemented second operand
 }
 
 TEST_CASE( "read a VERILOG file into XMG network", "[verilog_reader]" )
