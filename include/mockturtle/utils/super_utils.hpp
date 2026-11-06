@@ -142,7 +142,6 @@ public:
       else
       {
         multioutput_map[g.name] = 1;
-        multioutput_idx[g.name] = UINT32_MAX;
       }
     }
 
@@ -187,10 +186,15 @@ public:
 
       if ( multioutput_map[g.name] > 1 )
       {
-        auto& idx = multioutput_idx[g.name];
-        if ( idx == UINT32_MAX )
+        uint32_t idx;
+        if ( auto it = multioutput_idx.find( g.name ); it != multioutput_idx.end() )
+        {
+          idx = it->second;
+        }
+        else
         {
           idx = static_cast<uint32_t>( _multioutput_gates.size() );
+          multioutput_idx[g.name] = idx;
           _multioutput_gates.emplace_back( std::vector<composed_gate<NInputs>>() );
         }
 
