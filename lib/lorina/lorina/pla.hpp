@@ -255,6 +255,8 @@ inline const std::regex term( R"(^([01\-]+)\s+([01\-]+)$)" );
 {
   auto loc = 0ul;
   auto errors = 0ul;
+  uint64_t num_inputs = 0u, num_outputs = 0u;
+  bool has_inputs = false, has_outputs = false;
 
   std::smatch m;
   detail::foreach_line_in_file_escape( in, [&]( const std::string& line ) {
@@ -268,12 +270,16 @@ inline const std::regex term( R"(^([01\-]+)\s+([01\-]+)$)" );
     {
       if ( m[1] == "i" )
       {
-        reader.on_number_of_inputs( std::atol( std::string( m[2] ).c_str() ) );
+        num_inputs = std::atol( std::string( m[2] ).c_str() );
+        has_inputs = true;
+        reader.on_number_of_inputs( num_inputs );
         return true;
       }
       else if ( m[1] == "o" )
       {
-        reader.on_number_of_outputs( std::atol( std::string( m[2] ).c_str() ) );
+        num_outputs = std::atol( std::string( m[2] ).c_str() );
+        has_outputs = true;
+        reader.on_number_of_outputs( num_outputs );
         return true;
       }
       else if ( m[1] == "p" )
@@ -305,7 +311,15 @@ inline const std::regex term( R"(^([01\-]+)\s+([01\-]+)$)" );
     /* [01-]+ [01-]+ */
     if ( std::regex_match( line, m, pla_regex::term ) )
     {
-      std::string out = m[2];
+      if ( !has_inputs || !has_outputs || m[1].length() != num_inputs || m[2].length() != num_outputs )
+      {
+        if ( diag )
+        {
+          diag->report( diag_id::ERR_PARSE_LINE ).add_argument( line );
+        }
+        ++errors;
+        return true; /* understood error case, go on parsing */
+      }
       reader.on_term( m[1], m[2] );
       return true;
     }

@@ -35,3 +35,32 @@ TEST_CASE( "read a PLA file into an XAG", "[pla_reader]" )
   CHECK( simulate<kitty::static_truth_table<3u>>( xag )[0]._bits == 0xb1u );
   CHECK( simulate<kitty::static_truth_table<3u>>( xag )[1]._bits == 0xe0u );
 }
+
+TEST_CASE( "reject PLA terms with mismatched widths", "[pla_reader]" )
+{
+  for ( auto const& term : { "11 1", "1 11", "-- 1", "1 --" } )
+  {
+    CAPTURE( term );
+    xag_network ntk;
+    std::istringstream in( std::string( ".i 1\n.o 1\n" ) + term + "\n.e\n" );
+    CHECK( lorina::read_pla( in, pla_reader( ntk ) ) == lorina::return_code::parse_error );
+  }
+  for ( auto const& term : { "1 11", "11 1", "1 1" } )
+  {
+    CAPTURE( term );
+    xag_network ntk;
+    std::istringstream in( std::string( ".i 2\n.o 2\n" ) + term + "\n.e\n" );
+    CHECK( lorina::read_pla( in, pla_reader( ntk ) ) == lorina::return_code::parse_error );
+  }
+}
+
+TEST_CASE( "reject PLA terms before width declarations", "[pla_reader]" )
+{
+  for ( auto const& header : { "", ".i 1\n", ".o 1\n" } )
+  {
+    CAPTURE( header );
+    xag_network ntk;
+    std::istringstream in( std::string( header ) + "1 1\n.e\n" );
+    CHECK( lorina::read_pla( in, pla_reader( ntk ) ) == lorina::return_code::parse_error );
+  }
+}

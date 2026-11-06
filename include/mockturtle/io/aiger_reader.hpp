@@ -96,6 +96,13 @@ public:
 
   ~aiger_reader()
   {
+    for ( auto const& out : outputs )
+      if ( ( std::get<0>( out ) >> 1 ) >= signals.size() )
+        return;
+    for ( auto const& latch : latches )
+      if ( ( std::get<0>( latch ) >> 1 ) >= signals.size() )
+        return;
+
     uint32_t output_id{ 0 };
     for ( auto out : outputs )
     {

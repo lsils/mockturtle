@@ -37,6 +37,7 @@
 #include "common.hpp"
 #include "diagnostics.hpp"
 #include "detail/utils.hpp"
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <regex>
@@ -438,6 +439,18 @@ inline const std::regex justice( R"(^j(\d+) (.*)$)" );
 inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
 } // namespace aig_regex
 
+namespace detail
+{
+inline bool parse_aiger_symbol_index( std::string const& text, uint64_t count, uint32_t& index )
+{
+  const auto value = std::atol( text.c_str() );
+  if ( value < 0 || uint64_t( value ) >= count )
+    return false;
+  index = static_cast<uint32_t>( value );
+  return true;
+}
+} // namespace detail
+
 /*! \brief Reader function for ASCII AIGER format.
  *
  * Reads ASCII AIGER format from a stream and invokes a callback
@@ -508,7 +521,7 @@ inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
     detail::getline( in, line );
     const auto tokens = detail::split( line,  " " );
 
-    if ( !(tokens.size() <= 3u) )
+    if ( tokens.size() < 2u || tokens.size() > 3u )
     {
       if ( diag )
       {
@@ -541,6 +554,8 @@ inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
       }
     }
 
+    if ( next_lit < 0 || uint64_t( next_lit ) / 2u > _m )
+      return return_code::parse_error;
     reader.on_latch( index, next_lit, init_value );
   }
 
@@ -549,6 +564,8 @@ inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
   {
     detail::getline( in, line );
     const auto lit = std::atol( line.c_str() );
+    if ( lit < 0 || uint64_t( lit ) / 2u > _m )
+      return return_code::parse_error;
     reader.on_output( i, lit );
   }
 
@@ -557,6 +574,8 @@ inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
   {
     detail::getline( in, line );
     const auto lit = std::atol( line.c_str() );
+    if ( lit < 0 || uint64_t( lit ) / 2u > _m )
+      return return_code::parse_error;
     reader.on_bad_state( i, lit );
   }
 
@@ -624,31 +643,52 @@ inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
   {
     if ( std::regex_search( line, m, aig_regex::input ) )
     {
-      reader.on_input_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _i, index ) )
+        return return_code::parse_error;
+      reader.on_input_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::latch ) )
     {
-      reader.on_latch_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _l, index ) )
+        return return_code::parse_error;
+      reader.on_latch_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::output ) )
     {
-      reader.on_output_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _o, index ) )
+        return return_code::parse_error;
+      reader.on_output_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::bad_state ) )
     {
-      reader.on_bad_state_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _b, index ) )
+        return return_code::parse_error;
+      reader.on_bad_state_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::constraint ) )
     {
-      reader.on_constraint_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _c, index ) )
+        return return_code::parse_error;
+      reader.on_constraint_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::justice ) )
     {
-      reader.on_justice_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _j, index ) )
+        return return_code::parse_error;
+      reader.on_justice_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::fairness ) )
     {
-      reader.on_fairness_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _f, index ) )
+        return return_code::parse_error;
+      reader.on_fairness_name( index, m[2u] );
     }
     else if ( line == "c" )
     {
@@ -761,6 +801,8 @@ inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
   {
     detail::getline( in, line );
     const auto tokens = detail::split( line, " " );
+    if ( tokens.empty() || tokens[0u].empty() )
+      return return_code::parse_error;
     const auto next = std::atoi( tokens[0u].c_str() );
     /* See the ASCII reader above: an omitted reset value means 0, and a value that
        is neither 0 nor 1 denotes an undefined initial value. */
@@ -781,20 +823,28 @@ inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
       }
     }
 
+    if ( next < 0 || uint64_t( next ) / 2u > _m )
+      return return_code::parse_error;
     reader.on_latch( _i + i + 1u, next, init_value );
   }
 
   for ( auto i = 0u; i < _o; ++i )
   {
     detail::getline( in, line );
-    reader.on_output( i, std::atol( line.c_str() ) );
+    const auto lit = std::atol( line.c_str() );
+    if ( lit < 0 || uint64_t( lit ) / 2u > _m )
+      return return_code::parse_error;
+    reader.on_output( i, lit );
   }
 
   /* bad state properties */
   for ( auto i = 0u; i < _b; ++i )
   {
     detail::getline( in, line );
-    reader.on_bad_state( i, std::atol( line.c_str() ) );
+    const auto lit = std::atol( line.c_str() );
+    if ( lit < 0 || uint64_t( lit ) / 2u > _m )
+      return return_code::parse_error;
+    reader.on_bad_state( i, lit );
   }
 
   /* constraints */
@@ -863,31 +913,52 @@ inline const std::regex fairness( R"(^f(\d+) (.*)$)" );
   {
     if ( std::regex_search( line, m, aig_regex::input ) )
     {
-      reader.on_input_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _i, index ) )
+        return return_code::parse_error;
+      reader.on_input_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::latch ) )
     {
-      reader.on_latch_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _l, index ) )
+        return return_code::parse_error;
+      reader.on_latch_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::output ) )
     {
-      reader.on_output_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _o, index ) )
+        return return_code::parse_error;
+      reader.on_output_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::bad_state ) )
     {
-      reader.on_bad_state_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _b, index ) )
+        return return_code::parse_error;
+      reader.on_bad_state_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::constraint ) )
     {
-      reader.on_constraint_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _c, index ) )
+        return return_code::parse_error;
+      reader.on_constraint_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::justice ) )
     {
-      reader.on_justice_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _j, index ) )
+        return return_code::parse_error;
+      reader.on_justice_name( index, m[2u] );
     }
     else if ( std::regex_search( line, m, aig_regex::fairness ) )
     {
-      reader.on_fairness_name( std::atol( std::string( m[1u] ).c_str() ), m[2u] );
+      uint32_t index;
+      if ( !detail::parse_aiger_symbol_index( m[1u], _f, index ) )
+        return return_code::parse_error;
+      reader.on_fairness_name( index, m[2u] );
     }
     else if ( line == "c" )
     {

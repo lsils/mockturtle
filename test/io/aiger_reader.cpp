@@ -350,3 +350,75 @@ TEST_CASE( "name a flattened latch output", "[aiger_reader]" )
   CHECK( aig.get_name( aig.make_signal( aig.pi_at( 2 ) ) ) == "s0" );
   CHECK( err.str().find( "applying comb: ROs become PIs, RIs become POs" ) != std::string::npos );
 }
+
+TEST_CASE( "reject Aiger literal and symbol bounds in both encodings", "[aiger_reader]" )
+{
+  for ( auto const& magic : { "aag", "aig" } )
+  {
+    for ( auto const& body : std::vector<std::string>{
+              "0 0 0 1 0\n100\n",
+              "0 0 0 1 0\n0\no1 invalid\n",
+              "0 0 0 0 0\ni0 invalid\n",
+              "0 0 0 0 0\nl0 invalid\n",
+              "0 0 0 0 0 1\n0\nb1 invalid\n",
+              "0 0 0 0 0 1\n100\n" } )
+    {
+      CAPTURE( magic, body );
+      names_view<aig_network> ntk;
+      std::istringstream in( std::string( magic ) + " " + body );
+      auto const result = std::string( magic ) == "aag"
+                              ? lorina::read_ascii_aiger( in, aiger_reader( ntk ) )
+                              : lorina::read_aiger( in, aiger_reader( ntk ) );
+      CHECK( result == lorina::return_code::parse_error );
+    }
+  }
+}
+
+TEST_CASE( "safely discard unresolved Aiger outputs after a parse error", "[aiger_reader]" )
+{
+  aig_network ntk;
+  std::istringstream in( "aag 1 0 0 1 1\n2\n" );
+  CHECK( lorina::read_ascii_aiger( in, aiger_reader( ntk ) ) == lorina::return_code::parse_error );
+  CHECK( ntk.num_pos() == 0u );
+}
+
+TEST_CASE( "reject invalid Aiger latch next-state literals", "[aiger_reader]" )
+{
+  for ( auto const& next : { "4", "100", "-1" } )
+  {
+    for ( auto const& magic : { "aag", "aig" } )
+    {
+      CAPTURE( magic, next );
+      sequential<aig_network> ntk;
+      const std::string prefix = std::string( magic ) == "aag" ? "2 " : "";
+      std::istringstream in( std::string( magic ) + " 1 0 1 0 0\n" + prefix + next + "\n" );
+      const auto result = std::string( magic ) == "aag"
+                              ? lorina::read_ascii_aiger( in, aiger_reader( ntk ) )
+                              : lorina::read_aiger( in, aiger_reader( ntk ) );
+      CHECK( result == lorina::return_code::parse_error );
+    }
+  }
+}
+
+TEST_CASE( "reject incomplete Aiger latch declarations", "[aiger_reader]" )
+{
+  for ( auto const& file : { "aag 1 0 1 0 0\n", "aag 1 0 1 0 0\n2\n", "aig 1 0 1 0 0\n", "aig 1 0 1 0 0\n\n" } )
+  {
+    CAPTURE( file );
+    sequential<aig_network> ntk;
+    std::istringstream in( file );
+    const auto result = std::string( file ).substr( 0, 3 ) == "aag"
+                            ? lorina::read_ascii_aiger( in, aiger_reader( ntk ) )
+                            : lorina::read_aiger( in, aiger_reader( ntk ) );
+    CHECK( result == lorina::return_code::parse_error );
+  }
+}
+
+TEST_CASE( "safely discard unresolved Aiger latch references after a parse error", "[aiger_reader]" )
+{
+  sequential<aig_network> ntk;
+  /* The latch references gate 2, whose declaration is missing. */
+  std::istringstream in( "aag 2 0 1 0 1\n2 4\n" );
+  CHECK( lorina::read_ascii_aiger( in, aiger_reader( ntk ) ) == lorina::return_code::parse_error );
+  CHECK( ntk.num_cos() == 0u );
+}

@@ -43,6 +43,7 @@
 #include <algorithm>
 #include <cassert>
 #include <fstream>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -111,17 +112,23 @@ public:
     std::vector<uint32_t> num_outputs_per_wire( num_outputs );
     std::transform( tokens.begin() + 1, tokens.end(), num_outputs_per_wire.begin(), [&]( std::string const& s ) { return static_cast<uint32_t>( std::stoul( s ) ); } );
 
+    if ( std::accumulate( num_inputs_per_wire.begin(), num_inputs_per_wire.end(), uint64_t{ 0 } ) > num_wires ||
+         std::accumulate( num_outputs_per_wire.begin(), num_outputs_per_wire.end(), uint64_t{ 0 } ) > num_wires )
+      return return_code::parse_error;
+
     reader.on_header( num_gates, num_wires, num_inputs, num_inputs_per_wire, num_outputs, num_outputs_per_wire );
 
     /* parse gates */
     while ( get_tokens_of_next_line( tokens ) )
     {
+      if ( tokens.size() < 3u )
+        return return_code::parse_error;
+
       uint32_t num_input_wires = std::atoi( tokens[0u].c_str() );
       uint32_t num_output_wires = std::atoi( tokens[1u].c_str() );
 
-      assert( tokens.size() == num_input_wires + num_output_wires + 3u );
-      assert( num_output_wires == 1u );
-      (void)num_output_wires;
+      if ( num_output_wires != 1u || tokens.size() != uint64_t{ num_input_wires } + num_output_wires + 3u )
+        return return_code::parse_error;
 
       std::vector<uint32_t> inputs;
       for ( uint32_t i = 0; i < num_input_wires; ++i )
@@ -131,6 +138,12 @@ public:
 
       uint32_t const output = std::atoi( tokens[ 2u + num_input_wires ].c_str() );
       std::string const& gate = tokens[tokens.size() - 1];
+
+      if ( output >= num_wires || std::any_of( inputs.begin(), inputs.end(), [num_wires]( uint32_t wire ) { return wire >= num_wires; } ) )
+        return return_code::parse_error;
+      if ( !(( ( gate == "XOR" || gate == "AND" ) && inputs.size() == 2u ) ||
+             ( ( gate == "INV" || gate == "EQW" ) && inputs.size() == 1u )) )
+        return return_code::parse_error;
 
       reader.on_gate( inputs, output, gate );
     }
