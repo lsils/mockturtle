@@ -2,7 +2,7 @@
 [![Actions Status](https://github.com/lsils/mockturtle/workflows/MacOS%20CI/badge.svg)](https://github.com/lsils/mockturtle/actions)
 [![Actions Status](https://github.com/lsils/mockturtle/workflows/Windows%20CI/badge.svg)](https://github.com/lsils/mockturtle/actions)
 [![Coverage Status](https://codecov.io/gh/lsils/mockturtle/branch/master/graph/badge.svg?token=KSC1MP2VCM)](https://codecov.io/gh/lsils/mockturtle)
-[![Documentation Status](https://app.readthedocs.org/projects/mockturtle/badge/?version=latest)](https://mockturtle.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://img.shields.io/readthedocs/mockturtle/latest)](https://mockturtle.readthedocs.io/en/latest/?badge=latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # mockturtle
