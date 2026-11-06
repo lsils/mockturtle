@@ -133,21 +133,15 @@ public:
     multioutput_map.reserve( _gates.size() );
 
     /* look for multi-output gates (gates with the same name) */
-    uint32_t multioutput_i = 0;
     for ( const auto& g : _gates )
     {
       if ( multioutput_map.find( g.name ) != multioutput_map.end() )
       {
-        /* assign an index */
-        if ( multioutput_map[g.name] == 1 )
-          multioutput_idx[g.name] = multioutput_i++;
-
         multioutput_map[g.name] += 1;
       }
       else
       {
         multioutput_map[g.name] = 1;
-        multioutput_idx[g.name] = UINT32_MAX;
       }
     }
 
@@ -192,11 +186,19 @@ public:
 
       if ( multioutput_map[g.name] > 1 )
       {
-        uint32_t idx = multioutput_idx[g.name];
-        if ( _multioutput_gates.size() <= idx )
+        uint32_t idx;
+        if ( auto it = multioutput_idx.find( g.name ); it != multioutput_idx.end() )
+        {
+          idx = it->second;
+        }
+        else
+        {
+          idx = static_cast<uint32_t>( _multioutput_gates.size() );
+          multioutput_idx[g.name] = idx;
           _multioutput_gates.emplace_back( std::vector<composed_gate<NInputs>>() );
+        }
 
-        _multioutput_gates[multioutput_idx[g.name]].emplace_back(
+        _multioutput_gates[idx].emplace_back(
             composed_gate<NInputs>{ static_cast<unsigned int>( idx ),
                                     false,
                                     &g,

@@ -43,6 +43,71 @@ std::string const super_library = "test.genlib\n"
                                   "* and 2 9\n"
                                   "\0";
 
+TEST_CASE( "Interleaved multi-output gates", "[super_utils]" )
+{
+  std::istringstream in_genlib(
+      "GATE HA 10 S=a^b;        PIN * UNKNOWN 1 999 1 0 1 0\n"
+      "GATE FA 16 S=a^b^c;      PIN * UNKNOWN 1 999 1 0 1 0\n"
+      "GATE FA 16 CO=a*b+a*c+b*c; PIN * UNKNOWN 1 999 1 0 1 0\n"
+      "GATE HA 10 CO=a*b;       PIN * UNKNOWN 1 999 1 0 1 0\n" );
+  std::vector<gate> gates;
+  REQUIRE( lorina::read_genlib( in_genlib, genlib_reader( gates ) ) == lorina::return_code::success );
+  REQUIRE( gates.size() == 4 );
+
+  super_utils<3> super( gates );
+  auto const& lib = super.get_multioutput_library();
+  REQUIRE( lib.size() == 2 );
+  REQUIRE( lib[0].size() == 2 );
+  REQUIRE( lib[1].size() == 2 );
+  CHECK( lib[0][0].root == &gates[0] );
+  CHECK( lib[0][1].root == &gates[3] );
+  CHECK( lib[1][0].root == &gates[1] );
+  CHECK( lib[1][1].root == &gates[2] );
+  for ( auto i = 0u; i < lib.size(); ++i )
+  {
+    for ( auto const& output : lib[i] )
+    {
+      CHECK( output.id == i );
+      CHECK( output.function == output.root->function );
+    }
+  }
+  CHECK( super.get_super_library().empty() );
+}
+
+TEST_CASE( "Skipped oversized multi-output gates", "[super_utils]" )
+{
+  std::istringstream in_genlib(
+      "GATE large 20 S=a^b^c^d^e^f^g; PIN * UNKNOWN 1 999 1 0 1 0\n"
+      "GATE large 20 CO=a*b*c*d*e*f*g; PIN * UNKNOWN 1 999 1 0 1 0\n"
+      "GATE HA 10 S=a^b;              PIN * UNKNOWN 1 999 1 0 1 0\n"
+      "GATE HA 10 CO=a*b;             PIN * UNKNOWN 1 999 1 0 1 0\n" );
+  std::vector<gate> gates;
+  REQUIRE( lorina::read_genlib( in_genlib, genlib_reader( gates ) ) == lorina::return_code::success );
+  REQUIRE( gates.size() == 4 );
+
+  auto check_library = [&]( auto const& super ) {
+    auto const& lib = super.get_multioutput_library();
+    REQUIRE( lib.size() == 1 );
+    REQUIRE( lib[0].size() == 2 );
+    for ( auto i = 0u; i < lib[0].size(); ++i )
+    {
+      CHECK( lib[0][i].id == 0 );
+      CHECK( lib[0][i].root == &gates[i + 2] );
+      CHECK( lib[0][i].function == gates[i + 2].function );
+    }
+    CHECK( super.get_super_library().empty() );
+  };
+
+  SECTION( "Exceeds input limit" )
+  {
+    check_library( super_utils<3>( gates ) );
+  }
+  SECTION( "Exceeds truth table limit" )
+  {
+    check_library( super_utils<7>( gates ) );
+  }
+}
+
 TEST_CASE( "Standard gates super library", "[super_utils]" )
 {
   std::vector<gate> gates;
