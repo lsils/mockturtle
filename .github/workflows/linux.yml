@@ -11,7 +11,7 @@ on:
 jobs:
 
   build-gcc9:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: GNU GCC 9
     
     steps:
@@ -34,7 +34,7 @@ jobs:
         ./test/run_tests
   
   build-gcc10:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: GNU GCC 10
     
     steps:
@@ -57,7 +57,7 @@ jobs:
         ./test/run_tests
   
   build-gcc10-cpp20:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: GNU GCC 10 (c++20)
 
     steps:
@@ -172,7 +172,7 @@ jobs:
         ./test/run_tests
   
   compile-gcc9:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Compile everything (GCC 9)
     
     steps:
