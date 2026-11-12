@@ -64,6 +64,21 @@ TEST_CASE( "read a combinational BLIF file into KLUT network", "[blif_reader]" )
   } );
 }
 
+TEST_CASE( "read a BLIF gate with an empty cover", "[blif_reader]" )
+{
+  klut_network klut;
+  std::istringstream in( ".model top\n"
+                         ".inputs a\n"
+                         ".outputs zero\n"
+                         ".names a zero\n"
+                         ".end\n" );
+  REQUIRE( lorina::read_blif( in, blif_reader( klut ) ) == lorina::return_code::success );
+  CHECK( klut.num_pis() == 1u );
+  REQUIRE( klut.num_pos() == 1u );
+  const auto tables = simulate<kitty::dynamic_truth_table>( klut, default_simulator<kitty::dynamic_truth_table>( 1u ) );
+  CHECK( kitty::to_hex( tables[0] ) == "0" );
+}
+
 TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in topological order", "[blif_reader]" )
 {
   sequential<klut_network> klut;

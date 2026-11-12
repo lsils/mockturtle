@@ -205,7 +205,7 @@ TEST_CASE( "read a VERILOG file with instances", "[verilog_reader]" )
       "module top( a, b, c );\n"
       "  input [7:0] a, b ;\n"
       "  output [8:0] c;\n"
-      "  ripple_carry_adder #(8) add1(.x1(a), .x2(b), .y(c));\n"
+      "  ripple_carry_adder #(8) add1(.y(c), .x2(b), .x1(a));\n"
       "endmodule\n" };
 
   std::istringstream in( file );
@@ -217,6 +217,23 @@ TEST_CASE( "read a VERILOG file with instances", "[verilog_reader]" )
   CHECK( mig.num_pis() == 16 );
   CHECK( mig.num_pos() == 9 );
   CHECK( mig.num_gates() == 32 );
+}
+
+TEST_CASE( "reject unsupported Verilog ranges and mismatched arithmetic operand widths", "[verilog_reader]" )
+{
+  const auto* const range = GENERATE( "2:0", "0:2" );
+  mig_network mig;
+  std::istringstream in( fmt::format( "module ripple_carry_adder(x1, x2, y);\n"
+                                     "  input x1, x2;\n"
+                                     "  output y;\n"
+                                     "endmodule\n"
+                                     "module top(a, b, c);\n"
+                                     "  input [1:0] a;\n"
+                                     "  input [{}] b;\n"
+                                     "  output [2:0] c;\n"
+                                     "  ripple_carry_adder #(2) add1(.x1(a), .x2(b), .y(c));\n"
+                                     "endmodule\n", range ) );
+  CHECK_THROWS_AS( lorina::read_verilog( in, verilog_reader( mig ) ), std::invalid_argument );
 }
 
 TEST_CASE( "read a VERILOG file to create large Montgomery multiplier", "[verilog_reader]" )
@@ -231,7 +248,7 @@ TEST_CASE( "read a VERILOG file to create large Montgomery multiplier", "[verilo
       "module top( a, b, c );\n"
       "  input [383:0] a, b;\n"
       "  output [383:0] c;\n"
-      "  montgomery_multiplier #(384, 384'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff, 384'h14000000140000000c00000002fffffffcfffffffafffffffbfffffffe00000000000000010000000100000001) mult(.x1(a), .x2(b), .y(c));\n"
+      "  montgomery_multiplier #(384, 512'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff, 384'h14000000140000000c00000002fffffffcfffffffafffffffbfffffffe00000000000000010000000100000001) mult(.x1(a), .x2(b), .y(c));\n"
       "endmodule\n" };
 
   std::istringstream in( file );
@@ -249,6 +266,15 @@ TEST_CASE( "read a VERILOG file to create large Montgomery multiplier", "[verilo
   CHECK( reader.name() == "top" );
   CHECK( reader.input_names() == std::vector<std::pair<std::string, uint32_t>>{ { { "a", 384 }, { "b", 384 } } } );
   CHECK( reader.output_names() == std::vector<std::pair<std::string, uint32_t>>{ { { "c", 384 } } } );
+}
+
+TEST_CASE( "reject Verilog outputs that the network cannot represent", "[verilog_reader]" )
+{
+  const auto* const driver = GENERATE( "", "helper h(.a(a), .y(y));", "assign z = y;" );
+  mig_network mig;
+  std::istringstream in( fmt::format( "module helper(a, y); input a; output y; assign y = a; endmodule\n"
+                                     "module top(a, y); input a; output y; {} endmodule\n", driver ) );
+  CHECK_THROWS_AS( lorina::read_verilog( in, verilog_reader( mig ) ), std::invalid_argument );
 }
 
 TEST_CASE( "read a VERILOG file with buffers", "[verilog_reader]" )

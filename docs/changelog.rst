@@ -42,6 +42,8 @@ v0.4 (not yet released)
     - XAG resubstitution (`xag_resubstitution`) `#658 <https://github.com/lsils/mockturtle/pull/658>`_
     - Cycle-accurate simulation of sequential networks (`simulate_sequential`) `#708 <https://github.com/lsils/mockturtle/pull/708>`_
 * I/O:
+    - Bind Verilog arithmetic ports by name and report undefined operands, undriven outputs, and unsupported module conversions.
+    - Convert empty BLIF covers to constant zero even when a gate declares inputs.
     - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_

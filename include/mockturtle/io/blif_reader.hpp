@@ -221,14 +221,14 @@ public:
 
   virtual void on_gate( const std::vector<std::string>& inputs, const std::string& output, const output_cover_t& cover ) const override
   {
-    if ( inputs.size() == 0u )
+    if ( cover.empty() )
     {
-      if ( cover.size() == 0u )
-      {
-        signals[output] = ntk_.get_constant( false );
-        return;
-      }
+      signals[output] = ntk_.get_constant( false );
+      return;
+    }
 
+    if ( inputs.empty() )
+    {
       assert( cover.size() == 1u );
       assert( cover.at( 0u ).first.size() == 0u );
       assert( cover.at( 0u ).second.size() == 1u );
@@ -239,7 +239,6 @@ public:
       return;
     }
 
-    assert( cover.size() > 0u );
     assert( cover.at( 0u ).second.size() == 1 );
     auto const first_output_value = cover.at( 0u ).second.at( 0u );
 
