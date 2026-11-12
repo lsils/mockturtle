@@ -61,6 +61,8 @@ v0.4 (not yet released)
     - Adding Boolean matching for multi-output cells (`tech_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - Adding Boolean matching with don't cares for databases (`exact_library`) `#623 <https://github.com/lsils/mockturtle/pull/623>`_
     - Adding Boolean evaluation for index lists (`list_simulator`) `#675 <https://github.com/lsils/mockturtle/pull/675>`_
+    - Fix multi-output GENLIB cell indexing (``super_utils``) `#718 <https://github.com/lsils/mockturtle/pull/718>`_
+    - Fix structural matching for cells with unused inputs (``struct_library``) `#721 <https://github.com/lsils/mockturtle/pull/721>`_
 
 v0.3 (July 12, 2022)
 --------------------
