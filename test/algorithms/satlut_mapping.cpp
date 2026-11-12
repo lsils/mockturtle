@@ -1,5 +1,7 @@
 #include <catch.hpp>
 
+#include <random>
+
 #include <mockturtle/algorithms/collapse_mapped.hpp>
 #include <mockturtle/algorithms/lut_mapping.hpp>
 #include <mockturtle/algorithms/satlut_mapping.hpp>
@@ -16,14 +18,20 @@ using namespace mockturtle;
 namespace
 {
 template<class Ntk>
-void check_sat_mapping( Ntk const& mapped, uint32_t num_cells )
+void check_sat_equivalence( Ntk const& mapped )
 {
-  CHECK( mapped.num_cells() == num_cells );
   const auto collapsed = collapse_mapped_network<klut_network>( mapped );
   REQUIRE( collapsed );
   CHECK( collapsed->num_pis() == mapped.num_pis() );
   const default_simulator<kitty::dynamic_truth_table> sim( mapped.num_pis() );
   CHECK( simulate<kitty::dynamic_truth_table>( *collapsed, sim ) == simulate<kitty::dynamic_truth_table>( mapped, sim ) );
+}
+
+template<class Ntk>
+void check_sat_mapping( Ntk const& mapped, uint32_t num_cells )
+{
+  CHECK( mapped.num_cells() == num_cells );
+  check_sat_equivalence( mapped );
 }
 } // namespace
 
@@ -153,6 +161,39 @@ TEST_CASE( "SAT-LUT mapping improves a feasible incumbent only", "[satlut_mappin
   ps.conflict_limit = 0;
   satlut_mapping( mapped, ps );
   check_sat_mapping( mapped, 1u );
+}
+
+TEST_CASE( "SAT-LUT mapping returns an equivalent cover with a limited conflict budget", "[satlut_mapping]" )
+{
+  std::mt19937 rng( 0 );
+  aig_network aig;
+  std::vector<aig_network::signal> signals;
+  for ( auto i = 0u; i < 7u; ++i )
+    signals.push_back( aig.create_pi() );
+  for ( auto i = 0u; i < 25u; ++i )
+  {
+    const auto a = signals.back() ^ ( rng() % 2u );
+    const auto index = rng() % signals.size();
+    const auto b = signals[index] ^ ( rng() % 2u );
+    signals.push_back( aig.create_and( a, b ) );
+  }
+  for ( auto offset : { 0u, 5u, 10u } )
+    aig.create_po( signals[signals.size() - 1 - offset] );
+
+  mapping_view mapped{ aig };
+  lut_mapping_params seed_ps;
+  seed_ps.cut_enumeration_ps.cut_size = 2;
+  lut_mapping( mapped, seed_ps );
+  REQUIRE( mapped.has_mapping() );
+  const auto incumbent_cells = mapped.num_cells();
+
+  satlut_mapping_params ps;
+  ps.cut_enumeration_ps.cut_size = 4;
+  ps.conflict_limit = 1;
+  satlut_mapping( mapped, ps );
+
+  CHECK( mapped.num_cells() <= incumbent_cells );
+  check_sat_equivalence( mapped );
 }
 
 TEST_CASE( "SAT-LUT mapping stores cuts with minimized support", "[satlut_mapping]" )
