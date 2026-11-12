@@ -34,6 +34,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <optional>
@@ -108,6 +109,7 @@ public:
   using storage = typename std::shared_ptr<detail::cell_window_storage<Ntk>>;
   using node = typename Ntk::node;
   using signal = typename Ntk::signal;
+  static constexpr bool is_topologically_sorted = false;
 
 public:
   cell_window( Ntk const& ntk, uint32_t max_gates = 64 )
@@ -132,24 +134,19 @@ public:
 
   bool compute_window_for( node const& pivot )
   {
-    init_cell_refs();
-
-    // print_time<> pt;
     assert( Ntk::is_cell_root( pivot ) );
 
-    // reset old window
+    std::vector<node> gates;
+    gates.reserve( std::min<std::size_t>( _storage->_max_gates, Ntk::size() ) );
+    collect_gates( pivot, gates );
+    if ( gates.size() > _storage->_max_gates )
+      return false;
+
+    init_cell_refs();
+
     _storage->_nodes.clear();
     _storage->_gates.clear();
-
-    std::vector<node> gates;
-    gates.reserve( _storage->_max_gates );
-    collect_mffc( pivot, gates );
     add_node( pivot, gates );
-
-    if ( gates.size() > _storage->_max_gates )
-    {
-      assert( false );
-    }
 
     std::optional<node> next;
     while ( ( next = find_next_pivot() ) )
@@ -198,6 +195,11 @@ public:
   bool is_pi( node const& n ) const
   {
     return _storage->_leaves.count( n );
+  }
+
+  bool is_ci( node const& n ) const
+  {
+    return is_pi( n );
   }
 
   bool is_cell_root( node const& n ) const
@@ -251,6 +253,18 @@ public:
   }
 
   template<typename Fn>
+  void foreach_ci( Fn&& fn ) const
+  {
+    foreach_pi( fn );
+  }
+
+  template<typename Fn>
+  void foreach_co( Fn&& fn ) const
+  {
+    foreach_po( fn );
+  }
+
+  template<typename Fn>
   void foreach_gate( Fn&& fn ) const
   {
     detail::foreach_element( _storage->_gates.begin(), _storage->_gates.end(), fn );
@@ -284,7 +298,6 @@ private:
 
   void collect_mffc( node const& pivot, std::vector<node>& gates )
   {
-    Ntk::incr_trav_id();
     collect_gates( pivot, gates );
     const auto it = std::remove_if( gates.begin(), gates.end(), [&]( auto const& g ) { return _storage->_gates.count( g ); } );
     gates.erase( it, gates.end() );
@@ -294,6 +307,7 @@ private:
   {
     assert( !Ntk::is_pi( pivot ) );
 
+    Ntk::incr_trav_id();
     Ntk::set_visited( Ntk::get_node( Ntk::get_constant( false ) ), Ntk::trav_id() );
     Ntk::set_visited( Ntk::get_node( Ntk::get_constant( true ) ), Ntk::trav_id() );
 
@@ -347,7 +361,7 @@ private:
       for ( auto const& n : _storage->_nodes )
       {
         Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
-          if ( !_storage->_nodes.count( n2 ) && !Ntk::is_pi( n2 ) && !_storage->_cell_refs[n2] )
+          if ( !_storage->_nodes.count( n2 ) && Ntk::is_cell_root( n2 ) && !_storage->_cell_refs[n2] )
           {
             candidates.push_back( n2 );
             inputs.insert( n2 );
@@ -374,7 +388,7 @@ private:
       for ( auto const& n : _storage->_nodes )
       {
         Ntk::foreach_cell_fanin( n, [&]( auto const& n2 ) {
-          if ( !_storage->_nodes.count( n2 ) && !Ntk::is_pi( n2 ) )
+          if ( !_storage->_nodes.count( n2 ) && Ntk::is_cell_root( n2 ) )
           {
             candidates.push_back( n2 );
             inputs.insert( n2 );
@@ -443,7 +457,7 @@ private:
     {
       Ntk::foreach_fanin( g, [&]( auto const& f ) {
         auto const child = Ntk::get_node( f );
-        if ( !_storage->_gates.count( child ) )
+        if ( !Ntk::is_constant( child ) && !_storage->_gates.count( child ) )
         {
           _storage->_leaves.insert( child );
           _storage->_window_mask[0] |= UINT64_C( 1 ) << ( Ntk::node_to_index( child ) % 64 );

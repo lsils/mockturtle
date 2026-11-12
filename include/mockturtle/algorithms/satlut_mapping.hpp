@@ -34,10 +34,10 @@
 #pragma once
 
 #include <cmath>
+#include <vector>
 
 #include "../generators/sorting.hpp"
 #include "../utils/include/percy.hpp"
-#include "../utils/node_map.hpp"
 #include "../utils/progress_bar.hpp"
 #include "../utils/stopwatch.hpp"
 #include "../views/topo_view.hpp"
@@ -69,7 +69,7 @@ struct satlut_mapping_params
    */
   cut_enumeration_params cut_enumeration_ps{};
 
-  /*! \brief Conflict limit for SAT solver.
+  /*! \brief Conflict limit per SAT solve.
    *
    * The default limit is 0, which means the number of conflicts is not used
    * as a resource limit.
@@ -120,6 +120,9 @@ namespace detail
 template<class Solver>
 std::vector<int> cardinality_network( Solver& solver, std::vector<int> const& vars, int& next_var )
 {
+  if ( vars.empty() )
+    return {};
+
   int lits[3];
 
   auto logn = static_cast<uint32_t>( ceil( log2( vars.size() ) ) );
@@ -197,8 +200,8 @@ public:
     stopwatch t( st.time_total );
 
     std::vector<int> card_inp;
-    node_map<int, Ntk> gate_var( ntk );
-    node_map<std::vector<int>, Ntk> cut_vars( ntk );
+    std::vector<int> gate_vars( ntk.size(), -1 );
+    std::vector<std::vector<int>> cut_vars( ntk.size() );
     auto next_var = 0;
 
     percy::bsat_wrapper solver;
@@ -206,31 +209,38 @@ public:
     /* initialize gate vars */
     ntk.foreach_gate( [&]( auto n ) {
       card_inp.push_back( next_var );
-      gate_var[n] = next_var++;
+      gate_vars[ntk.node_to_index( n )] = next_var++;
     } );
 
     const auto card_out = cardinality_network( solver, card_inp, next_var );
+    if ( card_out.empty() )
+      return;
 
     /* create clauses */
     int cut_lits[2];
     ntk.foreach_gate( [&]( auto n ) {
+      const auto index = ntk.node_to_index( n );
+      auto& vars = cut_vars[index];
       std::vector<int> gate_is_mapped;
-      gate_is_mapped.push_back( pabc::Abc_Var2Lit( gate_var[n], 1 ) );
+      gate_is_mapped.push_back( pabc::Abc_Var2Lit( gate_vars[index], 1 ) );
 
-      for ( auto const& cut : cuts.cuts( ntk.node_to_index( n ) ) )
+      for ( auto const* cut : cuts.cuts( index ) )
       {
-        if ( cut->size() == 1 )
+        if ( cut->size() == 1 && *cut->begin() == index )
         {
-          break; /* we assume that trivial cuts are in the end of the set */
+          vars.push_back( -1 ); /* Keep variables aligned with the cut indices. */
+          continue;
         }
+
         gate_is_mapped.push_back( pabc::Abc_Var2Lit( next_var, 0 ) );
         cut_lits[0] = pabc::Abc_Var2Lit( next_var, 1 );
-        cut_vars[n].push_back( next_var++ );
+        vars.push_back( next_var++ );
         for ( auto leaf : *cut )
         {
-          if ( ntk.is_pi( ntk.index_to_node( leaf ) ) )
+          const auto var = gate_vars[leaf];
+          if ( var < 0 )
             continue;
-          cut_lits[1] = pabc::Abc_Var2Lit( gate_var[ntk.index_to_node( leaf )], 0 );
+          cut_lits[1] = pabc::Abc_Var2Lit( var, 0 );
           solver.add_clause( cut_lits, cut_lits + 2 );
         }
       }
@@ -238,52 +248,71 @@ public:
       solver.add_clause( &gate_is_mapped[0], &gate_is_mapped[0] + gate_is_mapped.size() );
     } );
 
-    /* outputs must be mapped */
+    /* Each distinct gate that drives an output must be mapped. */
+    std::vector<bool> required( card_inp.size() );
+    auto min_size = 0u;
+    bool feasible = true;
     ntk.foreach_po( [&]( auto f ) {
-      auto lit = pabc::Abc_Var2Lit( gate_var[f], 0 );
-      solver.add_clause( &lit, &lit + 1 );
+      const auto var = gate_vars[ntk.node_to_index( ntk.get_node( f ) )];
+      if ( var < 0 || required[var] )
+        return true;
+
+      required[var] = true;
+      ++min_size;
+      auto lit = pabc::Abc_Var2Lit( var, 0 );
+      feasible = solver.add_clause( &lit, &lit + 1 );
+      return feasible;
     } );
 
     st.num_vars = solver.nr_vars();
     st.num_clauses = solver.nr_clauses();
+    if ( !feasible )
+      return;
 
-    auto best_size = ntk.has_mapping() ? ntk.num_cells() + 1 : card_inp.size();
+    auto bound = card_inp.size();
+    if ( ntk.has_mapping() )
+    {
+      if ( ntk.num_cells() <= min_size )
+        return;
+      bound = ntk.num_cells() - 1;
+    }
 
     progress_bar pbar{ "satlut iteration = {0}   try size = {1}", ps.progress };
     auto iteration = 0u;
     while ( true )
     {
-      pbar( ++iteration, best_size );
-      if ( best_size > card_out.size() )
-      {
-        std::cout << fmt::format( "[e] best_size = {}   card_inp.size() = {}   card_out.size() = {}   ntk.num_cells = {}   ntk.has_mapping = {}\n",
-                                  best_size, card_inp.size(), card_out.size(), ntk.num_cells(), ntk.has_mapping() );
-        assert( false );
-      }
-      auto assump = pabc::Abc_Var2Lit( card_out[card_out.size() - best_size], 1 );
-
-      const auto result = call_with_stopwatch( st.time_sat, [&]() { return solver.solve( &assump, &assump + 1, ps.conflict_limit ); } );
+      pbar( ++iteration, bound );
+      const auto result = call_with_stopwatch( st.time_sat, [&]() {
+        if ( bound >= card_inp.size() )
+          return solver.solve( ps.conflict_limit );
+        /* The sorting network places true values at the end. */
+        auto assump = pabc::Abc_Var2Lit( card_out[card_out.size() - 1 - bound], 1 );
+        return solver.solve( &assump, &assump + 1, ps.conflict_limit );
+      } );
       if ( result == percy::success )
       {
         ntk.clear_mapping();
         ntk.foreach_gate( [&]( auto n ) {
-          if ( solver.var_value( gate_var[n] ) )
+          const auto index = ntk.node_to_index( n );
+          if ( solver.var_value( gate_vars[index] ) )
           {
-            for ( auto i = 0u; i < cut_vars[n].size(); ++i )
+            auto const& vars = cut_vars[index];
+            for ( auto i = 0u; i < vars.size(); ++i )
             {
-              if ( solver.var_value( cut_vars[n][i] ) )
+              if ( vars[i] >= 0 && solver.var_value( vars[i] ) )
               {
-                const auto index = ntk.node_to_index( n );
+                auto const& cut = cuts.cuts( index )[i];
                 std::vector<node<Ntk>> nodes;
-                for ( auto const& l : cuts.cuts( index )[i] )
+                nodes.reserve( cut.size() );
+                for ( auto leaf : cut )
                 {
-                  nodes.push_back( ntk.index_to_node( l ) );
+                  nodes.push_back( ntk.index_to_node( leaf ) );
                 }
                 ntk.add_to_mapping( n, nodes.begin(), nodes.end() );
 
                 if constexpr ( StoreFunction )
                 {
-                  ntk.set_cell_function( n, cuts.truth_table( cuts.cuts( index )[i] ) );
+                  ntk.set_cell_function( n, cuts.truth_table( cut ) );
                 }
                 break;
               }
@@ -291,13 +320,10 @@ public:
           }
         } );
 
-        if ( ntk.num_cells() == ntk.num_pos() )
-        {
-          /* no further improvement possible */
+        if ( ntk.num_cells() <= min_size )
           break;
-        }
 
-        best_size = ntk.num_cells();
+        bound = ntk.num_cells() - 1;
       }
       else
       {
@@ -321,7 +347,10 @@ private:
  * presented in [B. Schmitt, A. Mishchenko, and R.K. Brayton, *ASP-DAC* **23**
  * (2018), 586-591].
  *
- * The interface is similar to the one in `lut_mapping`.
+ * The interface is similar to the one in `lut_mapping`.  If the network
+ * already has a mapping, it is retained until a smaller cover is found.
+ * Without an initial mapping, reaching the conflict limit before finding
+ * a cover can leave the network unmapped.
  *
  * This algorithm applies SAT-LUT mapping to the whole networking and therefore
  * may show poor performance for larger networks.  There exists a method with
@@ -330,6 +359,8 @@ private:
  *
  * **Required network functions:**
  * - `is_pi`
+ * - `size`
+ * - `get_node`
  * - `index_to_node`
  * - `node_to_index`
  * - `foreach_gate`
@@ -350,6 +381,8 @@ void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapp
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
@@ -382,10 +415,12 @@ void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapp
  * otherwise the same interface as `satlut_mapping`.
  *
  * The initial network must already contain a mapping, e.g., found with
- * `lut_mapping`.
+ * `lut_mapping`.  A pivot whose cone exceeds the window size is skipped.
  *
  * **Required network functions:**
  * - `is_pi`
+ * - `size`
+ * - `get_node`
  * - `index_to_node`
  * - `node_to_index`
  * - `foreach_gate`
@@ -408,9 +443,10 @@ void satlut_mapping( Ntk& ntk, uint32_t window_size, satlut_mapping_params ps = 
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
-  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_num_gates_v<Ntk>, "Ntk does not implement the num_gates method" );
@@ -436,7 +472,7 @@ void satlut_mapping( Ntk& ntk, uint32_t window_size, satlut_mapping_params ps = 
     pbar( index, ntk.node_to_index( n ) );
     if ( ntk.is_cell_root( n ) )
     {
-      if ( !window.compute_window_for( n ) ) /* window has been visited before */
+      if ( !window.compute_window_for( n ) )
       {
         return true;
       }
