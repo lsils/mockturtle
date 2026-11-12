@@ -69,7 +69,9 @@ namespace mockturtle
  * - `create_maj`
  *
  * Unsupported constructs, invalid arithmetic arguments, undefined operands, and undriven outputs throw `std::invalid_argument`.
- * Numeric literals outside the 64-bit unsigned range throw `std::out_of_range`.
+ * Sized hexadecimal literals contribute their low bits, limited by the declared
+ * width and the destination width. Decimal values and declared widths outside
+ * the 64-bit unsigned range throw `std::out_of_range`.
  *
    \verbatim embed:rst
 
@@ -372,22 +374,24 @@ public:
     if ( name_ != top_module_name_ )
       return;
 
-    /* check routines */
-    const auto num_args_equals = [&]( uint32_t expected_count ) {
+    const auto check_port_count = [&]( std::size_t expected_count ) {
       if ( args.size() != expected_count )
-      {
-        fmt::print( stderr, "[e] {} module expects {} arguments\n", module_name, expected_count );
-        return false;
-      }
-      return true;
+        throw std::invalid_argument( fmt::format( "{} expects {} ports", module_name, expected_count ) );
     };
 
-    const auto add_register = [&]( std::string const& name, std::vector<signal<Ntk>> const& fs ) {
+    const auto connection = [&]( std::string_view port ) -> const std::string& {
+      const auto it = std::find_if( args.begin(), args.end(), [&]( const auto& arg ) { return arg.first == port; } );
+      if ( it == args.end() || it->second.empty() )
+        throw std::invalid_argument( fmt::format( "missing port {} on {}", port, module_name ) );
+      return it->second;
+    };
+
+    const auto add_register = [&]( std::string const& name, std::vector<signal<Ntk>> fs ) {
       for ( auto i = 0u; i < fs.size(); ++i )
       {
         signals_[fmt::format( "{}[{}]", name, i )] = fs[i];
       }
-      registers_[name] = fs;
+      registers_[name] = std::move( fs );
     };
 
     if ( is_arithmetic_module( module_name ) )
@@ -429,7 +433,7 @@ public:
         auto carry = ntk_.get_constant( false );
         carry_ripple_adder_inplace( ntk_, a_copy, b, carry );
         a_copy.push_back( carry );
-        add_register( *actual[2], a_copy );
+        add_register( *actual[2], std::move( a_copy ) );
       }
       else
       {
@@ -445,23 +449,12 @@ public:
       if constexpr ( is_buffered_network_type_v<Ntk> )
       {
         static_assert( has_create_buf_v<Ntk>, "Ntk does not implement the create_buf method" );
-        if ( !num_args_equals( 2u ) )
-          fmt::print( stderr, "[e] number of arguments of a `{}` instance is not 2\n", module_name );
-
-        signal<Ntk> fi = ntk_.get_constant( false );
-        std::string lhs;
-        for ( auto const& arg : args )
-        {
-          if ( arg.first == ".i" )
-            fi = read_signal( arg.second );
-          else if ( arg.first == ".o" )
-            lhs = arg.second;
-          else
-            fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
-        }
-        signals_[lhs] = ntk_.create_buf( fi );
+        check_port_count( 2u );
+        const auto& lhs = connection( ".o" );
+        const auto buffer = ntk_.create_buf( read_signal( connection( ".i" ) ) );
         if ( module_name == "inverter" )
-          ntk_.invert( ntk_.get_node( signals_[lhs] ) );
+          ntk_.invert( ntk_.get_node( buffer ) );
+        signals_[lhs] = buffer;
       }
       else
       {
@@ -472,25 +465,11 @@ public:
     {
       if constexpr ( is_crossed_network_type_v<Ntk> )
       {
-        if ( !num_args_equals( 4u ) )
-          fmt::print( stderr, "[e] number of arguments of a `{}` instance is not 4\n", module_name );
-
-        signal<Ntk> fi1 = ntk_.get_constant( false );
-        signal<Ntk> fi2 = ntk_.get_constant( false );
-        std::string fo1, fo2;
-        for ( auto const& arg : args )
-        {
-          if ( arg.first == ".i1" )
-            fi1 = read_signal( arg.second );
-          else if ( arg.first == ".i2" )
-            fi2 = read_signal( arg.second );
-          else if ( arg.first == ".o1" )
-            fo1 = arg.second;
-          else if ( arg.first == ".o2" )
-            fo2 = arg.second;
-          else
-            fmt::print( stderr, "[e] unknown argument {} to a `{}` instance\n", arg.first, module_name );
-        }
+        check_port_count( 4u );
+        const auto fi1 = read_signal( connection( ".i1" ) );
+        const auto fi2 = read_signal( connection( ".i2" ) );
+        const auto& fo1 = connection( ".o1" );
+        const auto& fo2 = connection( ".o2" );
 
         if ( signals_.find( fo1 ) == signals_.end() ) // due to lorina bug, each crossing will be instantiated twice...
         {
@@ -515,13 +494,17 @@ public:
     if ( name_ != top_module_name_ )
       return;
 
+    std::vector<signal<Ntk>> output_signals;
+    output_signals.reserve( outputs_.size() );
     for ( auto const& o : outputs_ )
     {
       const auto it = signals_.find( o );
       if ( it == signals_.end() )
         throw std::invalid_argument( fmt::format( "undriven Verilog output {}", o ) );
-      ntk_.create_po( it->second );
+      output_signals.push_back( it->second );
     }
+    for ( auto const& s : output_signals )
+      ntk_.create_po( s );
 
     if constexpr ( has_set_output_name_v<Ntk> )
     {
@@ -635,8 +618,15 @@ private:
   mutable std::vector<std::pair<std::string, uint32_t>> input_names_;
   mutable std::vector<std::pair<std::string, uint32_t>> output_names_;
 
-  /*! \brief Formal ports of arithmetic modules declared in the input. */
-  mutable std::map<std::string, lorina::verilog_parser::module_info> arithmetic_ports_;
+  /*! \brief Formal ports of an arithmetic module. */
+  struct arithmetic_ports
+  {
+    std::vector<std::string> inputs;
+    std::vector<std::string> outputs;
+  };
+
+  /*! \brief Arithmetic module ports indexed by module name. */
+  mutable std::map<std::string, arithmetic_ports> arithmetic_ports_;
 
   std::regex hex_string{ "(\\d+)'h([0-9a-fA-F]+)" };
 };

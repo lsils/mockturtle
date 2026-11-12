@@ -248,7 +248,7 @@ TEST_CASE( "read a VERILOG file to create large Montgomery multiplier", "[verilo
       "module top( a, b, c );\n"
       "  input [383:0] a, b;\n"
       "  output [383:0] c;\n"
-      "  montgomery_multiplier #(384, 512'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff, 384'h14000000140000000c00000002fffffffcfffffffafffffffbfffffffe00000000000000010000000100000001) mult(.x1(a), .x2(b), .y(c));\n"
+      "  montgomery_multiplier #(384, 512'h1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff, 384'h14000000140000000c00000002fffffffcfffffffafffffffbfffffffe00000000000000010000000100000001) mult(.x1(a), .x2(b), .y(c));\n"
       "endmodule\n" };
 
   std::istringstream in( file );
@@ -268,12 +268,28 @@ TEST_CASE( "read a VERILOG file to create large Montgomery multiplier", "[verilo
   CHECK( reader.output_names() == std::vector<std::pair<std::string, uint32_t>>{ { { "c", 384 } } } );
 }
 
-TEST_CASE( "reject Verilog outputs that the network cannot represent", "[verilog_reader]" )
+TEST_CASE( "reject Verilog outputs and operands that the network cannot represent", "[verilog_reader]" )
 {
   const auto* const driver = GENERATE( "", "helper h(.a(a), .y(y));", "assign z = y;" );
   mig_network mig;
   std::istringstream in( fmt::format( "module helper(a, y); input a; output y; assign y = a; endmodule\n"
                                      "module top(a, y); input a; output y; {} endmodule\n", driver ) );
+  CHECK_THROWS_AS( lorina::read_verilog( in, verilog_reader( mig ) ), std::invalid_argument );
+}
+
+TEST_CASE( "validate Verilog outputs before creating network outputs", "[verilog_reader]" )
+{
+  mig_network mig;
+  std::istringstream in( "module top(a,y,z); input a; output y,z; assign y = a; endmodule\n" );
+  CHECK_THROWS_AS( lorina::read_verilog( in, verilog_reader( mig ) ), std::invalid_argument );
+  CHECK( mig.num_pos() == 0u );
+}
+
+TEST_CASE( "reject a Verilog buffer with a missing input connection", "[verilog_reader]" )
+{
+  buffered_mig_network mig;
+  std::istringstream in( "module buffer(i,o); input i; output o; endmodule\n"
+                         "module top(a,y); input a; output y; buffer b(.o(y)); endmodule\n" );
   CHECK_THROWS_AS( lorina::read_verilog( in, verilog_reader( mig ) ), std::invalid_argument );
 }
 
