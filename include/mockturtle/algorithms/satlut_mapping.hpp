@@ -69,7 +69,7 @@ struct satlut_mapping_params
    */
   cut_enumeration_params cut_enumeration_ps{};
 
-  /*! \brief Conflict limit for SAT solver.
+  /*! \brief Conflict limit per SAT solve.
    *
    * The default limit is 0, which means the number of conflicts is not used
    * as a resource limit.
@@ -349,6 +349,8 @@ private:
  *
  * The interface is similar to the one in `lut_mapping`.  If the network
  * already has a mapping, it is retained until a smaller cover is found.
+ * Without an initial mapping, reaching the conflict limit before finding
+ * a cover can leave the network unmapped.
  *
  * This algorithm applies SAT-LUT mapping to the whole networking and therefore
  * may show poor performance for larger networks.  There exists a method with
@@ -357,6 +359,8 @@ private:
  *
  * **Required network functions:**
  * - `is_pi`
+ * - `size`
+ * - `get_node`
  * - `index_to_node`
  * - `node_to_index`
  * - `foreach_gate`
@@ -377,6 +381,8 @@ void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapp
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
@@ -413,6 +419,8 @@ void satlut_mapping( Ntk& ntk, satlut_mapping_params const& ps = {}, satlut_mapp
  *
  * **Required network functions:**
  * - `is_pi`
+ * - `size`
+ * - `get_node`
  * - `index_to_node`
  * - `node_to_index`
  * - `foreach_gate`
@@ -435,9 +443,10 @@ void satlut_mapping( Ntk& ntk, uint32_t window_size, satlut_mapping_params ps = 
 {
   static_assert( is_network_type_v<Ntk>, "Ntk is not a network type" );
   static_assert( has_is_pi_v<Ntk>, "Ntk does not implement the is_pi method" );
+  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
+  static_assert( has_get_node_v<Ntk>, "Ntk does not implement the get_node method" );
   static_assert( has_index_to_node_v<Ntk>, "Ntk does not implement the index_to_node method" );
   static_assert( has_node_to_index_v<Ntk>, "Ntk does not implement the node_to_index method" );
-  static_assert( has_size_v<Ntk>, "Ntk does not implement the size method" );
   static_assert( has_foreach_gate_v<Ntk>, "Ntk does not implement the foreach_gate method" );
   static_assert( has_foreach_po_v<Ntk>, "Ntk does not implement the foreach_po method" );
   static_assert( has_num_gates_v<Ntk>, "Ntk does not implement the num_gates method" );

@@ -34,6 +34,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <memory>
 #include <optional>
@@ -136,7 +137,7 @@ public:
     assert( Ntk::is_cell_root( pivot ) );
 
     std::vector<node> gates;
-    gates.reserve( _storage->_max_gates );
+    gates.reserve( std::min<std::size_t>( _storage->_max_gates, Ntk::size() ) );
     collect_gates( pivot, gates );
     if ( gates.size() > _storage->_max_gates )
       return false;

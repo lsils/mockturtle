@@ -1,5 +1,6 @@
 #include <catch.hpp>
 
+#include <limits>
 #include <random>
 
 #include <mockturtle/algorithms/collapse_mapped.hpp>
@@ -246,6 +247,13 @@ TEST_CASE( "SAT-LUT mapping optimizes within the window boundary", "[satlut_mapp
   mapped.add_to_mapping( aig.get_node( output ), leaves.begin(), leaves.end() );
   mapped.set_cell_function( aig.get_node( output ), and2 );
 
-  satlut_mapping<decltype( mapped ), true>( mapped, 2u );
+  SECTION( "Skip a pivot larger than the window" )
+  {
+    satlut_mapping<decltype( mapped ), true>( mapped, 2u );
+  }
+  SECTION( "Allow a window budget larger than the network" )
+  {
+    satlut_mapping<decltype( mapped ), true>( mapped, std::numeric_limits<uint32_t>::max() );
+  }
   check_sat_mapping( mapped, 2u );
 }
