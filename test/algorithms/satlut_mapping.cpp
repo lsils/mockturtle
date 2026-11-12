@@ -227,8 +227,8 @@ TEST_CASE( "SAT-LUT mapping optimizes within the window boundary", "[satlut_mapp
   const auto e = aig.create_pi();
   const auto f = aig.create_pi();
   const auto large = aig.create_and( aig.create_and( aig.create_and( a, b ), c ), d );
-  const auto small = aig.create_and( e, f );
-  const auto output = aig.create_and( small, large );
+  const auto inner = aig.create_and( e, f );
+  const auto output = aig.create_and( inner, large );
   aig.create_po( large );
   aig.create_po( output );
 
@@ -239,11 +239,11 @@ TEST_CASE( "SAT-LUT mapping optimizes within the window boundary", "[satlut_mapp
   kitty::create_from_hex_string( and4, "8000" );
   mapped.set_cell_function( aig.get_node( large ), and4 );
   leaves = { aig.get_node( e ), aig.get_node( f ) };
-  mapped.add_to_mapping( aig.get_node( small ), leaves.begin(), leaves.end() );
+  mapped.add_to_mapping( aig.get_node( inner ), leaves.begin(), leaves.end() );
   kitty::dynamic_truth_table and2( 2 );
   kitty::create_from_hex_string( and2, "8" );
-  mapped.set_cell_function( aig.get_node( small ), and2 );
-  leaves = { aig.get_node( small ), aig.get_node( large ) };
+  mapped.set_cell_function( aig.get_node( inner ), and2 );
+  leaves = { aig.get_node( inner ), aig.get_node( large ) };
   mapped.add_to_mapping( aig.get_node( output ), leaves.begin(), leaves.end() );
   mapped.set_cell_function( aig.get_node( output ), and2 );
 
