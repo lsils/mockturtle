@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <initializer_list>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include <lorina/genlib.hpp>
@@ -303,4 +306,190 @@ TEST_CASE( "Struct library creation large rules", "[struct_library]" )
   CHECK( library_map.find( entry_ids[1] )->second[0].tdelay[4] == 3.0f );
   CHECK( library_map.find( entry_ids[1] )->second[0].tdelay[5] == 3.0f );
   CHECK( library_map.find( entry_ids[1] )->second[0].polarity == 127 );
+}
+
+TEST_CASE( "Struct library creation with unused inputs", "[struct_library]" )
+{
+  /* Same compact function, different physical supports and area ordering. */
+  std::string const library =
+      "GATE unused_first 3 O=!b*c; PIN a UNKNOWN 1 999 1 0 1 0 PIN b INV 1 999 2 0 2 0 PIN c NONINV 1 999 3 0 3 0\n"
+      "GATE unused_middle 1 O=!a*c; PIN a INV 1 999 1 0 1 0 PIN b UNKNOWN 1 999 2 0 2 0 PIN c NONINV 1 999 3 0 3 0\n"
+      "GATE unused_last 2 O=!a*b; PIN a INV 1 999 1 0 1 0 PIN b NONINV 1 999 2 0 2 0 PIN c UNKNOWN 1 999 3 0 3 0\n"
+      "GATE full_support 1 O=!a*b; PIN a INV 1 999 1 0 1 0 PIN b NONINV 1 999 2 0 2 0\n";
+  std::vector<gate> gates;
+  std::istringstream in( library );
+  REQUIRE( lorina::read_genlib( in, genlib_reader( gates ) ) == lorina::return_code::success );
+  REQUIRE( gates.size() == 4 );
+
+  struct_library<3> lib( gates );
+  lib.construct();
+
+  auto const pattern = lib.get_pattern_id( 2, 2 );
+  REQUIRE( pattern != UINT32_MAX );
+  auto const* matches = lib.get_supergates_pattern( pattern, false );
+  REQUIRE( matches != nullptr );
+  REQUIRE( matches->size() == 4 );
+  /* Equal-area matches prefer fewer physical pins. */
+  CHECK( matches->front().root->root == &gates[3] );
+  std::vector<std::vector<uint8_t>> const supports{ { 1, 2 }, { 0, 2 }, { 0, 1 }, { 0, 1 } };
+  for ( auto i = 0u; i < gates.size(); ++i )
+  {
+    CAPTURE( gates[i].name );
+    auto const it = std::find_if( matches->begin(), matches->end(), [&]( auto const& match ) {
+      return match.root->root == &gates[i];
+    } );
+    REQUIRE( it != matches->end() );
+    auto const& match = *it;
+    CHECK( match.root->function == gates[i].function );
+    CHECK( match.root->num_vars == gates[i].num_vars );
+    auto support = match.permutation;
+    std::sort( support.begin(), support.end() );
+    REQUIRE( support == supports[i] );
+    for ( auto j = 0u; j < match.permutation.size(); ++j )
+    {
+      CHECK( match.tdelay[j] == static_cast<float>( match.permutation[j] + 1 ) );
+    }
+
+    /* Evaluate the matched AND pattern in the original pin order. */
+    for ( auto assignment = 0u; assignment < ( 1u << gates[i].num_vars ); ++assignment )
+    {
+      bool value = true;
+      for ( auto j = 0u; j < match.permutation.size(); ++j )
+      {
+        value &= ( ( assignment >> match.permutation[j] ) ^ ( match.polarity >> j ) ) & 1;
+      }
+      CHECK( kitty::get_bit( gates[i].function, assignment ) == value );
+    }
+  }
+
+  struct_library<3> larger_lib( gates );
+  larger_lib.construct( 3 );
+  auto const larger_pattern = larger_lib.get_pattern_id( 2, 2 );
+  REQUIRE( larger_pattern != UINT32_MAX );
+  auto const* larger_matches = larger_lib.get_supergates_pattern( larger_pattern, false );
+  REQUIRE( larger_matches != nullptr );
+  REQUIRE( larger_matches->size() == 3 );
+  for ( auto const& match : *larger_matches )
+  {
+    CHECK( match.root->num_vars == 3 );
+  }
+}
+
+TEST_CASE( "Struct library matches a multi-level pattern with unused inputs", "[struct_library]" )
+{
+  /* The second cell reuses the first cell's rule after bottom decomposition. */
+  std::istringstream in(
+      "GATE seed 1 O=!a+(c*d);\n"
+      "PIN a INV 1 999 1 0 1 0\n"
+      "PIN b UNKNOWN 1 999 2 0 2 0\n"
+      "PIN c NONINV 1 999 3 0 3 0\n"
+      "PIN d NONINV 1 999 4 0 4 0\n"
+      "GATE unused 2 O=(b*!c)+(e*f);\n"
+      "PIN a UNKNOWN 1 999 1 0 1 0\n"
+      "PIN b NONINV 1 999 2 0 2 0\n"
+      "PIN c INV 1 999 3 0 3 0\n"
+      "PIN d UNKNOWN 1 999 4 0 4 0\n"
+      "PIN e NONINV 1 999 5 0 5 0\n"
+      "PIN f NONINV 1 999 6 0 6 0\n" );
+  std::vector<gate> gates;
+  REQUIRE( lorina::read_genlib( in, genlib_reader( gates ) ) == lorina::return_code::success );
+  REQUIRE( gates.size() == 2 );
+
+  struct_library<6> lib( gates );
+  lib.construct();
+
+  /* (x0 * x1) + (x2 * x3) = !(!(x0 * x1) * !(x2 * x3)). */
+  auto const and_pattern = lib.get_pattern_id( 2, 2 );
+  REQUIRE( and_pattern != UINT32_MAX );
+  auto const pattern = lib.get_pattern_id( ( and_pattern << 1 ) | 1, ( and_pattern << 1 ) | 1 );
+  REQUIRE( pattern != UINT32_MAX );
+  auto const* matches = lib.get_supergates_pattern( pattern, true );
+  REQUIRE( matches != nullptr );
+  REQUIRE( matches->size() == 1 );
+  auto const& match = matches->front();
+  CHECK( match.root->root == &gates[1] );
+  auto support = match.permutation;
+  std::sort( support.begin(), support.end() );
+  REQUIRE( support == std::vector<uint8_t>{ 1, 2, 4, 5 } );
+  for ( auto j = 0u; j < match.permutation.size(); ++j )
+  {
+    CHECK( match.tdelay[j] == static_cast<float>( match.permutation[j] + 1 ) );
+  }
+
+  for ( auto assignment = 0u; assignment < ( 1u << gates[1].num_vars ); ++assignment )
+  {
+    auto input = [&]( auto j ) {
+      return ( ( assignment >> match.permutation[j] ) ^ ( match.polarity >> j ) ) & 1;
+    };
+    bool const value = ( input( 0 ) && input( 1 ) ) || ( input( 2 ) && input( 3 ) );
+    CHECK( kitty::get_bit( gates[1].function, assignment ) == value );
+  }
+}
+
+TEST_CASE( "Struct library ignores constant and unary functions with unused inputs", "[struct_library]" )
+{
+  for ( auto const& expression : { "a*!a", "a+!a", "a", "!a", "b", "!b", "c", "!c" } )
+  {
+    CAPTURE( expression );
+    std::istringstream in( std::string( "GATE unused 1 O=" ) + expression +
+                           "; PIN a UNKNOWN 1 999 1 0 1 0 PIN b UNKNOWN 1 999 2 0 2 0 PIN c UNKNOWN 1 999 3 0 3 0\n" );
+    std::vector<gate> gates;
+    REQUIRE( lorina::read_genlib( in, genlib_reader( gates ) ) == lorina::return_code::success );
+    REQUIRE( gates.size() == 1 );
+    REQUIRE( gates[0].num_vars == 3 );
+
+    struct_library<3> lib( gates );
+    lib.construct();
+    CHECK( lib.get_struct_library().empty() );
+    CHECK( lib.get_pattern_id( 2, 2 ) == UINT32_MAX );
+  }
+}
+
+TEST_CASE( "Struct library compacts large functions with unused inputs", "[struct_library]" )
+{
+  for ( auto const& expression : { "!i*c", "i+!h+!g+!f+!d+!c+!b" } )
+  {
+    CAPTURE( expression );
+    bool const small = std::string( expression ) == "!i*c";
+    std::string library = std::string( "GATE unused 1 O=" ) + expression + ";\n";
+    /* Declare pins in reverse order, including unused pins and indices above six. */
+    for ( char name = 'i'; name >= ( small ? 'c' : 'a' ); --name )
+    {
+      auto const delay = std::to_string( 'i' - name + 1 );
+      library += std::string( "PIN " ) + name + " UNKNOWN 1 999 " + delay + " 0 " + delay + " 0\n";
+    }
+    std::vector<gate> gates;
+    std::istringstream in( library );
+    REQUIRE( lorina::read_genlib( in, genlib_reader( gates ) ) == lorina::return_code::success );
+    REQUIRE( gates.size() == 1 );
+    REQUIRE( gates[0].num_vars == ( small ? 7u : 9u ) );
+    /* Physical pin order is i, h, g, f, e, d, c, followed by b, a for the larger cell. */
+    std::vector<uint8_t> const support = small ? std::vector<uint8_t>{ 0, 6 } : std::vector<uint8_t>{ 0, 1, 2, 3, 5, 6, 7 };
+
+    struct_library<9> lib( gates );
+    lib.construct( 7 );
+    REQUIRE( !lib.get_struct_library().empty() );
+    CHECK( lib.get_num_large_gates() == 1 );
+    for ( auto const& [label, matches] : lib.get_struct_library() )
+    {
+      REQUIRE( matches.size() == 1 );
+      auto const& match = matches.front();
+      auto permutation = match.permutation;
+      std::sort( permutation.begin(), permutation.end() );
+      REQUIRE( permutation == support );
+      for ( auto j = 0u; j < match.permutation.size(); ++j )
+      {
+        CHECK( match.tdelay[j] == static_cast<float>( match.permutation[j] + 1 ) );
+      }
+      for ( auto assignment = 0u; assignment < ( 1u << gates[0].num_vars ); ++assignment )
+      {
+        bool value = true;
+        for ( auto j = 0u; j < match.permutation.size(); ++j )
+        {
+          value &= ( ( assignment >> match.permutation[j] ) ^ ( match.polarity >> j ) ) & 1;
+        }
+        CHECK( kitty::get_bit( gates[0].function, assignment ) == ( value ^ ( label & 1 ) ) );
+      }
+    }
+  }
 }
