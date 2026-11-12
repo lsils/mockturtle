@@ -141,6 +141,22 @@ public:
     return ( *data )[ntk->node_to_index( n )];
   }
 
+  /*! \brief Bounds-checked mutable access to value by node.
+   * \throws std::out_of_range If the node index is outside the map.
+   */
+  reference at( node const& n )
+  {
+    return data->at( ntk->node_to_index( n ) );
+  }
+
+  /*! \brief Bounds-checked constant access to value by node.
+   * \throws std::out_of_range If the node index is outside the map.
+   */
+  const_reference at( node const& n ) const
+  {
+    return data->at( ntk->node_to_index( n ) );
+  }
+
   /*! \brief Mutable access to value by signal.
    *
    * This method derives the node from the signal.  If the node and signal type
@@ -203,7 +219,7 @@ private:
  *
  * This implementation of the container is initialized with a network.
  * The map entries are constructed on the fly.  The container
- * can be accessed via ndoes, or indirectly via signals, from which
+ * can be accessed via nodes, or indirectly via signals, from which
  * the corresponding node is derived.
  *
  * The implementation uses an std::unordered_map as underlying data

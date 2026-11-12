@@ -9,6 +9,7 @@
 #include <mockturtle/utils/node_map.hpp>
 
 #include <cstdint>
+#include <stdexcept>
 #include <vector>
 
 using namespace mockturtle;
@@ -375,6 +376,24 @@ TEST_CASE( "create vector node map for full adder", "[node_map]" )
   test_vector_node_map<xag_network>();
   test_vector_node_map<xmg_network>();
   test_vector_node_map<klut_network>();
+}
+
+TEST_CASE( "Bounds-checked vector node map access", "[node_map]" )
+{
+  aig_network ntk;
+  const auto first = ntk.get_node( ntk.create_pi() );
+  node_map<uint32_t, aig_network> map{ ntk };
+  map.at( first ) = 42u;
+  auto const& const_map = map;
+  CHECK( const_map.at( first ) == 42u );
+
+  const auto late = ntk.get_node( ntk.create_pi() );
+  CHECK_THROWS_AS( map.at( late ), std::out_of_range );
+  CHECK_THROWS_AS( const_map.at( late ), std::out_of_range );
+
+  map.resize( 13u );
+  CHECK( const_map.at( late ) == 13u );
+  CHECK( const_map.at( first ) == 42u );
 }
 
 TEST_CASE( "create unordered node map for full adder", "[node_map]" )
