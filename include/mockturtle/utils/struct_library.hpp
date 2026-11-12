@@ -34,10 +34,18 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <iostream>
+#include <iterator>
 #include <numeric>
+#include <string>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <kitty/constructors.hpp>
@@ -307,15 +315,24 @@ private:
       if ( gate.num_vars < 2 || skip_gates[ind] )
         continue;
 
+      /* Decompose only the functional support, keeping the original pin mapping. */
+      auto function = gate.function;
+      auto const pin_support = kitty::min_base_inplace( function );
+      auto const num_vars = static_cast<uint32_t>( pin_support.size() );
+      if ( num_vars < 2 )
+        continue;
+      if ( num_vars < gate.num_vars )
+        function = kitty::shrink_to( function, num_vars );
+
       /* DSD decomposition */
       rule rule = {};
       std::vector<uint32_t> support = {};
-      for ( uint32_t i = 0; i < gate.num_vars; i++ )
+      for ( uint32_t i = 0; i < num_vars; i++ )
       {
         rule.push_back( { node_type::pi_, i, {} } );
         support.push_back( i );
       }
-      auto cpy = gate.function;
+      auto cpy = function;
       gate_disjoint = false;
       compute_dsd( cpy, support, rule );
 
@@ -328,7 +345,8 @@ private:
         ++num_large_gates;
       }
 
-      _dsd_map.insert( { gate.function, rule } );
+      /* Cache rules in compact coordinates, independently of physical pins. */
+      _dsd_map.insert( { std::move( function ), rule } );
       if ( _ps.verbose )
       {
         std::cout << "Dsd:\n";
@@ -358,21 +376,27 @@ private:
       {
         gate_pol = 0;
         shift = 0;
-        std::vector<uint8_t> perm( gate.num_vars );
+        std::vector<uint8_t> perm( num_vars );
         auto index_rule = do_indexing_rule( elem, elem[elem.size() - 1], max_label, gate_pol, perm, shift );
 
         /* skip gate creation for small gates (<`min_vars` inputs) */
         if ( gate.num_vars < min_vars )
           continue;
 
+        /* Restore physical pins; polarity remains in pattern input order. */
+        for ( auto& p : perm )
+        {
+          p = pin_support[p];
+        }
+
         supergate<NInputs> sg = { &gate,
                                   static_cast<float>( gate.area ),
-                                  gate.tdelay,
+                                  {},
                                   perm,
                                   gate_pol };
 
         /* permute pin-to-pin delays */
-        for ( uint32_t i = 0; i < gate.num_vars; ++i )
+        for ( uint32_t i = 0; i < num_vars; ++i )
         {
           sg.tdelay[i] = gate.tdelay[perm[i]];
         }
@@ -387,7 +411,7 @@ private:
           if ( s1.root->num_vars < s2.root->num_vars )
             return true;
           if ( s1.root->num_vars > s2.root->num_vars )
-            return true;
+            return false;
           return s1.root->id < s2.root->id;
         } );
 
