@@ -145,7 +145,7 @@ v0.2 (February 16, 2021)
     - Resynthesis function based on Davio decomposition (`positive_davio_resynthesis`, `negative_davio_resynthesis`) `#308 <https://github.com/lsils/mockturtle/pull/308>`_
     - Exact resynthesis function for XMGs using XOR3 and majority gates (`exact_xmg_resynthesis`) `#328 <https://github.com/lsils/mockturtle/pull/328>`_
 * Generators:
-    - Sideways sum generator (`sideways_sum_adder`, contributed by Jovan BlanuÅ¡a) `#159 <https://github.com/lsils/mockturtle/pull/159>`_
+    - Sideways sum generator (`sideways_sum_adder`, contributed by Jovan Blanuša) `#159 <https://github.com/lsils/mockturtle/pull/159>`_
     - Carry lookahead adder (`carry_lookahead_adder_inplace`) `#171 <https://github.com/lsils/mockturtle/pull/171>`_
     - Improved modular multiplication (based on doubling `modular_multiplication_inplace`) `#174 <https://github.com/lsils/mockturtle/pull/174>`_
     - Modular doubling and halving (`modular_doubling_inplace` and `modular_halving_inplace`) `#174 <https://github.com/lsils/mockturtle/pull/174>`_ `#175 <https://github.com/lsils/mockturtle/pull/175>`_
