@@ -46,6 +46,7 @@
 #include <lorina/blif.hpp>
 
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -59,6 +60,9 @@ namespace mockturtle
  * - `create_po`
  * - `create_node` or `create_cover_node`
  * - `get_constant`
+ *
+ * Latches without register support and nonempty covers wider than 32 inputs
+ * throw std::invalid_argument.
  *
    \verbatim embed:rst
 
@@ -134,7 +138,7 @@ public:
 
   virtual void on_latch( const std::string& input, const std::string& output, const std::optional<latch_type>& l_type, const std::optional<std::string>& control, const std::optional<latch_init_value>& reset ) const override
   {
-    if constexpr ( has_create_ro_v<Ntk> )
+    if constexpr ( has_create_ro_v<Ntk> && has_create_ri_v<Ntk> )
     {
       std::string type = "re";
       if ( l_type )
@@ -217,18 +221,25 @@ public:
 
       latches.emplace_back( input );
     }
+    else
+    {
+      throw std::invalid_argument( "BLIF latches require a network with register support" );
+    }
   }
 
   virtual void on_gate( const std::vector<std::string>& inputs, const std::string& output, const output_cover_t& cover ) const override
   {
-    if ( inputs.size() == 0u )
+    if ( cover.empty() )
     {
-      if ( cover.size() == 0u )
-      {
-        signals[output] = ntk_.get_constant( false );
-        return;
-      }
+      signals[output] = ntk_.get_constant( false );
+      return;
+    }
 
+    if ( inputs.size() > 32u )
+      throw std::invalid_argument( "BLIF covers support at most 32 inputs" );
+
+    if ( inputs.empty() )
+    {
       assert( cover.size() == 1u );
       assert( cover.at( 0u ).first.size() == 0u );
       assert( cover.at( 0u ).second.size() == 1u );
@@ -239,7 +250,6 @@ public:
       return;
     }
 
-    assert( cover.size() > 0u );
     assert( cover.at( 0u ).second.size() == 1 );
     auto const first_output_value = cover.at( 0u ).second.at( 0u );
 

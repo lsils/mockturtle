@@ -64,6 +64,21 @@ TEST_CASE( "read a combinational BLIF file into KLUT network", "[blif_reader]" )
   } );
 }
 
+TEST_CASE( "read a BLIF gate with an empty cover", "[blif_reader]" )
+{
+  klut_network klut;
+  std::istringstream in( ".model top\n"
+                         ".inputs a\n"
+                         ".outputs zero\n"
+                         ".names a zero\n"
+                         ".end\n" );
+  REQUIRE( lorina::read_blif( in, blif_reader( klut ) ) == lorina::return_code::success );
+  CHECK( klut.num_pis() == 1u );
+  REQUIRE( klut.num_pos() == 1u );
+  const auto tables = simulate<kitty::dynamic_truth_table>( klut, default_simulator<kitty::dynamic_truth_table>( 1u ) );
+  CHECK( kitty::to_hex( tables[0] ) == "0" );
+}
+
 TEST_CASE( "read a sequential BLIF file with 5 parameter latches that is not in topological order", "[blif_reader]" )
 {
   sequential<klut_network> klut;
@@ -345,4 +360,22 @@ TEST_CASE( "cover network, read a BLIF file containing latch declaration bug tha
   CHECK( cover.num_pos() == 1 );
   CHECK( cover.num_registers() == 3 );
   CHECK( cover.num_gates() == 9 );
+}
+
+TEST_CASE( "Reject a BLIF latch in a combinational network", "[blif_reader]" )
+{
+  klut_network klut;
+  std::istringstream in( ".model top\n.inputs a\n.latch a state\n.end\n" );
+  CHECK_THROWS_AS( lorina::read_blif( in, blif_reader( klut ) ), std::invalid_argument );
+}
+
+TEST_CASE( "Reject a BLIF cover wider than a kitty cube", "[blif_reader]" )
+{
+  klut_network klut;
+  std::string inputs;
+  for ( auto i = 0u; i < 33u; ++i )
+    inputs += " a" + std::to_string( i );
+  std::istringstream in( ".model top\n.inputs" + inputs + "\n.outputs y\n.names" +
+                         inputs + " y\n" + std::string( 33u, '1' ) + " 1\n.end\n" );
+  CHECK_THROWS_AS( lorina::read_blif( in, blif_reader( klut ) ), std::invalid_argument );
 }
