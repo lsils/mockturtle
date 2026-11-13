@@ -83,7 +83,7 @@ struct lut_map_params
   /*! \brief Parameters for cut enumeration
    *
    * The default cut limit is 8. The maximum value
-   * is 16. The maxiumum cut size is 16. By default,
+   * is 16. The maximum cut size is 16. By default,
    * truth table minimization is performed.
    */
   cut_enumeration_params cut_enumeration_ps{};
@@ -2028,7 +2028,7 @@ private:
 
   void add_zero_cut( uint32_t index, bool phase )
   {
-    auto& cut = cuts[index].add_cut( &index, &index ); /* fake iterator for emptyness */
+    auto& cut = cuts[index].add_cut( &index, &index ); /* fake iterator for emptiness */
 
     if constexpr ( StoreFunction )
     {
@@ -2567,7 +2567,7 @@ private:
     const auto support_vector = kitty::min_base_inplace( tt );
     assert( support_vector.size() != children.size() );
 
-    auto tt_shrink = shrink_to( tt, support_size );
+    tt = kitty::shrink_to( tt, support_size );
     std::vector<signal<klut_network>> children_support( support_size );
 
     auto it_support = support_vector.begin();

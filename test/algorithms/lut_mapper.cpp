@@ -4,6 +4,7 @@
 #include <mockturtle/algorithms/equivalence_checking.hpp>
 #include <mockturtle/algorithms/lut_mapper.hpp>
 #include <mockturtle/algorithms/miter.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/klut.hpp>
@@ -45,6 +46,36 @@ TEST_CASE( "LUT map of AIG", "[lut_mapper]" )
   const klut_network klut = lut_map( aig );
 
   CHECK( klut.num_gates() == 1 );
+}
+
+TEST_CASE( "LUT map keeps truth-table width aligned with non-prefix support", "[lut_mapper]" )
+{
+  aig_network aig;
+  const auto a = aig.create_pi();
+  const auto b = aig.create_pi();
+  const auto c = aig.create_pi();
+
+  SECTION( "Single retained variable" )
+  {
+    aig.create_po( aig.create_or( aig.create_and( a, b ), aig.create_and( !a, b ) ) );
+  }
+
+  SECTION( "Unused variable between retained variables" )
+  {
+    const auto ac = aig.create_and( a, c );
+    const auto output = aig.create_or( aig.create_and( b, ac ), aig.create_and( !b, ac ) );
+    aig.create_po( output );
+    aig.create_po( !output );
+    aig.create_po( output );
+  }
+
+  const auto klut = lut_map( aig );
+  klut.foreach_gate( [&]( auto n ) {
+    CHECK( klut.node_function( n ).num_vars() == klut.fanin_size( n ) );
+  } );
+
+  const default_simulator<kitty::dynamic_truth_table> sim( aig.num_pis() );
+  CHECK( simulate<kitty::dynamic_truth_table>( klut, sim ) == simulate<kitty::dynamic_truth_table>( aig, sim ) );
 }
 
 TEST_CASE( "LUT map of a sequential AIG", "[lut_mapper]" )
