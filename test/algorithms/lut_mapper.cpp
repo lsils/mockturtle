@@ -54,6 +54,7 @@ TEST_CASE( "LUT map keeps truth-table width aligned with non-prefix support", "[
   const auto a = aig.create_pi();
   const auto b = aig.create_pi();
   const auto c = aig.create_pi();
+  lut_map_params ps;
 
   SECTION( "Single retained variable" )
   {
@@ -69,9 +70,22 @@ TEST_CASE( "LUT map keeps truth-table width aligned with non-prefix support", "[
     aig.create_po( output );
   }
 
-  const auto klut = lut_map( aig );
+  SECTION( "Unused variable in a two-block truth table" )
+  {
+    auto parity = aig.create_xor( b, c );
+    for ( auto i = 0u; i < 4u; ++i )
+    {
+      parity = aig.create_xor( parity, aig.create_pi() );
+    }
+    aig.create_po( aig.create_or( aig.create_and( a, parity ), aig.create_and( !a, parity ) ) );
+    ps.cut_enumeration_ps.cut_size = 7u;
+  }
+
+  const auto klut = lut_map( aig, ps );
   klut.foreach_gate( [&]( auto n ) {
-    CHECK( klut.node_function( n ).num_vars() == klut.fanin_size( n ) );
+    const auto function = klut.node_function( n );
+    CHECK( function.num_vars() == klut.fanin_size( n ) );
+    CHECK( function.num_blocks() == 1u );
   } );
 
   const default_simulator<kitty::dynamic_truth_table> sim( aig.num_pis() );
