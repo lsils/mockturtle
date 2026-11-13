@@ -422,3 +422,11 @@ TEST_CASE( "safely discard unresolved Aiger latch references after a parse error
   CHECK( lorina::read_ascii_aiger( in, aiger_reader( ntk ) ) == lorina::return_code::parse_error );
   CHECK( ntk.num_cos() == 0u );
 }
+
+TEST_CASE( "Do not finalize a prefix of the declared AIGER latches", "[aiger_reader]" )
+{
+  sequential<aig_network> ntk;
+  std::istringstream in( "aig 2 0 2 0 0\n0\n" );
+  CHECK( lorina::read_aiger( in, aiger_reader( ntk ) ) == lorina::return_code::parse_error );
+  CHECK( ntk.num_cos() == 0u );
+}
