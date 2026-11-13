@@ -361,3 +361,21 @@ TEST_CASE( "cover network, read a BLIF file containing latch declaration bug tha
   CHECK( cover.num_registers() == 3 );
   CHECK( cover.num_gates() == 9 );
 }
+
+TEST_CASE( "Reject a BLIF latch in a combinational network", "[blif_reader]" )
+{
+  klut_network klut;
+  std::istringstream in( ".model top\n.inputs a\n.latch a state\n.end\n" );
+  CHECK_THROWS_AS( lorina::read_blif( in, blif_reader( klut ) ), std::invalid_argument );
+}
+
+TEST_CASE( "Reject a BLIF cover wider than a kitty cube", "[blif_reader]" )
+{
+  klut_network klut;
+  std::string inputs;
+  for ( auto i = 0u; i < 33u; ++i )
+    inputs += " a" + std::to_string( i );
+  std::istringstream in( ".model top\n.inputs" + inputs + "\n.outputs y\n.names" +
+                         inputs + " y\n" + std::string( 33u, '1' ) + " 1\n.end\n" );
+  CHECK_THROWS_AS( lorina::read_blif( in, blif_reader( klut ) ), std::invalid_argument );
+}

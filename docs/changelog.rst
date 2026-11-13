@@ -43,7 +43,8 @@ v0.4 (not yet released)
     - Cycle-accurate simulation of sequential networks (`simulate_sequential`) `#708 <https://github.com/lsils/mockturtle/pull/708>`_
 * I/O:
     - Bind Verilog arithmetic ports by name and throw ``std::invalid_argument`` for invalid connections, undefined operands, undriven outputs, and unsupported module conversions.
-    - Convert empty BLIF covers to constant zero even when a gate declares inputs.
+    - Convert empty BLIF covers to constant zero even when a gate declares inputs. Reject latches on networks without register support and nonempty covers wider than 32 inputs.
+    - Validate Verilog port bounds and expose whether the selected module was declared. Reject duplicate definitions of that module.
     - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
@@ -144,7 +145,7 @@ v0.2 (February 16, 2021)
     - Resynthesis function based on Davio decomposition (`positive_davio_resynthesis`, `negative_davio_resynthesis`) `#308 <https://github.com/lsils/mockturtle/pull/308>`_
     - Exact resynthesis function for XMGs using XOR3 and majority gates (`exact_xmg_resynthesis`) `#328 <https://github.com/lsils/mockturtle/pull/328>`_
 * Generators:
-    - Sideways sum generator (`sideways_sum_adder`, contributed by Jovan Blanuša) `#159 <https://github.com/lsils/mockturtle/pull/159>`_
+    - Sideways sum generator (`sideways_sum_adder`, contributed by Jovan BlanuÅ¡a) `#159 <https://github.com/lsils/mockturtle/pull/159>`_
     - Carry lookahead adder (`carry_lookahead_adder_inplace`) `#171 <https://github.com/lsils/mockturtle/pull/171>`_
     - Improved modular multiplication (based on doubling `modular_multiplication_inplace`) `#174 <https://github.com/lsils/mockturtle/pull/174>`_
     - Modular doubling and halving (`modular_doubling_inplace` and `modular_halving_inplace`) `#174 <https://github.com/lsils/mockturtle/pull/174>`_ `#175 <https://github.com/lsils/mockturtle/pull/175>`_
