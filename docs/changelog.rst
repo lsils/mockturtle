@@ -26,6 +26,7 @@ v0.4 (not yet released)
     - XAG algebraic depth rewriting (`xag_algebraic_depth_rewriting`) `#580 <https://github.com/lsils/mockturtle/pull/580>`_
     - Collapse mapped extended to compute mapping functions if the mapped network doesn't have them stored (`collapse_mapped`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
     - Extended LUT mapping for delay and area (`lut_map`) `#581 <https://github.com/lsils/mockturtle/pull/581>`_
+    - Keep LUT truth-table widths consistent when removing unused fanins from non-prefix support (`lut_map`) `#725 <https://github.com/lsils/mockturtle/pull/725>`_
     - Support for external don't cares (mainly in `circuit_validator`, `sim_resub`, `miter` and `equivalence_checking_bill`) `#585 <https://github.com/lsils/mockturtle/pull/585>`_
     - Register retiming (`retime`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
     - AQFP buffer insertion & optimization updates (`buffer_insertion`, `aqfp_retiming`) `#594 <https://github.com/lsils/mockturtle/pull/594>`_
