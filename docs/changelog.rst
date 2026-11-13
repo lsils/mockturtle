@@ -42,6 +42,7 @@ v0.4 (not yet released)
     - XAG resubstitution (`xag_resubstitution`) `#658 <https://github.com/lsils/mockturtle/pull/658>`_
     - Cycle-accurate simulation of sequential networks (`simulate_sequential`) `#708 <https://github.com/lsils/mockturtle/pull/708>`_
 * I/O:
+    - Skip AIGER output finalization when a read stops before all declared latch records arrive.
     - Write gates to GENLIB file (`write_genlib`) `#606 <https://github.com/lsils/mockturtle/pull/606>`_
 * Views:
     - Add cost view to evaluate costs in the network and to maintain contexts (`cost_view`) `#554 <https://github.com/lsils/mockturtle/pull/554>`_
