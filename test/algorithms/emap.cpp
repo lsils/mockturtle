@@ -1,13 +1,19 @@
 #include <catch.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include <lorina/genlib.hpp>
 #include <lorina/super.hpp>
 #include <mockturtle/algorithms/emap.hpp>
+#include <mockturtle/algorithms/simulation.hpp>
 #include <mockturtle/generators/arithmetic.hpp>
 #include <mockturtle/io/genlib_reader.hpp>
+#include <mockturtle/io/write_verilog.hpp>
 #include <mockturtle/io/super_reader.hpp>
 #include <mockturtle/networks/aig.hpp>
 #include <mockturtle/networks/block.hpp>
@@ -1011,4 +1017,304 @@ TEST_CASE( "Emap on circuit with don't touch cells", "[emap]" )
   CHECK( st.area < 11.0f + eps );
   CHECK( st.delay > 5.8f - eps );
   CHECK( st.delay < 5.8f + eps );
+}
+
+namespace
+{
+
+/* Ordinary gates are deliberately slower than the two-output FA. */
+std::string const recovery_library = R"(GATE inv 1 O=!a;
+PIN a UNKNOWN 1 999 0.1 0 0.1 0
+GATE buf 1 O=a;
+PIN a UNKNOWN 1 999 0.1 0 0.1 0
+GATE zero 0 O=CONST0;
+GATE one 0 O=CONST1;
+GATE nand2 2 O=!(a*b);
+PIN a UNKNOWN 1 999 1 0 1 0
+PIN b UNKNOWN 1 999 1 0 1 0
+GATE and2 3 O=a*b;
+PIN a UNKNOWN 1 999 1 0 1 0
+PIN b UNKNOWN 1 999 1 0 1 0
+GATE nor2 2 O=!(a+b);
+PIN a UNKNOWN 1 999 1 0 1 0
+PIN b UNKNOWN 1 999 1 0 1 0
+GATE xor2 4 O=a^b;
+PIN a UNKNOWN 1 999 3 0 3 0
+PIN b UNKNOWN 1 999 3 0 3 0
+GATE maj3 5 O=a*b+a*c+b*c;
+PIN a UNKNOWN 1 999 2 0 2 0
+PIN b UNKNOWN 1 999 2 0 2 0
+PIN c UNKNOWN 1 999 2 0 2 0
+GATE fa 6 C=a*b+a*c+b*c;
+PIN a UNKNOWN 1 999 0.2 0 0.2 0
+PIN b UNKNOWN 1 999 0.3 0 0.3 0
+PIN c UNKNOWN 1 999 0.4 0 0.4 0
+GATE fa 6 S=a^b^c;
+PIN a UNKNOWN 1 999 0.5 0 0.5 0
+PIN b UNKNOWN 1 999 0.7 0 0.7 0
+PIN c UNKNOWN 1 999 0.9 0 0.9 0
+)";
+
+tech_library<3> recovery_tech_library( std::string const& text )
+{
+  std::vector<gate> gates;
+  std::istringstream in( text );
+  REQUIRE( lorina::read_genlib( in, genlib_reader( gates ) ) == lorina::return_code::success );
+  return tech_library<3>( gates );
+}
+
+uint32_t count_cells( cell_view<block_network> const& mapped, std::string const& name )
+{
+  uint32_t count = 0;
+  mapped.foreach_gate( [&]( auto n ) {
+    REQUIRE( mapped.has_cell( n ) );
+    count += mapped.get_cell( n ).name == name;
+  } );
+  return count;
+}
+
+/* Evaluate the physical library functions, including unused output pins, instead
+ * of using block_network's single-output simulation interface. */
+void check_recovery_mapping( aig_network const& source, cell_view<block_network> const& mapped,
+                             emap_params const& ps, emap_stats const& st )
+{
+  REQUIRE_FALSE( st.mapping_error );
+  REQUIRE( mapped.num_pis() == source.num_pis() );
+  REQUIRE( mapped.num_pos() == source.num_pos() );
+  CHECK( mapped.compute_area() == Approx( st.area ) );
+
+  std::vector<std::array<double, 2>> arrival( mapped.size(), { 0.0, 0.0 } );
+  mapped.foreach_pi( [&]( auto n, auto i ) {
+    arrival[n][0] = ps.arrival_times.empty() ? 0.0 : ps.arrival_times[i];
+  } );
+  mapped.foreach_gate( [&]( auto n ) {
+    REQUIRE( mapped.has_cell( n ) );
+    auto const& cell = mapped.get_cell( n );
+    REQUIRE( cell.gates.size() == mapped.num_outputs( n ) );
+    for ( auto pin = 0u; pin < cell.gates.size(); ++pin )
+    {
+      auto const& gate = cell.gates[pin];
+      REQUIRE( gate.num_vars == mapped.fanin_size( n ) );
+      REQUIRE( gate.pins.size() == mapped.fanin_size( n ) );
+      CHECK( gate.function == mapped.node_function_pin( n, pin ) );
+      mapped.foreach_fanin( n, [&]( auto f, auto i ) {
+        REQUIRE_FALSE( mapped.is_complemented( f ) );
+        arrival[n][pin] = std::max( arrival[n][pin], arrival[mapped.get_node( f )][mapped.get_output_pin( f )] +
+                                                         std::max( gate.pins[i].rise_block_delay, gate.pins[i].fall_block_delay ) );
+      } );
+    }
+  } );
+  double delay = 0.0;
+  mapped.foreach_po( [&]( auto f, auto i ) {
+    auto const time = arrival[mapped.get_node( f )][mapped.get_output_pin( f )];
+    delay = std::max( delay, time );
+    if ( !ps.required_times.empty() )
+      CHECK( time <= ps.required_times[i] + 0.0005 );
+  } );
+  CHECK( delay == Approx( st.delay ) );
+
+  auto const expected = simulate<kitty::dynamic_truth_table>( source, default_simulator<kitty::dynamic_truth_table>( source.num_pis() ) );
+  for ( auto assignment = 0u; assignment < ( 1u << source.num_pis() ); ++assignment )
+  {
+    std::vector<std::array<bool, 2>> values( mapped.size(), { false, false } );
+    values[mapped.get_node( mapped.get_constant( true ) )][0] = true;
+    mapped.foreach_pi( [&]( auto n, auto i ) { values[n][0] = ( assignment >> i ) & 1; } );
+    auto value = [&]( auto f ) { return values[mapped.get_node( f )][mapped.get_output_pin( f )] != mapped.is_complemented( f ); };
+    mapped.foreach_gate( [&]( auto n ) {
+      uint32_t bits = 0;
+      mapped.foreach_fanin( n, [&]( auto f, auto i ) { bits |= uint32_t( value( f ) ) << i; } );
+      auto const& cell = mapped.get_cell( n );
+      for ( auto pin = 0u; pin < cell.gates.size(); ++pin )
+        values[n][pin] = kitty::get_bit( cell.gates[pin].function, bits );
+    } );
+    mapped.foreach_po( [&]( auto f, auto i ) { CHECK( value( f ) == bool( kitty::get_bit( expected[i], assignment ) ) ); } );
+  }
+}
+
+} // namespace
+
+TEST_CASE( "Emap retains physical full adders with unused outputs", "[emap][emap_recovery]" )
+{
+  auto lib = recovery_tech_library( recovery_library );
+  for ( auto rounds : { 1u, 4u } )
+  {
+    for ( auto carry_only : { false, true } )
+    {
+      for ( auto inverted : { false, true } )
+      {
+        CAPTURE( rounds, carry_only, inverted );
+        aig_network aig;
+        auto a = aig.create_pi(), b = aig.create_pi(), c = aig.create_pi();
+        auto const [sum, carry] = full_adder( aig, a, b, c );
+        // Tuple discovery requires a source fanout on the lower-index sum.
+        // Its dangling consumer disappears from the cover, leaving only carry.
+        if ( carry_only )
+          aig.create_and( sum, a );
+        auto live = carry_only ? carry : sum;
+        aig.create_po( live );
+        if ( inverted )
+          aig.create_po( !live );
+        emap_params ps;
+        ps.map_multioutput = true;
+        ps.area_flow_rounds = rounds;
+        ps.ela_rounds = rounds;
+        emap_stats st;
+        auto mapped = emap( aig, lib, ps, &st );
+        check_recovery_mapping( aig, mapped, ps, st );
+        if ( carry_only )
+        {
+          // Export the full physical FA even when only its carry is live.
+          std::ostringstream os;
+          write_verilog_with_cell( mapped, os );
+          auto const verilog = os.str();
+          CHECK_FALSE( verilog.empty() );
+          // Do not assume the writer uses GENLIB output names as Verilog ports.
+          // The physical binding checker above verifies both FA functions.
+          CHECK( verilog.find( "module" ) != std::string::npos );
+          CHECK( verilog.find( "endmodule" ) != std::string::npos );
+        }
+        CHECK( count_cells( mapped, "fa" ) == 1u );
+        CHECK( count_cells( mapped, "inv" ) == uint32_t( inverted ) );
+        CHECK( mapped.num_gates() == ( inverted ? 2u : 1u ) );
+        CHECK( mapped.compute_area() == Approx( inverted ? 7.0 : 6.0 ) );
+        CHECK( st.delay == Approx( ( carry_only ? 0.4 : 0.9 ) + ( inverted ? 0.1 : 0.0 ) ) );
+      }
+    }
+  }
+}
+
+TEST_CASE( "Emap singleton replacement uses full-cell exact area", "[emap][emap_recovery]" )
+{
+  for ( auto price : { "6", "6.00025", "5.99975" } )
+  {
+    CAPTURE( price );
+    auto lib = recovery_tech_library( recovery_library + "GATE xor3 " + price + " O=a^b^c;\n"
+                                                                                "PIN a UNKNOWN 1 999 0.5 0 0.5 0\n"
+                                                                                "PIN b UNKNOWN 1 999 0.7 0 0.7 0\n"
+                                                                                "PIN c UNKNOWN 1 999 0.9 0 0.9 0\n" );
+    aig_network aig;
+    auto a = aig.create_pi(), b = aig.create_pi(), c = aig.create_pi();
+    auto const [sum, carry] = full_adder( aig, a, b, c );
+    aig.create_po( sum );
+    emap_params ps;
+    ps.map_multioutput = true;
+    ps.area_flow_rounds = 1;
+    ps.ela_rounds = 1;
+    emap_stats st;
+    auto mapped = emap( aig, lib, ps, &st );
+    check_recovery_mapping( aig, mapped, ps, st );
+    bool const retain = std::string( price ) == "6.00025";
+    CHECK( count_cells( mapped, "fa" ) == uint32_t( retain ) );
+    CHECK( count_cells( mapped, "xor3" ) == uint32_t( !retain ) );
+    CHECK( mapped.num_gates() == 1u );
+    CHECK( mapped.compute_area() == Approx( retain ? 6.0 : std::stod( price ) ).margin( 0.000001 ) );
+    CHECK( st.delay == Approx( 0.9 ) );
+  }
+}
+
+TEST_CASE( "Emap switching recovery accepts larger or slower singleton cells", "[emap][emap_recovery]" )
+{
+  for ( auto price : { "8", "5" } )
+  {
+    auto lib = recovery_tech_library( std::string( "GATE inv 1 O=!a; PIN * UNKNOWN 1 999 0.1 0 0.1 0\n"
+                                                   "GATE nand2 2 O=!(a*b); PIN * UNKNOWN 1 999 1 0 1 0\n"
+                                                   "GATE xor3 " ) +
+                                      price + " O=a^b^c; PIN * UNKNOWN 1 999 2 0 2 0\n"
+                                              "GATE fa 4 C=a*b+a*c+b*c; PIN * UNKNOWN 1 999 0.3 0 0.3 0\n"
+                                              "GATE fa 4 S=!(a^b^c); PIN * UNKNOWN 1 999 1 0 1 0\n" );
+    for ( auto switching : { 0u, 1u } )
+    {
+      CAPTURE( price, switching );
+      aig_network aig;
+      auto a = aig.create_pi(), b = aig.create_pi(), c = aig.create_pi();
+      auto const [sum, carry] = full_adder( aig, a, b, c );
+      aig.create_po( sum );
+      emap_params ps;
+      ps.map_multioutput = true;
+      ps.area_oriented_mapping = true;
+      ps.area_flow_rounds = 1;
+      // Exact-area rounds tighten the current timing bound; this fixture tests switching acceptance.
+      ps.ela_rounds = 0;
+      ps.eswp_rounds = switching;
+      emap_stats st;
+      auto mapped = emap( aig, lib, ps, &st );
+      check_recovery_mapping( aig, mapped, ps, st );
+      CHECK( count_cells( mapped, "xor3" ) == switching );
+      CHECK( count_cells( mapped, "fa" ) == 1u - switching );
+      CHECK( count_cells( mapped, "inv" ) == 1u - switching );
+      CHECK( mapped.compute_area() == Approx( switching ? std::stod( price ) : 5.0 ) );
+      CHECK( st.delay == Approx( switching ? 2.0 : 1.1 ) );
+      // Only the sum and (in the control) its inverter are live. Both have the
+      // same activity; the unused physical carry is outside the mapper objective.
+      auto const activities = detail::switching_activity( aig, ps.switching_activity_patterns );
+      double const sum_activity = activities[aig.get_node( sum )];
+      REQUIRE( sum_activity > 0.0 );
+      if ( switching )
+      {
+        // The single ordinary XOR3 toggles once per source-sum transition.
+        CHECK( st.power == Approx( sum_activity ) );
+        // Retaining the physical FA and its sum inverter would cost twice as much.
+        CHECK( st.power < 2.0 * sum_activity );
+      }
+    }
+  }
+}
+
+TEST_CASE( "Emap rematches both full-adder output pins after recovery", "[emap][emap_recovery]" )
+{
+  auto lib = recovery_tech_library( recovery_library );
+  for ( auto nonzero_arrivals : { false, true } )
+  {
+    CAPTURE( nonzero_arrivals );
+    aig_network aig;
+    auto a = aig.create_pi(), b = aig.create_pi(), c = aig.create_pi();
+    auto const [s1, c1] = full_adder( aig, a, b, c );
+    auto d = aig.create_pi(), e = aig.create_pi();
+    auto const [s2, c2] = full_adder( aig, s1, d, e );
+    auto f = aig.create_pi(), g = aig.create_pi();
+    auto const [s3, c3] = full_adder( aig, s2, f, g );
+    for ( auto output : { !c1, c2, !s3, s3, !s3 } )
+      aig.create_po( output );
+    emap_params ps;
+    ps.map_multioutput = true;
+    ps.area_flow_rounds = 1;
+    ps.ela_rounds = 1;
+    if ( nonzero_arrivals )
+    {
+      ps.arrival_times = { 0.2, 0.7, 0.3, 1.0, 0.6, 0.4, 0.8 };
+      ps.required_times = { 12.0, 12.3, 12.6, 12.9, 13.2 };
+    }
+    emap_stats st;
+    auto mapped = emap( aig, lib, ps, &st );
+    check_recovery_mapping( aig, mapped, ps, st );
+    if ( !nonzero_arrivals )
+    {
+      CHECK( count_cells( mapped, "fa" ) == 2u );
+      CHECK( mapped.compute_area() == Approx( 26.0 ) );
+      CHECK( st.delay == Approx( 7.4 ) );
+    }
+  }
+}
+
+TEST_CASE( "Emap repeatedly recovers full adders with shared fanins", "[emap][emap_recovery]" )
+{
+  auto lib = recovery_tech_library( recovery_library );
+  aig_network aig;
+  auto a = aig.create_pi(), b = aig.create_pi(), c = aig.create_pi(), d = aig.create_pi();
+  auto const [s1, c1] = full_adder( aig, a, b, c );
+  auto const [s2, c2] = full_adder( aig, s1, d, c1 );
+  aig.create_po( s1 );
+  aig.create_po( s2 );
+  emap_params ps;
+  ps.map_multioutput = true;
+  ps.area_flow_rounds = 3;
+  ps.ela_rounds = 4;
+  ps.eswp_rounds = 2;
+  emap_stats st;
+  auto mapped = emap( aig, lib, ps, &st );
+  check_recovery_mapping( aig, mapped, ps, st );
+  CHECK( count_cells( mapped, "fa" ) == 2u );
+  CHECK( mapped.num_gates() == 2u );
+  CHECK( mapped.compute_area() == Approx( 12.0 ) );
+  CHECK( st.delay == Approx( 1.4 ) );
 }

@@ -32,11 +32,21 @@
 
 #pragma once
 
+#include <algorithm>
+#include <array>
+#include <cassert>
 #include <chrono>
 #include <cstdint>
+#include <cstring>
+#include <iostream>
+#include <iterator>
 #include <limits>
+#include <numeric>
+#include <sstream>
 #include <string>
+#include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <kitty/constructors.hpp>
@@ -1609,9 +1619,299 @@ private:
     ++cuts_total;
   }
 
+  /* Cache structural eligibility; only the affected cover needs validation. */
+  bool ordinary_physical_gate( composed_gate<NInputs> const& gate ) const
+  {
+    auto found = physical_gate_cache.find( &gate );
+    if ( found != physical_gate_cache.end() )
+      return found->second;
+    bool valid = true;
+    if ( gate.root )
+      for ( auto const& cell : library.get_cells() )
+        for ( auto const& output : cell.gates )
+          if ( output.id == gate.root->id && cell.gates.size() != 1 )
+            valid = false;
+    for ( auto const* fanin : gate.fanin )
+      valid &= ordinary_physical_gate( *fanin );
+    return physical_gate_cache.emplace( &gate, valid ).first->second;
+  }
+
+  bool trial_physical_gates() const
+  {
+    for ( auto const& entry : reference_trial )
+    {
+      auto i = entry.index;
+      auto n = ntk.index_to_node( i );
+      auto const& d = node_match[i];
+      if ( !live_output( i ) || multi_selected( i ) || ntk.is_pi( n ) || ntk.is_constant( n ) )
+        continue;
+      for ( auto p = 0u; p < 2; ++p )
+        if ( d.best_gate[p] && ( d.same_match || d.map_refs[p] ) && !ordinary_physical_gate( *d.best_gate[p]->root ) )
+          return false;
+    }
+    return true;
+  }
+
+  bool neutral_split_preferred( uint32_t index, node_match_t const& saved ) const
+  {
+    for ( auto p = 0u; p < 2; ++p )
+      if ( node_match[index].map_refs[p] && node_match[index].arrival[p] > saved[index].arrival[p] + epsilon )
+        return false;
+    return trial_physical_gates();
+  }
+
+  bool multi_selected( uint32_t index ) const
+  {
+    return ps.map_multioutput && node_match[index].multioutput_match[0];
+  }
+
+  bool live_output( uint32_t index ) const
+  {
+    return node_match[index].map_refs[0] || node_match[index].map_refs[1];
+  }
+
+  uint32_t sibling_output( uint32_t index ) const
+  {
+    auto const& tuple = multi_node_match[node_tuple_match[index].index][0];
+    return tuple[0].node_index == index ? tuple[1].node_index : tuple[0].node_index;
+  }
+
+  bool feasible_output( uint32_t index, bool live_only = true ) const
+  {
+    auto const& d = node_match[index];
+    if ( !d.best_gate[0] && !d.best_gate[1] )
+      return false;
+    for ( auto p = 0u; p < 2; ++p )
+      if ( ( !live_only || d.map_refs[p] ) && d.arrival[p] > d.required[p] + epsilon )
+        return false;
+    return true;
+  }
+
+  /* Full-cell area in the mapper cover model, separate from fractional
+   * area-flow estimates. Constants and export-added buffers are not included. */
+  double cover_area() const
+  {
+    double result = 0;
+    std::vector<bool> seen( multi_node_match.size(), false );
+    for ( auto const& n : topo_order )
+    {
+      auto i = ntk.node_to_index( n );
+      auto const& d = node_match[i];
+      if ( !live_output( i ) || ntk.is_constant( n ) )
+        continue;
+      if ( ntk.is_pi( n ) )
+      {
+        if ( d.map_refs[1] )
+          result += lib_inv_area;
+        continue;
+      }
+      auto phase = d.best_gate[0] ? 0 : 1;
+      if ( multi_selected( i ) )
+      {
+        auto tuple = node_tuple_match[i].index;
+        if ( !seen[tuple] )
+          result += d.best_gate[phase]->root->root->area;
+        seen[tuple] = true;
+      }
+      else if ( d.same_match )
+        result += d.area[phase];
+      else
+        for ( auto p = 0u; p < 2; ++p )
+          if ( d.map_refs[p] )
+            result += d.area[p];
+      if ( d.same_match && d.map_refs[phase ^ 1] )
+        result += lib_inv_area;
+    }
+    return result;
+  }
+
+  /* A transaction journals each affected output before its first mutation.
+   * Physical ownership is assigned to the lower-index live selected output.  Touching
+   * both partners makes ownership transfers cost-neutral, including half-splits.
+   * Speculative cut probes use the same hooks and undo their reference changes. */
+  double output_area( uint32_t i ) const
+  {
+    auto n = ntk.index_to_node( i );
+    auto const& d = node_match[i];
+    if ( !live_output( i ) || ntk.is_constant( n ) )
+      return 0;
+    if ( ntk.is_pi( n ) )
+      return d.map_refs[1] ? lib_inv_area : 0;
+    auto p = d.best_gate[0] ? 0 : 1;
+    double result = 0;
+    if ( multi_selected( i ) )
+    {
+      auto other = sibling_output( i );
+      if ( !( other < i && multi_selected( other ) && live_output( other ) ) )
+        result = d.best_gate[p]->root->root->area;
+    }
+    else if ( d.same_match )
+      result = d.area[p];
+    else
+      for ( auto q = 0u; q < 2; ++q )
+        if ( d.map_refs[q] )
+          result += d.area[q];
+    if ( d.same_match && d.map_refs[p ^ 1] )
+      result += lib_inv_area;
+    return result;
+  }
+
+  double output_switching( uint32_t i ) const
+  {
+    auto n = ntk.index_to_node( i );
+    auto const& d = node_match[i];
+    if ( ntk.is_constant( n ) && !d.best_gate[0] && !d.best_gate[1] )
+      return 0;
+    if ( ntk.is_pi( n ) )
+      return d.map_refs[1] ? switch_activity[i] : 0;
+    if ( !live_output( i ) )
+      return 0;
+    auto p = d.best_gate[0] ? 0 : 1;
+    unsigned count = d.same_match ? 1 + ( d.map_refs[p ^ 1] != 0 ) : ( d.map_refs[0] != 0 ) + ( d.map_refs[1] != 0 );
+    return count * switch_activity[i];
+  }
+
+  void touch_reference( uint32_t index )
+  {
+    if ( !reference_trial_active )
+      return;
+    auto touch = [&]( uint32_t i ) {
+      if ( reference_stamp[i] == reference_generation )
+        return;
+      reference_stamp[i] = reference_generation;
+      reference_trial.push_back( { i, output_area( i ), trial_switching ? output_switching( i ) : 0 } );
+    };
+    touch( index );
+    if ( node_tuple_match[index].has_info )
+      touch( sibling_output( index ) );
+  }
+
+  void begin_reference_trial( uint32_t index, bool switching )
+  {
+    /* Recovery trials are serialized; nested trials would overwrite the journal. */
+    assert( !reference_trial_active );
+    reference_stamp.resize( node_match.size(), 0 );
+    if ( ++reference_generation == 0 )
+    {
+      std::fill( reference_stamp.begin(), reference_stamp.end(), 0 );
+      ++reference_generation;
+    }
+    reference_trial.clear();
+    trial_switching = switching;
+    reference_trial_active = true;
+    touch_reference( index );
+  }
+
+  double reference_trial_delta() const
+  {
+    double area_delta = 0, switching_delta = 0;
+    for ( auto const& e : reference_trial )
+    {
+      area_delta += output_area( e.index ) - e.area;
+      if ( trial_switching )
+        switching_delta += output_switching( e.index ) - e.switching;
+    }
+    return trial_switching ? switching_delta : area_delta;
+  }
+
+  /* Retained pairs may improve pin assignment atomically.  Same roots, cuts,
+   * output phases and input phases preserve every reference and cost.
+   * Both outputs must satisfy their stored arrivals and required times. */
+  void rematch_retained_pair( uint32_t index )
+  {
+    auto const& tuple = multi_node_match[node_tuple_match[index].index][0];
+    auto const& first = cuts[tuple[0].node_index][tuple[0].cut_index];
+    auto fp = first->supergates[0] ? 0 : 1;
+    for ( auto k = 0u; k < first->supergates[fp]->size(); ++k )
+    {
+      std::array<supergate<NInputs> const*, 2> gates;
+      std::array<double, 2> arrivals;
+      bool valid = true, improved = false;
+      for ( auto j = 0u; j < 2; ++j )
+      {
+        auto i = tuple[j].node_index;
+        auto const& d = node_match[i];
+        auto p = d.best_gate[0] ? 0 : 1;
+        auto const& cut = cuts[i][tuple[j].cut_index];
+        auto cp = cut->supergates[0] ? 0 : 1;
+        auto const& g = ( *cut->supergates[cp] )[k];
+        gates[j] = &g;
+        if ( !multi_selected( i ) || d.best_cut[p] != tuple[j].cut_index ||
+             g.root->root->id != d.best_gate[p]->root->root->id ||
+             ( ( g.polarity >> NInputs ) ^ cp ) != p ||
+             ( ( g.polarity ^ d.phase[p] ) & ( ( 1u << NInputs ) - 1 ) ) )
+        {
+          valid = false;
+          break;
+        }
+        double arrival = 0;
+        unsigned pin = 0;
+        for ( auto leaf : cut )
+        {
+          arrival = std::max( arrival, node_match[leaf].arrival[( g.polarity >> pin ) & 1] + g.tdelay[pin] );
+          ++pin;
+        }
+        arrivals[j] = arrival;
+        for ( auto q = 0u; q < 2; ++q )
+          if ( d.map_refs[q] )
+          {
+            auto a = arrival + ( q == p ? 0 : lib_inv_delay );
+            if ( a > d.required[q] + epsilon || a > d.arrival[q] + epsilon )
+              valid = false;
+            if ( a < d.arrival[q] - epsilon )
+              improved = true;
+          }
+      }
+      if ( !valid || !improved )
+        continue;
+      for ( auto j = 0u; j < 2; ++j )
+      {
+        auto& d = node_match[tuple[j].node_index];
+        auto p = d.best_gate[0] ? 0 : 1;
+        d.best_gate[p] = gates[j];
+        d.arrival[p] = arrivals[j];
+        d.arrival[p ^ 1] = arrivals[j] + lib_inv_delay;
+      }
+    }
+  }
+
+  /* Restore implementation data without discarding current consumers or bounds. */
+  void restore_match( uint32_t index, node_match_t const& saved )
+  {
+    std::array<uint32_t, 2> refs{ node_match[index].map_refs[0], node_match[index].map_refs[1] };
+    std::array<double, 2> required{ node_match[index].required[0], node_match[index].required[1] };
+    node_match[index] = saved[index];
+    for ( auto p = 0u; p < 2; ++p )
+    {
+      node_match[index].map_refs[p] = refs[p];
+      node_match[index].required[p] = required[p];
+    }
+  }
+
+  template<bool SwitchActivity, bool Reference>
+  void reference_match( uint32_t index )
+  {
+    auto const& d = node_match[index];
+    if ( !live_output( index ) || ( !d.best_gate[0] && !d.best_gate[1] ) )
+      return;
+    for ( auto p = 0u; p < 2; ++p )
+    {
+      if ( d.same_match ? d.best_gate[p] != nullptr : d.map_refs[p] != 0 )
+      {
+        auto const& cut = cuts[index][d.best_cut[p]];
+        if constexpr ( Reference )
+          cut_ref<SwitchActivity>( cut, ntk.index_to_node( index ), p );
+        else
+          cut_deref<SwitchActivity>( cut, ntk.index_to_node( index ), p );
+      }
+    }
+  }
+
   template<bool DO_AREA>
   bool compute_mapping()
   {
+    auto const saved = ps.map_multioutput ? node_match : node_match_t{};
+    std::vector<bool> retained( multi_node_match.size(), false );
     for ( auto const& n : topo_order )
     {
       uint32_t index = ntk.node_to_index( n );
@@ -1641,6 +1941,13 @@ private:
         }
       }
 
+      if ( ps.map_multioutput && saved[index].multioutput_match[0] && retained[node_tuple_match[index].index] )
+      {
+        restore_match( index, saved );
+        propagate_arrival_node( n );
+        continue;
+      }
+
       /* match positive phase */
       match_phase<DO_AREA>( n, 0u );
 
@@ -1659,6 +1966,17 @@ private:
           if ( multi_success )
             multi_node_update<DO_AREA>( n );
         }
+      }
+
+      if ( ps.map_multioutput && saved[index].multioutput_match[0] && !feasible_output( index, false ) )
+      {
+        auto other = sibling_output( index );
+        restore_match( index, saved );
+        restore_match( other, saved );
+        retained[node_tuple_match[index].index] = true;
+        propagate_arrival_node( n );
+        if ( node_tuple_match[index].highest_index )
+          multi_node_update<DO_AREA>( n );
       }
 
       assert( node_match[index].arrival[0] < node_match[index].required[0] + epsilon );
@@ -1694,6 +2012,8 @@ private:
   template<bool SwitchActivity>
   bool compute_mapping_exact_reversed()
   {
+    auto const saved = ps.map_multioutput ? node_match : node_match_t{};
+    std::vector<bool> retained( multi_node_match.size(), false );
     for ( auto it = topo_order.rbegin(); it != topo_order.rend(); ++it )
     {
       if ( ntk.is_constant( *it ) || ntk.is_pi( *it ) )
@@ -1719,6 +2039,17 @@ private:
           continue;
         }
       }
+
+      bool was_multi = ps.map_multioutput && saved[index].multioutput_match[0];
+      if ( was_multi && retained[node_tuple_match[index].index] )
+      {
+        match_propagate_required( index );
+        continue;
+      }
+      bool single_live = was_multi && !live_output( sibling_output( index ) );
+      if ( single_live )
+        begin_reference_trial( index, SwitchActivity );
+      exact_multi_area = single_live && !SwitchActivity;
 
       /* recursively deselect the best cut shared between
        * the two phases if in use in the cover */
@@ -1757,7 +2088,50 @@ private:
       }
 
       /* try to drop one phase */
-      match_drop_phase<true, true, SwitchActivity>( *it );
+      if ( node_data.best_gate[0] || node_data.best_gate[1] )
+        match_drop_phase<true, true, SwitchActivity>( *it );
+
+      if ( single_live && feasible_output( index ) && !live_output( sibling_output( index ) ) )
+      {
+        /* An unused partner must not retain half of a now split cell. */
+        auto other = ntk.index_to_node( sibling_output( index ) );
+        match_phase_exact<SwitchActivity>( other, 0u );
+        match_phase_exact<SwitchActivity>( other, 1u );
+        if ( node_match[ntk.node_to_index( other )].best_gate[0] || node_match[ntk.node_to_index( other )].best_gate[1] )
+          match_drop_phase<true, true, SwitchActivity>( other );
+      }
+
+      bool reject_cost = false;
+      if ( single_live )
+      {
+        auto delta = reference_trial_delta();
+        if constexpr ( SwitchActivity )
+          reject_cost = delta > epsilon || !trial_physical_gates();
+        else
+          reject_cost = delta > 0 || ( delta >= -epsilon && !neutral_split_preferred( index, saved ) );
+      }
+      if ( was_multi && ( !feasible_output( index ) ||
+                          ( single_live && ( !feasible_output( sibling_output( index ) ) || reject_cost ) ) ) )
+      {
+        auto other = sibling_output( index );
+        /* Remove the trial cover before restoring either member. */
+        auto hi = std::max( index, other ), lo = std::min( index, other );
+        reference_match<SwitchActivity, false>( hi );
+        reference_match<SwitchActivity, false>( lo );
+        restore_match( index, saved );
+        restore_match( other, saved );
+        reference_match<SwitchActivity, true>( lo );
+        reference_match<SwitchActivity, true>( hi );
+        retained[node_tuple_match[index].index] = true;
+        reference_trial_active = false;
+        rematch_retained_pair( index );
+        match_propagate_required( index );
+        if ( live_output( other ) )
+          match_propagate_required( other );
+        continue;
+      }
+
+      reference_trial_active = false;
 
       /* try a multi-output match */ /* TODO: fix the required time*/
       if ( ps.map_multioutput && node_tuple_match[index].lowest_index )
@@ -1780,6 +2154,7 @@ private:
       }
     }
 
+    exact_multi_area = false;
     double area_old = area;
 
     propagate_arrival_times();
@@ -2158,6 +2533,10 @@ private:
       }
     }
 
+    multi_ref_active.resize( node_match.size(), false );
+    for ( auto i = 0u; i < node_match.size(); ++i )
+      multi_ref_active[i] = multi_selected( i ) && live_output( i );
+    area = cover_area();
     ++iteration;
 
     if constexpr ( ELA )
@@ -2398,6 +2777,8 @@ private:
         area += node_data.area[use_phase];
       }
     }
+
+    area = cover_area();
 
     /* compute the current worst delay */
     delay = 0.0f;
@@ -3825,6 +4206,18 @@ private:
     else
       count = node_data.area[phase];
 
+    auto index = ntk.node_to_index( n );
+    if ( multi_selected( index ) )
+    {
+      if constexpr ( !SwitchActivity )
+      {
+        auto mapped_phase = node_data.best_gate[0] ? 0 : 1;
+        if ( exact_multi_area )
+          count = multi_ref_active[sibling_output( index )] ? 0.0f : node_data.best_gate[mapped_phase]->root->root->area;
+      }
+      multi_ref_active[index] = true;
+    }
+
     /* don't touch box */
     if constexpr ( has_is_dont_touch_v<Ntk> )
     {
@@ -3837,6 +4230,7 @@ private:
     uint8_t ctr = 0;
     for ( auto leaf : cut )
     {
+      touch_reference( leaf );
       /* compute leaf phase using the current gate */
       uint8_t leaf_phase = ( node_data.phase[phase] >> ctr++ ) & 1;
 
@@ -3905,6 +4299,18 @@ private:
     else
       count = node_data.area[phase];
 
+    auto index = ntk.node_to_index( n );
+    if ( multi_selected( index ) )
+    {
+      if constexpr ( !SwitchActivity )
+      {
+        auto mapped_phase = node_data.best_gate[0] ? 0 : 1;
+        if ( exact_multi_area )
+          count = multi_ref_active[sibling_output( index )] ? 0.0f : node_data.best_gate[mapped_phase]->root->root->area;
+      }
+      multi_ref_active[index] = false;
+    }
+
     /* don't touch box */
     if constexpr ( has_is_dont_touch_v<Ntk> )
     {
@@ -3917,6 +4323,7 @@ private:
     uint8_t ctr = 0;
     for ( auto leaf : cut )
     {
+      touch_reference( leaf );
       /* compute leaf phase using the current gate */
       uint8_t leaf_phase = ( node_data.phase[phase] >> ctr++ ) & 1;
 
@@ -3976,7 +4383,9 @@ private:
   template<bool SwitchActivity>
   float cut_measure_mffc( cut_t const& cut, node<Ntk> const& n, uint8_t phase )
   {
+    /* This probe is not nested: recursion uses cut_ref_visit directly. */
     tmp_visited.clear();
+    tmp_multi_active.clear();
 
     float count = cut_ref_visit<SwitchActivity>( cut, n, phase );
 
@@ -3987,6 +4396,8 @@ private:
       --node_match[leaf].map_refs[s & 1];
     }
 
+    for ( auto index : tmp_multi_active )
+      multi_ref_active[index] = false;
     return count;
   }
 
@@ -4001,6 +4412,20 @@ private:
     else
       count = node_data.area[phase];
 
+    auto index = ntk.node_to_index( n );
+    if ( multi_selected( index ) )
+    {
+      if constexpr ( !SwitchActivity )
+      {
+        auto mapped_phase = node_data.best_gate[0] ? 0 : 1;
+        if ( exact_multi_area )
+          count = multi_ref_active[sibling_output( index )] ? 0.0f : node_data.best_gate[mapped_phase]->root->root->area;
+      }
+      if ( !multi_ref_active[index] )
+        tmp_multi_active.push_back( index );
+      multi_ref_active[index] = true;
+    }
+
     /* don't touch box */
     if constexpr ( has_is_dont_touch_v<Ntk> )
     {
@@ -4013,6 +4438,7 @@ private:
     uint8_t ctr = 0;
     for ( auto leaf : cut )
     {
+      touch_reference( leaf );
       /* compute leaf phase using the current gate */
       uint8_t leaf_phase = ( node_data.phase[phase] >> ctr++ ) & 1;
 
@@ -4293,6 +4719,7 @@ private:
   void finalize_cover_block( cell_view<block_network>& res, block_map& old2new )
   {
     uint32_t multioutput_count = 0;
+    std::vector<bool> emitted( multi_node_match.size(), false );
 
     /* get standard cells */
     std::vector<standard_cell> const& lib = res.get_library();
@@ -4352,8 +4779,9 @@ private:
         {
           assert( node_data.same_match == true );
 
-          if ( node_tuple_match[index].has_info && node_tuple_match[index].lowest_index )
+          if ( !emitted[node_tuple_match[index].index] )
           {
+            emitted[node_tuple_match[index].index] = true;
             ++multioutput_count;
             create_block_for_gate( res, old2new, index, phase, genlib_to_cell );
           }
@@ -5720,6 +6148,19 @@ private:
 
   std::vector<node<Ntk>> topo_order;
   node_match_t node_match;
+  struct reference_entry
+  {
+    uint32_t index;
+    double area, switching;
+  };
+  std::vector<reference_entry> reference_trial;
+  std::vector<uint64_t> reference_stamp;
+  uint64_t reference_generation = 0;
+  bool reference_trial_active = false, trial_switching = false;
+  mutable std::unordered_map<composed_gate<NInputs> const*, bool> physical_gate_cache;
+  bool exact_multi_area = false;
+  std::vector<bool> multi_ref_active;
+  std::vector<uint32_t> tmp_multi_active;
   std::vector<multioutput_info> node_tuple_match;
   std::vector<float> switch_activity;
   std::vector<uint64_t> tmp_visited;
